@@ -281,6 +281,19 @@ fun NavigationDrawer(
                     }
                 )
 
+                // 4. Leave Register
+                DrawerItem(
+                    icon = Icons.Default.Description, // Using Description icon for register
+                    text = "Leave Register",
+                    selected = currentRoute == Routes.LEAVE_DASHBOARD,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate(Routes.LEAVE_DASHBOARD)
+                        }
+                    }
+                )
+
                /*
                 // 4. Officers (Merged into Employees generally, but kept if distinct route desired)
                 DrawerItem(

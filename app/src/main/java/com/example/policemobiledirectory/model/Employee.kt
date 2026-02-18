@@ -38,6 +38,8 @@ data class Employee(
     val isHidden: Boolean = false,       // Added for Hide/Unhide feature
     @get:PropertyName("isManualStation")
     val isManualStation: Boolean = false, // Added for manual section tracking
+    val gender: String = "Male",         // KCSR rule dependency
+    val serviceStartDate: Date? = null,   // For future calculations
     @get:Exclude
     val searchBlob: String = ""
 ) {

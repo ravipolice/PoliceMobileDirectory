@@ -24,7 +24,9 @@ fun EmployeeEntity.toEmployee(): Employee = Employee(
     createdAt = createdAt,
     updatedAt = updatedAt,
     unit = unit,
-    searchBlob = searchBlob
+    searchBlob = searchBlob,
+    gender = gender,
+    serviceStartDate = serviceStartDate
 )
 
 fun Employee.toEntity(): EmployeeEntity = EmployeeEntity(
@@ -48,5 +50,7 @@ fun Employee.toEntity(): EmployeeEntity = EmployeeEntity(
     createdAt = createdAt,
     updatedAt = updatedAt,
     unit = unit,
-    searchBlob = searchBlob
+    searchBlob = searchBlob,
+    gender = gender,
+    serviceStartDate = serviceStartDate
 )

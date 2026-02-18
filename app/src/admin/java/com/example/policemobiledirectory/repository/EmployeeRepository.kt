@@ -802,6 +802,12 @@ open class EmployeeRepository @Inject constructor(
                     updateMap["station"] = it
                 }
                 
+                // ✅ KCSR FIELDS - gender and serviceStartDate
+                updateMap["gender"] = finalEmp.gender
+                finalEmp.serviceStartDate?.let {
+                    updateMap["serviceStartDate"] = it
+                }
+                
                 // ✅ BLOOD GROUP - Optional field
                 finalEmp.bloodGroup?.takeIf { it.isNotBlank() }?.let {
                     updateMap["bloodGroup"] = it
@@ -1270,7 +1276,9 @@ open class EmployeeRepository @Inject constructor(
             createdAt = createdAt,
             updatedAt = updatedAt,
             unit = unit,
-            searchBlob = searchBlob
+            searchBlob = searchBlob,
+            gender = gender,
+            serviceStartDate = serviceStartDate
         )
     }
 
@@ -1302,7 +1310,9 @@ open class EmployeeRepository @Inject constructor(
             updatedAt = updatedAt,
             unit = unit,
             searchBlob = blob,
-            isManualStation = isManualStation
+            isManualStation = isManualStation,
+            gender = gender,
+            serviceStartDate = serviceStartDate
         )
     }
 
@@ -1342,7 +1352,9 @@ open class EmployeeRepository @Inject constructor(
                 pin = pinHash,
                 unit = emp.unit,
                 searchBlob = blob,
-                isManualStation = emp.isManualStation
+                isManualStation = emp.isManualStation,
+                gender = emp.gender ?: "Male",
+                serviceStartDate = emp.serviceStartDate
             )
         } else {
             // If doc couldn't be mapped to Employee, build from fields directly
@@ -1386,7 +1398,9 @@ open class EmployeeRepository @Inject constructor(
                 pin = pinHash,
                 unit = unit,
                 searchBlob = blob,
-                isManualStation = doc.getBoolean("isManualStation") ?: false
+                isManualStation = doc.getBoolean("isManualStation") ?: false,
+                gender = doc.getString("gender") ?: "Male",
+                serviceStartDate = doc.getDate("serviceStartDate")
             )
         }
     }
@@ -1416,7 +1430,9 @@ open class EmployeeRepository @Inject constructor(
             firebaseUid = str("firebaseUid").ifBlank { null },
             isAdmin = bool("isAdmin"),
             isApproved = data["isApproved"] as? Boolean ?: true,
-            unit = str("unit").ifBlank { null }
+            unit = str("unit").ifBlank { null },
+            gender = str("gender").ifBlank { "Male" },
+            serviceStartDate = data["serviceStartDate"] as? Date
         )
     }
 
@@ -1448,7 +1464,9 @@ open class EmployeeRepository @Inject constructor(
             pin = pinHash,
             unit = emp.unit,
             searchBlob = blob,
-            isManualStation = emp.isManualStation
+            isManualStation = emp.isManualStation,
+            gender = emp.gender,
+            serviceStartDate = emp.serviceStartDate
         )
     }
 

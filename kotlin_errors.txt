@@ -1,0 +1,159 @@
+﻿Configuration on demand is an incubating feature.
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preAdminDebugBuild UP-TO-DATE
+> Task :app:generateAdminDebugBuildConfig UP-TO-DATE
+> Task :app:checkAdminDebugAarMetadata UP-TO-DATE
+> Task :app:processAdminDebugNavigationResources UP-TO-DATE
+> Task :app:compileAdminDebugNavigationResources UP-TO-DATE
+> Task :app:generateAdminDebugResValues UP-TO-DATE
+> Task :app:processAdminDebugGoogleServices UP-TO-DATE
+> Task :app:mapAdminDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateAdminDebugResources UP-TO-DATE
+> Task :app:mergeAdminDebugResources UP-TO-DATE
+> Task :app:packageAdminDebugResources UP-TO-DATE
+> Task :app:parseAdminDebugLocalResources UP-TO-DATE
+> Task :app:createAdminDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksAdminDebug UP-TO-DATE
+> Task :app:processAdminDebugMainManifest UP-TO-DATE
+> Task :app:processAdminDebugManifest UP-TO-DATE
+> Task :app:processAdminDebugManifestForPackage UP-TO-DATE
+> Task :app:processAdminDebugResources UP-TO-DATE
+> Task :app:kspAdminDebugKotlin UP-TO-DATE
+> Task :app:compileAdminDebugKotlin
+.\gradlew : e: file:///C:/Us
+ers/ravip/AndroidStudioProje
+cts/PoliceMobileDirectory/ap
+p/src/admin/java/com/example
+/policemobiledirectory/navig
+ation/AppNavGraph.kt:368:53 
+Unresolved reference 
+'collectAsState'.
+At line:1 char:1
++ .\gradlew :app:compileAdmi
+nDebugKotlin 2>&1 | 
+Out-File "kotlin_errors ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo          
+    : NotSpecified: (e: fi  
+  le:///C:/U...ollectAsSt   
+ ate'.:String) [], Remot    
+eException
+    + FullyQualifiedErrorId 
+    : NativeCommandError
+ 
+e: file:///C:/Users/ravip/An
+droidStudioProjects/PoliceMo
+bileDirectory/app/src/admin/
+java/com/example/policemobil
+edirectory/navigation/AppNav
+Graph.kt:380:53 Unresolved 
+reference 'collectAsState'.
+e: file:///C:/Users/ravip/An
+droidStudioProjects/PoliceMo
+bileDirectory/app/src/admin/
+java/com/example/policemobil
+edirectory/navigation/AppNav
+Graph.kt:392:53 Unresolved 
+reference 'collectAsState'.
+e: file:///C:/Users/ravip/An
+droidStudioProjects/PoliceMo
+bileDirectory/app/src/admin/
+java/com/example/policemobil
+edirectory/navigation/AppNav
+Graph.kt:404:53 Unresolved 
+reference 'collectAsState'.
+e: file:///C:/Users/ravip/An
+droidStudioProjects/PoliceMo
+bileDirectory/app/src/admin/
+java/com/example/policemobil
+edirectory/navigation/AppNav
+Graph.kt:416:53 Unresolved 
+reference 'collectAsState'.
+e: file:///C:/Users/ravip/An
+droidStudioProjects/PoliceMo
+bileDirectory/app/src/admin/
+java/com/example/policemobil
+edirectory/navigation/AppNav
+Graph.kt:428:53 Unresolved 
+reference 'collectAsState'.
+e: file:///C:/Users/ravip/An
+droidStudioProjects/PoliceMo
+bileDirectory/app/src/admin/
+java/com/example/policemobil
+edirectory/navigation/AppNav
+Graph.kt:440:53 Unresolved 
+reference 'collectAsState'.
+e: file:///C:/Users/ravip/An
+droidStudioProjects/PoliceMo
+bileDirectory/app/src/admin/
+java/com/example/policemobil
+edirectory/repository/LeaveR
+epository.kt:221:41 
+Argument type mismatch: 
+actual type is 
+'it(kotlin.Number & kotlin.C
+omparable<CapturedType(*)>)'
+, but 'kotlin.Float' was 
+expected.
+e: file:///C:/Users/ravip/An
+droidStudioProjects/PoliceMo
+bileDirectory/app/src/admin/
+java/com/example/policemobil
+edirectory/ui/screens/LeaveE
+ntryScreen.kt:25:14 
+Functions which invoke 
+@Composable functions must 
+be marked with the 
+@Composable annotation
+e: file:///C:/Users/ravip/An
+droidStudioProjects/PoliceMo
+bileDirectory/app/src/admin/
+java/com/example/policemobil
+edirectory/ui/screens/LeaveE
+ntryScreen.kt:26:43 
+Unresolved reference 
+'clickable'.
+e: file:///C:/Users/ravip/An
+droidStudioProjects/PoliceMo
+bileDirectory/app/src/admin/
+java/com/example/policemobil
+edirectory/ui/screens/LeaveE
+ntryScreen.kt:28:29 
+@Composable invocations can 
+only happen from the 
+context of a @Composable 
+function
+
+> Task :app:compileAdminDebugKotlin FAILED
+
+FAILURE: Build failed with 
+an exception.
+
+* What went wrong:
+Execution failed for task ':
+app:compileAdminDebugKotlin'
+.
+> A failure occurred while 
+executing org.jetbrains.kotl
+in.compilerRunner.GradleComp
+ilerRunnerWithWorkers$Gradle
+KotlinCompilerWorkAction
+   > Compilation error. See 
+log for more details
+
+* Try:
+> Run with --stacktrace 
+option to get the stack 
+trace.
+> Run with --info or 
+--debug option to get more 
+log output.
+> Run with --scan to get 
+full insights.
+> Get more help at 
+https://help.gradle.org.
+
+BUILD FAILED in 1m 24s
+19 actionable tasks: 1 executed, 18 up-to-date

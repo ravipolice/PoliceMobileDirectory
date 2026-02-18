@@ -42,5 +42,10 @@ val bottomNavItems = listOf(
         route = Routes.EMPLOYEE_LIST,
         icon = Icons.Default.Home,
         label = "Home"
+    ),
+    BottomNavItem(
+        route = Routes.LEAVE_DASHBOARD,
+        icon = Icons.Default.EventNote,
+        label = "Leave Register"
     )
 )

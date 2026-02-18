@@ -36,4 +36,19 @@ object Routes {
     const val NUDI_CONVERTER = "nudi_converter"
     const val MANAGE_CONSTANTS = "manage_constants" // ✅ New Route
 
+    // --- Leave Manager ---
+    const val LEAVE_DASHBOARD = "leave_dashboard"
+    const val LEAVE_ENTRY = "leave_entry"
+    const val LEAVE_REPORTS = "leave_reports"
+    const val LEAVE_CL = "leave_cl"
+    const val LEAVE_EL = "leave_el"
+    const val LEAVE_HPL = "leave_hpl"
+    const val LEAVE_WO = "leave_wo"
+    const val LEAVE_CCL = "leave_ccl"
+    const val LEAVE_MCL = "leave_mcl"
+    const val LEAVE_OTHER = "leave_other"
+    const val LEAVE_EDIT = "leave_edit/{entryId}"
+
+    fun leaveEditRoute(entryId: String) = "leave_edit/$entryId"
+
 }

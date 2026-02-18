@@ -1,4 +1,4 @@
-package com.example.policemobiledirectory.ui.viewmodel
+package com.example.policemobiledirectory.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,7 +18,7 @@ import com.example.policemobiledirectory.utils.PerformanceLogger
 import kotlinx.coroutines.flow.first
 
 @HiltViewModel
-class DocumentsViewModel @Inject constructor(
+class AdminDocumentsViewModel @Inject constructor(
     private val repository: DocumentsRepository,
     private val sessionManager: SessionManager
 ) : ViewModel() {
@@ -92,7 +92,7 @@ class DocumentsViewModel @Inject constructor(
                 _documentsStatus.value = OperationStatus.Success(filteredList)
                 
             } catch (e: Exception) {
-                val errorInfo = ErrorHandler.handleException(e, "DocumentsViewModel.fetchDocuments")
+                val errorInfo = ErrorHandler.handleException(e, "AdminDocumentsViewModel.fetchDocuments")
                 
                 // Return cached data if available, even if expired
                 if (cachedDocuments != null) {
@@ -156,7 +156,7 @@ class DocumentsViewModel @Inject constructor(
                     _uploadStatus.value = OperationStatus.Error(errorMsg)
                 }
             } catch (e: Exception) {
-                val errorInfo = ErrorHandler.handleException(e, "DocumentsViewModel.uploadDocument")
+                val errorInfo = ErrorHandler.handleException(e, "AdminDocumentsViewModel.uploadDocument")
                 _uploadStatus.value = OperationStatus.Error(errorInfo.userFriendlyMessage)
             }
         }
@@ -207,7 +207,7 @@ class DocumentsViewModel @Inject constructor(
             } catch (e: Exception) {
                 // Revert by refreshing from server
                 fetchDocuments(forceRefresh = true)
-                val errorInfo = ErrorHandler.handleException(e, "DocumentsViewModel.editDocument")
+                val errorInfo = ErrorHandler.handleException(e, "AdminDocumentsViewModel.editDocument")
                 _editStatus.value = OperationStatus.Error(errorInfo.userFriendlyMessage)
             }
         }
@@ -248,7 +248,7 @@ class DocumentsViewModel @Inject constructor(
             } catch (e: Exception) {
                 // Revert optimistic update on failure
                 _documents.value = _documents.value + listOfNotNull(documentToDelete)
-                val errorInfo = ErrorHandler.handleException(e, "DocumentsViewModel.deleteDocument")
+                val errorInfo = ErrorHandler.handleException(e, "AdminDocumentsViewModel.deleteDocument")
                 _deleteStatus.value = OperationStatus.Error(errorInfo.userFriendlyMessage)
             }
         }

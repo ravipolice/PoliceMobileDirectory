@@ -1,7 +1,9 @@
 package com.example.policemobiledirectory.ui.components
 
+import android.app.DatePickerDialog
 import android.content.Context
 import android.content.Intent
+import java.text.SimpleDateFormat
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Patterns
@@ -128,6 +130,11 @@ fun CommonEmployeeForm(
     var bloodGroup by remember(initialEmployee) { mutableStateOf(initialEmployee?.bloodGroup ?: "") }
     var currentPhotoUrl by remember(initialEmployee) { mutableStateOf(initialEmployee?.photoUrl) }
     var croppedPhotoUri by remember(initialEmployee) { mutableStateOf<Uri?>(null) }
+    
+    // KCSR specific extras
+    var gender by remember(initialEmployee) { mutableStateOf(initialEmployee?.gender ?: "Male") }
+    var serviceStartDate by remember(initialEmployee) { mutableStateOf(initialEmployee?.serviceStartDate) }
+    var genderExpanded by remember { mutableStateOf(false) }
 
     // registration extras
     var pin by remember { mutableStateOf("") }
@@ -796,6 +803,62 @@ fun CommonEmployeeForm(
                 if (showValidationErrors && bloodGroup.isBlank()) {
                     Text("Blood Group is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
+                Spacer(Modifier.height(fieldSpacing))
+
+                // KCSR Fields: Gender and Service Start Date
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Gender
+                    ExposedDropdownMenuBox(
+                        expanded = genderExpanded,
+                        onExpandedChange = { genderExpanded = !genderExpanded },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = gender,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Gender*") },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }
+                        )
+                        ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
+                            listOf("Male", "Female").forEach { selection ->
+                                DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                    gender = selection
+                                    genderExpanded = false
+                                })
+                            }
+                        }
+                    }
+
+                    // Service Start Date
+                    val dateStr = serviceStartDate?.let { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(it) } ?: "Select Date"
+                    OutlinedTextField(
+                        value = dateStr,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Service Start Date") },
+                        modifier = Modifier.weight(1f).clickable {
+                            val cal = java.util.Calendar.getInstance()
+                            serviceStartDate?.let { cal.time = it }
+                            android.app.DatePickerDialog(context, { _, y, m, d ->
+                                val selected = java.util.Calendar.getInstance()
+                                selected.set(y, m, d)
+                                serviceStartDate = selected.time
+                            }, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH)).show()
+                        },
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
+
                 if (showValidationErrors && station.isBlank() && !isHighRankingOfficer && !isDistrictLevelUnit && !isMinisterial) {
                     Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
@@ -1115,6 +1178,62 @@ fun CommonEmployeeForm(
                 if (showValidationErrors && bloodGroup.isBlank()) {
                     Text("Blood Group is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
+                
+                Spacer(Modifier.height(fieldSpacing))
+
+                // KCSR Fields: Gender and Service Start Date
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Gender
+                    ExposedDropdownMenuBox(
+                        expanded = genderExpanded,
+                        onExpandedChange = { genderExpanded = !genderExpanded },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = gender,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Gender*") },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }
+                        )
+                        ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
+                            listOf("Male", "Female").forEach { selection ->
+                                DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                    gender = selection
+                                    genderExpanded = false
+                                })
+                            }
+                        }
+                    }
+
+                    // Service Start Date
+                    val dateStr = serviceStartDate?.let { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(it) } ?: "Select Date"
+                    OutlinedTextField(
+                        value = dateStr,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Service Start Date") },
+                        modifier = Modifier.weight(1f).clickable {
+                            val cal = Calendar.getInstance()
+                            serviceStartDate?.let { cal.time = it }
+                            android.app.DatePickerDialog(context, { _, y, m, d ->
+                                val selected = Calendar.getInstance()
+                                selected.set(y, m, d)
+                                serviceStartDate = selected.time
+                            }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+                        },
+                        enabled = false,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
                 Spacer(Modifier.height(sectionSpacing))
             }
         }
@@ -1248,7 +1367,9 @@ fun CommonEmployeeForm(
                     metalNumber = metalNumber.trim().takeIf { it.isNotBlank() },
                     isAdmin = initialEmployee?.isAdmin ?: false,
                     photoUrl = croppedPhotoUri?.toString() ?: currentPhotoUrl,
-                    isManualStation = isManual
+                    isManualStation = isManual,
+                    gender = gender,
+                    serviceStartDate = serviceStartDate
                 )
 
                 // ✅ Submit in coroutine scope
@@ -1276,7 +1397,9 @@ fun CommonEmployeeForm(
                                 bloodGroup = emp.bloodGroup.orEmpty(),
                                 firebaseUid = firebaseUid,
                                 photoUrl = emp.photoUrl,
-                                isManualStation = emp.isManualStation
+                                isManualStation = emp.isManualStation,
+                                gender = emp.gender,
+                                serviceStartDate = emp.serviceStartDate
                             )
                             onRegisterSubmit?.invoke(pending, croppedPhotoUri)
                         } else {

@@ -30,7 +30,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import coil.compose.rememberAsyncImagePainter
 import com.example.policemobiledirectory.model.Document
-import com.example.policemobiledirectory.ui.viewmodel.DocumentsViewModel
+import com.example.policemobiledirectory.viewmodel.AdminDocumentsViewModel
 import com.example.policemobiledirectory.utils.OperationStatus
 import kotlinx.coroutines.launch
 import androidx.navigation.NavController
@@ -40,7 +40,7 @@ import androidx.compose.material3.TopAppBar
 @Composable
 fun DocumentsScreen(
     navController: NavController,
-    viewModel: DocumentsViewModel,
+    viewModel: AdminDocumentsViewModel,
     isAdmin: Boolean = false
 ) {
     val context = LocalContext.current

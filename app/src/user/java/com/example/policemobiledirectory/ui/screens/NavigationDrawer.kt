@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.EventNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -241,6 +242,22 @@ fun NavigationDrawer(
 
 
 
+
+                DrawerItem(
+                    icon = Icons.Default.EventNote,
+                    text = "Leave Register",
+                    selected = currentRoute == Routes.LEAVE_DASHBOARD,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate(Routes.LEAVE_DASHBOARD) {
+                                launchSingleTop = true
+                                restoreState = true
+                                popUpTo(Routes.EMPLOYEE_LIST) { inclusive = false }
+                            }
+                        }
+                    }
+                )
 
                 DrawerItem(
                     icon = Icons.Default.Info,

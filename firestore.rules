@@ -319,6 +319,95 @@ service cloud.firestore {
 
 
     /* ============================================================
+       🔹 LEAVE BALANCES (User's own leave data)
+    ============================================================ */
+    match /leaveBalances/{kgid} {
+      // Users can read their own leave balance
+      allow read: if isAuthenticated()
+            && (
+                // Match by KGID in employee document
+                (exists(/databases/$(database)/documents/employees/$(kgid)) 
+                 && get(/databases/$(database)/documents/employees/$(kgid)).data.firebaseUid == request.auth.uid)
+                ||
+                // Admin can read all
+                isAdmin()
+            );
+      
+      // Users can create/update their own leave balance
+      allow create, update: if isAuthenticated()
+            && (
+                // Match by KGID in employee document
+                (exists(/databases/$(database)/documents/employees/$(kgid)) 
+                 && get(/databases/$(database)/documents/employees/$(kgid)).data.firebaseUid == request.auth.uid)
+                ||
+                // Admin can write all
+                isAdmin()
+            )
+            && request.resource.data.kgid == kgid;  // Ensure KGID matches document ID
+      
+      // Only admins can delete leave balances
+      allow delete: if isAdmin();
+      
+      // Subcollection: Leave Entries
+      match /entries/{entryId} {
+        // Users can read their own leave entries
+        allow read: if isAuthenticated()
+              && (
+                  // Match by KGID in parent employee document
+                  (exists(/databases/$(database)/documents/employees/$(kgid)) 
+                   && get(/databases/$(database)/documents/employees/$(kgid)).data.firebaseUid == request.auth.uid)
+                  ||
+                  // Admin can read all
+                  isAdmin()
+              );
+        
+        // Users can create/update their own leave entries
+        allow create, update: if isAuthenticated()
+              && (
+                  // Match by KGID in parent employee document
+                  (exists(/databases/$(database)/documents/employees/$(kgid)) 
+                   && get(/databases/$(database)/documents/employees/$(kgid)).data.firebaseUid == request.auth.uid)
+                  ||
+                  // Admin can write all
+                  isAdmin()
+              )
+              && request.resource.data.kgid == kgid;  // Ensure KGID matches parent
+        
+        // Only admins can delete leave entries
+        allow delete: if isAdmin();
+      }
+      
+      // Subcollection: Credit Logs
+      match /logs/{logId} {
+        // Users can read their own credit logs
+        allow read: if isAuthenticated()
+              && (
+                  // Match by KGID in parent employee document
+                  (exists(/databases/$(database)/documents/employees/$(kgid)) 
+                   && get(/databases/$(database)/documents/employees/$(kgid)).data.firebaseUid == request.auth.uid)
+                  ||
+                  // Admin can read all
+                  isAdmin()
+              );
+        
+        // System can create credit logs
+        allow create: if isAuthenticated()
+              && (
+                  // Match by KGID in parent employee document
+                  (exists(/databases/$(database)/documents/employees/$(kgid)) 
+                   && get(/databases/$(database)/documents/employees/$(kgid)).data.firebaseUid == request.auth.uid)
+                  ||
+                  // Admin can write all
+                  isAdmin()
+              );
+        
+        // Only admins can update/delete credit logs
+        allow update, delete: if isAdmin();
+      }
+    }
+
+
+    /* ============================================================
        🔹 RANKS (Master Data) - rankMaster collection
     ============================================================ */
     match /rankMaster/{rank_id} {

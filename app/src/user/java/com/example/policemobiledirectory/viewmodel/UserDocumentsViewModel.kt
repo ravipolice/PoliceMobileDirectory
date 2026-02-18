@@ -1,4 +1,4 @@
-package com.example.policemobiledirectory.ui.viewmodel
+package com.example.policemobiledirectory.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,7 +18,7 @@ import com.example.policemobiledirectory.utils.PerformanceLogger
 import kotlinx.coroutines.flow.first
 
 @HiltViewModel
-class DocumentsViewModel @Inject constructor(
+class UserDocumentsViewModel @Inject constructor(
     private val repository: DocumentsRepository,
     private val sessionManager: SessionManager
 ) : ViewModel() {
@@ -80,7 +80,7 @@ class DocumentsViewModel @Inject constructor(
                 _documentsStatus.value = OperationStatus.Success(filteredList)
                 
             } catch (e: Exception) {
-                val errorInfo = ErrorHandler.handleException(e, "DocumentsViewModel.fetchDocuments")
+                val errorInfo = ErrorHandler.handleException(e, "UserDocumentsViewModel.fetchDocuments")
                 
                 // Return cached data if available, even if expired
                 if (cachedDocuments != null) {

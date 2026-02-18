@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.policemobiledirectory.ui.viewmodel.DocumentsViewModel
+import com.example.policemobiledirectory.viewmodel.AdminDocumentsViewModel
 import com.example.policemobiledirectory.ui.screens.uriToBase64
 import com.example.policemobiledirectory.utils.OperationStatus
 import kotlinx.coroutines.launch
@@ -28,7 +28,7 @@ import java.text.DecimalFormat
 @Composable
 fun UploadDocumentScreen(
     navController: NavController,
-    viewModel: DocumentsViewModel = hiltViewModel(),
+    viewModel: AdminDocumentsViewModel = hiltViewModel<AdminDocumentsViewModel>(),
     isAdmin: Boolean
 ) {
     val context = LocalContext.current

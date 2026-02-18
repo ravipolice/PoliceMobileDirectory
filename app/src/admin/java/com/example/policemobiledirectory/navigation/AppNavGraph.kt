@@ -20,7 +20,7 @@ import android.net.Uri
 import com.example.policemobiledirectory.viewmodel.AddEditEmployeeViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.policemobiledirectory.ui.screens.AddEditEmployeeScreen
-import com.example.policemobiledirectory.ui.viewmodel.DocumentsViewModel
+import com.example.policemobiledirectory.viewmodel.AdminDocumentsViewModel
 import com.example.policemobiledirectory.ui.screens.DocumentsScreen
 
 @Composable
@@ -162,7 +162,7 @@ private fun AppNavHostContent(
 
         // --- DOCUMENTS ---
         composable(Routes.DOCUMENTS) {
-            val viewModel: DocumentsViewModel = hiltViewModel()
+            val viewModel: AdminDocumentsViewModel = hiltViewModel<AdminDocumentsViewModel>()
             DocumentsScreen(
                 navController = navController,
                 viewModel = viewModel,
@@ -342,6 +342,140 @@ private fun AppNavHostContent(
                 navController = navController,
                 viewModel = constantsViewModel,
                 initialTab = initialTab
+            )
+        }
+
+        // --- LEAVE MANAGER ---
+        composable(Routes.LEAVE_DASHBOARD) {
+            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            LeaveDashboardScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCl = { navController.navigate(Routes.LEAVE_CL) },
+                onNavigateToEl = { navController.navigate(Routes.LEAVE_EL) },
+                onNavigateToHpl = { navController.navigate(Routes.LEAVE_HPL) },
+                onNavigateToWo = { navController.navigate(Routes.LEAVE_WO) },
+                onNavigateToCcl = { navController.navigate(Routes.LEAVE_CCL) },
+                onNavigateToMcl = { navController.navigate(Routes.LEAVE_MCL) },
+                onNavigateToOther = { navController.navigate(Routes.LEAVE_OTHER) },
+                onNavigateToReports = { navController.navigate(Routes.LEAVE_REPORTS) },
+                employeeViewModel = employeeViewModel,
+                leaveViewModel = leaveViewModel
+            )
+        }
+
+        composable(Routes.LEAVE_CL) {
+            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            CLLeaveScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEntry = { type -> navController.navigate("${Routes.LEAVE_ENTRY}?type=$type") },
+                onNavigateToEdit = { id -> navController.navigate(Routes.leaveEditRoute(id)) },
+                employeeViewModel = employeeViewModel,
+                leaveViewModel = leaveViewModel
+            )
+        }
+
+        composable(Routes.LEAVE_EL) {
+            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            ELLeaveScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEntry = { type -> navController.navigate("${Routes.LEAVE_ENTRY}?type=$type") },
+                onNavigateToEdit = { id -> navController.navigate(Routes.leaveEditRoute(id)) },
+                employeeViewModel = employeeViewModel,
+                leaveViewModel = leaveViewModel
+            )
+        }
+
+        composable(Routes.LEAVE_HPL) {
+            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            HPLLeaveScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEntry = { type -> navController.navigate("${Routes.LEAVE_ENTRY}?type=$type") },
+                onNavigateToEdit = { id -> navController.navigate(Routes.leaveEditRoute(id)) },
+                employeeViewModel = employeeViewModel,
+                leaveViewModel = leaveViewModel
+            )
+        }
+
+        composable(Routes.LEAVE_WO) {
+            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            WeeklyOffScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEntry = { type -> navController.navigate("${Routes.LEAVE_ENTRY}?type=$type") },
+                onNavigateToEdit = { id -> navController.navigate(Routes.leaveEditRoute(id)) },
+                employeeViewModel = employeeViewModel,
+                leaveViewModel = leaveViewModel
+            )
+        }
+
+        composable(Routes.LEAVE_CCL) {
+            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            CCLLeaveScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEntry = { type -> navController.navigate("${Routes.LEAVE_ENTRY}?type=$type") },
+                onNavigateToEdit = { id -> navController.navigate(Routes.leaveEditRoute(id)) },
+                employeeViewModel = employeeViewModel,
+                leaveViewModel = leaveViewModel
+            )
+        }
+
+        composable(Routes.LEAVE_MCL) {
+            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            MCLLeaveScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEntry = { type -> navController.navigate("${Routes.LEAVE_ENTRY}?type=$type") },
+                onNavigateToEdit = { id -> navController.navigate(Routes.leaveEditRoute(id)) },
+                employeeViewModel = employeeViewModel,
+                leaveViewModel = leaveViewModel
+            )
+        }
+
+        composable(Routes.LEAVE_OTHER) {
+            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            OtherLeaveScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToEntry = { type -> navController.navigate("${Routes.LEAVE_ENTRY}?type=$type") },
+                onNavigateToEdit = { id -> navController.navigate(Routes.leaveEditRoute(id)) },
+                employeeViewModel = employeeViewModel,
+                leaveViewModel = leaveViewModel
+            )
+        }
+
+        composable(
+            route = "${Routes.LEAVE_ENTRY}?type={type}",
+            arguments = listOf(androidx.navigation.navArgument("type") {
+                defaultValue = "CL"
+            })
+        ) { backStackEntry ->
+            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            val type = backStackEntry.arguments?.getString("type") ?: "CL"
+            LeaveEntryScreen(
+                onNavigateBack = { navController.popBackStack() },
+                preselectedType = type,
+                employeeViewModel = employeeViewModel,
+                leaveViewModel = leaveViewModel
+            )
+        }
+
+        composable(
+            route = Routes.LEAVE_EDIT,
+            arguments = listOf(androidx.navigation.navArgument("entryId") { defaultValue = "" })
+        ) { backStackEntry ->
+            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            val entryId = backStackEntry.arguments?.getString("entryId") ?: ""
+            LeaveEditScreen(
+                entryId = entryId,
+                onNavigateBack = { navController.popBackStack() },
+                employeeViewModel = employeeViewModel,
+                leaveViewModel = leaveViewModel
+            )
+        }
+
+        composable(Routes.LEAVE_REPORTS) {
+            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            LeaveReportsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                employeeViewModel = employeeViewModel,
+                leaveViewModel = leaveViewModel
             )
         }
     }
