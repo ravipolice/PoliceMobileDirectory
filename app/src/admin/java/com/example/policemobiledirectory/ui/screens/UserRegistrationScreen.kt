@@ -45,21 +45,25 @@ fun UserRegistrationScreen(
     // Handle registration status feedback
     LaunchedEffect(pendingStatus) {
         when (val status = pendingStatus) {
-            is OperationStatus.Success -> {
-                if (hasSubmittedState.value || status.data?.contains("submitted") == true || 
-                    status.data?.contains("approved") == true) {
+            is OperationStatus.Success<*> -> {
+                val data = status.data.toString()
+                if (hasSubmittedState.value || data.contains("submitted") == true || 
+                    data.contains("approved") == true) {
                     Toast.makeText(
                         context,
-                        status.data ?: "Registration submitted for admin approval",
+                        data,
                         Toast.LENGTH_SHORT
                     ).show()
                     hasSubmittedState.value = false
                     viewModel.resetPendingStatus()
-                    // Optionally navigate back after successful submission
-                    // navController.popBackStack()
+                    
+                    // ✅ Redirect to Sign-In page after successful registration
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
                 }
                 // Silently handle load success
-                if (status.data == "Loaded") {
+                if (data == "Loaded") {
                     viewModel.resetPendingStatus()
                 }
             }

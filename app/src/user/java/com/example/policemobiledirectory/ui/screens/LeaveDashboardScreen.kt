@@ -51,8 +51,10 @@ fun LeaveDashboardScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
+                windowInsets = WindowInsets(0.dp),
                 title = { Text("Leave Manager", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -76,18 +78,17 @@ fun LeaveDashboardScreen(
             )
         }
     ) { paddingValues ->
-        when (uiState) {
-            is LeaveUiState.Loading -> {
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            if (uiState is LeaveUiState.Loading && balance == null) {
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(paddingValues),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
                 }
-            }
-            is LeaveUiState.Error -> {
+            } else if (uiState is LeaveUiState.Error && balance == null) {
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(paddingValues),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -101,13 +102,10 @@ fun LeaveDashboardScreen(
                         }
                     }
                 }
-            }
-            else -> {
+            } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -133,7 +131,7 @@ fun LeaveDashboardScreen(
                     item {
                         LeaveTile(
                             title = "Earned Leave",
-                            balance = balance?.elBalance?.let { "%.1f".format(it) } ?: "-",
+                            balance = balance?.elBalance?.let { "%.0f".format(it) } ?: "-",
                             subtitle = "days remaining",
                             icon = Icons.Default.Star,
                             gradient = listOf(Color(0xFF1E88E5), Color(0xFF0D47A1)),
@@ -209,6 +207,13 @@ fun LeaveDashboardScreen(
                     }
                 }
             }
+
+            if (uiState is LeaveUiState.Loading && balance != null) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter),
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
         }
     }
 }
@@ -225,7 +230,7 @@ fun LeaveTile(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1f)
+            .height(115.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -233,51 +238,46 @@ fun LeaveTile(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.linearGradient(gradient))
-                .padding(14.dp)
+                .background(Brush.horizontalGradient(gradient))
+                .padding(16.dp)
         ) {
+            // Title in Top-Right
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.TopEnd)
+            )
+
+            // Balance and Subtitle in Center-Left
             Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier.align(Alignment.CenterStart),
+                verticalArrangement = Arrangement.Center
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-                    }
-                    // no shortName badge — full title shown at bottom
-                }
-                Column {
-                    Text(
-                        text = balance,
-                        color = Color.White,
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Bold,
-                        lineHeight = 28.sp
-                    )
-                    Text(
-                        text = subtitle,
-                        color = Color.White.copy(alpha = 0.75f),
-                        fontSize = 11.sp
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = title,
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                Text(
+                    text = balance,
+                    color = Color.White,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 32.sp
+                )
+                Text(
+                    text = subtitle,
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 12.sp
+                )
             }
+            
+            // Large Background Icon
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.2f),
+                modifier = Modifier
+                    .size(60.dp)
+                    .align(Alignment.BottomEnd)
+            )
         }
     }
 }

@@ -1,0 +1,103 @@
+﻿Configuration on demand is an incubating feature.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preUserReleaseBuild UP-TO-DATE
+> Task :app:mergeUserReleaseJniLibFolders UP-TO-DATE
+> Task :app:mergeUserReleaseNativeLibs UP-TO-DATE
+> Task :app:stripUserReleaseDebugSymbols UP-TO-DATE
+> Task :app:extractUserReleaseNativeSymbolTables UP-TO-DATE
+> Task :app:mergeUserReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:mergeUserReleaseArtProfile UP-TO-DATE
+> Task :app:expandUserReleaseL8ArtProfileWildcards UP-TO-DATE
+> Task :app:checkUserReleaseDuplicateClasses UP-TO-DATE
+> Task :app:buildKotlinToolingMetadata UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateUserReleaseBuildConfig UP-TO-DATE
+> Task :app:checkUserReleaseAarMetadata UP-TO-DATE
+> Task :app:processUserReleaseNavigationResources UP-TO-DATE
+> Task :app:compileUserReleaseNavigationResources UP-TO-DATE
+> Task :app:generateUserReleaseResValues UP-TO-DATE
+> Task :app:processUserReleaseGoogleServices UP-TO-DATE
+> Task :app:mapUserReleaseSourceSetPaths UP-TO-DATE
+> Task :app:generateUserReleaseResources UP-TO-DATE
+> Task :app:mergeUserReleaseResources UP-TO-DATE
+> Task :app:packageUserReleaseResources UP-TO-DATE
+> Task :app:parseUserReleaseLocalResources UP-TO-DATE
+> Task :app:createUserReleaseCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksUserRelease UP-TO-DATE
+> Task :app:processUserReleaseMainManifest UP-TO-DATE
+> Task :app:processUserReleaseManifest UP-TO-DATE
+> Task :app:processUserReleaseManifestForPackage UP-TO-DATE
+> Task :app:processUserReleaseResources UP-TO-DATE
+> Task :app:javaPreCompileUserRelease UP-TO-DATE
+> Task :app:desugarUserReleaseFileDependencies UP-TO-DATE
+> Task :app:mergeUserReleaseStartupProfile UP-TO-DATE
+> Task :app:mergeExtDexUserRelease UP-TO-DATE
+> Task :app:mergeUserReleaseShaders UP-TO-DATE
+> Task :app:compileUserReleaseShaders NO-SOURCE
+> Task :app:generateUserReleaseAssets UP-TO-DATE
+> Task :app:mergeUserReleaseAssets UP-TO-DATE
+> Task :app:compressUserReleaseAssets UP-TO-DATE
+> Task :app:extractUserReleaseVersionControlInfo UP-TO-DATE
+> Task :app:extractProguardFiles UP-TO-DATE
+> Task :app:optimizeUserReleaseResources UP-TO-DATE
+> Task :app:collectUserReleaseDependencies UP-TO-DATE
+> Task :app:sdkUserReleaseDependencyData UP-TO-DATE
+> Task :app:validateSigningUserRelease UP-TO-DATE
+> Task :app:writeUserReleaseAppMetadata UP-TO-DATE
+> Task :app:writeUserReleaseSigningConfigVersions UP-TO-DATE
+> Task :app:kspUserReleaseKotlin
+
+> Task :app:compileUserReleaseKotlin FAILED
+.\gradlew : e: file:///C:/Us
+ers/ravip/AndroidStudioProje
+cts/PoliceMobileDirectory/ap
+p/src/user/java/com/example/
+policemobiledirectory/naviga
+tion/AppNavGraph.kt:212:17 
+No parameter with name 
+'isAdmin' found.
+At line:1 char:1
++ .\gradlew 
+assembleUserRelease 2>&1 | 
+Tee-Object -FilePath 
+build_user_ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
+    + CategoryInfo          
+    : NotSpecified: (e: fi  
+  le:///C:/U...isAdmin' f   
+ ound.:String) [], Remot    
+eException
+    + FullyQualifiedErrorId 
+    : NativeCommandError
+ 
+
+FAILURE: Build failed with 
+an exception.
+
+* What went wrong:
+Execution failed for task ':
+app:compileUserReleaseKotlin
+'.
+> A failure occurred while 
+executing org.jetbrains.kotl
+in.compilerRunner.GradleComp
+ilerRunnerWithWorkers$Gradle
+KotlinCompilerWorkAction
+   > Compilation error. See 
+log for more details
+
+* Try:
+> Run with --stacktrace 
+option to get the stack 
+trace.
+> Run with --info or 
+--debug option to get more 
+log output.
+> Run with --scan to get 
+full insights.
+> Get more help at 
+https://help.gradle.org.
+
+BUILD FAILED in 23s
+42 actionable tasks: 2 executed, 40 up-to-date

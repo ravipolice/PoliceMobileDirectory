@@ -44,5 +44,6 @@ data class EmployeeEntity(
     val searchBlob: String = "",
     val isManualStation: Boolean = false,
     val gender: String = "Male",
-    val serviceStartDate: Date? = null
+    val serviceStartDate: Date? = null,
+    val dateOfBirth: Date? = null
 )

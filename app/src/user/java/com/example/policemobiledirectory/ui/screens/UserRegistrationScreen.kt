@@ -56,6 +56,11 @@ fun UserRegistrationScreen(
                     ).show()
                     hasSubmittedState.value = false
                     viewModel.resetPendingStatus()
+                    
+                    // ✅ Redirect to Sign-In page after successful registration
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
                 }
                 // Silently handle load success
                 if (data == "Loaded") {

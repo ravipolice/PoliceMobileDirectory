@@ -76,6 +76,8 @@ open class EmployeeViewModel @Inject constructor(
     val authStatus: StateFlow<OperationStatus<Employee>> = _authStatus.asStateFlow()
     private val _googleSignInUiEvent = MutableStateFlow<GoogleSignInUiEvent>(GoogleSignInUiEvent.Idle)
     val googleSignInUiEvent: StateFlow<GoogleSignInUiEvent> = _googleSignInUiEvent.asStateFlow()
+    private val _isGoogleAccountPickerLoading = MutableStateFlow(false)
+    val isGoogleAccountPickerLoading: StateFlow<Boolean> = _isGoogleAccountPickerLoading.asStateFlow()
     private val _otpUiState = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
     val otpUiState: StateFlow<OperationStatus<String>> = _otpUiState
     private val _verifyOtpUiState = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
@@ -642,6 +644,10 @@ open class EmployeeViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun setGoogleAccountPickerLoading(loading: Boolean) {
+        _isGoogleAccountPickerLoading.value = loading
     }
 
 

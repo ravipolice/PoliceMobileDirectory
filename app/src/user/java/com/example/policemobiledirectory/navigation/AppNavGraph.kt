@@ -11,17 +11,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.policemobiledirectory.ui.screens.*
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import kotlinx.coroutines.launch
 import android.net.Uri
-import com.example.policemobiledirectory.viewmodel.AddEditEmployeeViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.policemobiledirectory.ui.screens.AddEditEmployeeScreen
-import com.example.policemobiledirectory.viewmodel.AdminDocumentsViewModel
-import com.example.policemobiledirectory.ui.screens.DocumentsScreen
+import com.example.policemobiledirectory.viewmodel.UserDocumentsViewModel
+import com.example.policemobiledirectory.viewmodel.NotificationsViewModel
 
 @Composable
 fun AppNavGraph(
@@ -30,8 +27,8 @@ fun AppNavGraph(
     employeeViewModel: EmployeeViewModel,
     isDarkTheme: Boolean,
     onThemeToggle: () -> Unit,
-    // ✅ 1. Accept the Google Sign-In callback from MainActivity
-    onGoogleSignInClicked: () -> Unit
+    onGoogleSignInClicked: () -> Unit,
+    onLogout: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -46,7 +43,6 @@ fun AppNavGraph(
         Routes.FORGOT_PIN
     )
 
-    // ✅ Global Navigation Drawer (only wraps if not hidden)
     if (!hideBars) {
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -55,7 +51,8 @@ fun AppNavGraph(
                     navController = navController,
                     drawerState = drawerState,
                     scope = scope,
-                    viewModel = employeeViewModel
+                    viewModel = employeeViewModel,
+                    onLogout = onLogout
                 )
             }
         ) {
@@ -63,7 +60,7 @@ fun AppNavGraph(
                 bottomBar = {
                     BottomNavigationBar(
                         navController = navController,
-                        drawerState = drawerState, scope = scope // Removed drawerState and scope as they are not needed in the BottomBar
+                        drawerState = drawerState, scope = scope
                     )
                 }
             ) { innerPadding ->
@@ -71,7 +68,6 @@ fun AppNavGraph(
                     navController = navController,
                     employeeViewModel = employeeViewModel,
                     onThemeToggle = onThemeToggle,
-                    // ✅ 2. Pass the callback down to the content host
                     onGoogleSignInClicked = onGoogleSignInClicked,
                     startDestination = startDestination,
                     modifier = androidx.compose.ui.Modifier.padding(innerPadding)
@@ -83,12 +79,12 @@ fun AppNavGraph(
             navController = navController,
             employeeViewModel = employeeViewModel,
             onThemeToggle = onThemeToggle,
-            // ✅ 3. Also pass it here for the initial composition
             onGoogleSignInClicked = onGoogleSignInClicked,
             startDestination = startDestination
         )
     }
 }
+
 @Composable
 private fun AppNavHostContent(
     navController: NavHostController,
@@ -139,12 +135,12 @@ private fun AppNavHostContent(
         composable(
             route = "${Routes.USER_REGISTRATION}?email={email}&name={name}",
             arguments = listOf(
-                androidx.navigation.navArgument("email") {
-                    type = androidx.navigation.NavType.StringType
+                navArgument("email") {
+                    type = NavType.StringType
                     defaultValue = ""
                 },
-                androidx.navigation.navArgument("name") {
-                    type = androidx.navigation.NavType.StringType
+                navArgument("name") {
+                    type = NavType.StringType
                     defaultValue = ""
                 }
             )
@@ -162,14 +158,12 @@ private fun AppNavHostContent(
 
         // --- DOCUMENTS ---
         composable(Routes.DOCUMENTS) {
-            val viewModel: AdminDocumentsViewModel = hiltViewModel<AdminDocumentsViewModel>()
+            val viewModel: UserDocumentsViewModel = hiltViewModel()
             DocumentsScreen(
                 navController = navController,
-                viewModel = viewModel,
-                isAdmin = isAdmin
+                viewModel = viewModel
             )
         }
-
 
         // --- FORGOT PIN ---
         composable(Routes.FORGOT_PIN) {
@@ -183,96 +177,9 @@ private fun AppNavHostContent(
             )
         }
 
-        // --- ADMIN PANEL ---
-        composable(Routes.ADMIN_PANEL) {
-            AdminPanelScreen(
-                navController = navController,
-                viewModel = employeeViewModel
-            )
-        }
-
         // --- EMPLOYEE STATS ---
         composable(Routes.EMPLOYEE_STATS) {
             EmployeeStatsScreen(navController = navController, viewModel = hiltViewModel())
-        }
-
-        // --- OFFICER STATS ---
-        composable(Routes.OFFICER_STATS) {
-            OfficerStatsScreen(navController = navController, viewModel = hiltViewModel())
-        }
-
-        // --- PENDING APPROVALS ---
-        composable(Routes.PENDING_APPROVALS) {
-            PendingApprovalsScreen(navController = navController, viewModel = hiltViewModel())
-        }
-
-        // --- SEND NOTIFICATION ---
-        composable(Routes.SEND_NOTIFICATION) {
-            SendNotificationScreen(navController = navController, viewModel = hiltViewModel())
-        }
-
-        // --- UPLOAD CSV ---
-        composable(Routes.UPLOAD_CSV) {
-            UploadCsvScreen(navController = navController, viewModel = hiltViewModel())
-        }
-
-        // --- ADD USEFUL LINK ---
-        composable(Routes.ADD_USEFUL_LINK) {
-            AddUsefulLinkScreen(navController = navController, viewModel = hiltViewModel())
-        }
-
-        // --- UPLOAD DOCUMENT ---
-        composable(Routes.UPLOAD_DOCUMENT) {
-            UploadDocumentScreen(
-                navController = navController,
-                isAdmin = isAdmin
-            )
-        }
-
-        // --- ADD / EDIT EMPLOYEE ---
-        composable(
-            route = "${Routes.ADD_EMPLOYEE}?employeeId={employeeId}",
-            arguments = listOf(
-                navArgument("employeeId") {
-                    type = NavType.StringType
-                    defaultValue = ""
-                }
-            )
-        ) { backStackEntry ->
-            val employeeId = backStackEntry.arguments?.getString("employeeId")
-            val addEditViewModel: AddEditEmployeeViewModel = hiltViewModel()
-            // Use hiltViewModel() to get a fresh instance for this screen (not the shared parameter)
-            val addEditScreenEmployeeViewModel: EmployeeViewModel = hiltViewModel()
-
-            AddEditEmployeeScreen(
-                employeeId = employeeId,
-                navController = navController,
-                addEditViewModel = addEditViewModel,
-                employeeViewModel = addEditScreenEmployeeViewModel
-            )
-        }
-
-
-        // --- ADD OFFICER ---
-        composable(
-            route = "${Routes.ADD_OFFICER}?officerId={officerId}",
-            arguments = listOf(
-                navArgument("officerId") {
-                    type = NavType.StringType
-                    defaultValue = ""
-                }
-            )
-        ) { backStackEntry ->
-            val officerId = backStackEntry.arguments?.getString("officerId")
-            val addEditOfficerViewModel: com.example.policemobiledirectory.viewmodel.AddEditOfficerViewModel = hiltViewModel()
-            val employeeViewModelForRefresh: EmployeeViewModel = hiltViewModel()
-
-            AddEditOfficerScreen(
-                officerId = officerId,
-                navController = navController,
-                viewModel = addEditOfficerViewModel,
-                employeeViewModel = employeeViewModelForRefresh
-            )
         }
 
         // --- EMPLOYEE LIST (HOME) ---
@@ -289,11 +196,6 @@ private fun AppNavHostContent(
             AboutScreen(navController = navController)
         }
 
-        // --- NUDI CONVERTER ---
-        composable(Routes.NUDI_CONVERTER) {
-            NudiConverterScreen(navController = navController)
-        }
-
         // --- MY PROFILE ---
         composable(Routes.MY_PROFILE) {
             MyProfileEditScreen(navController = navController)
@@ -301,15 +203,14 @@ private fun AppNavHostContent(
 
         // --- NOTIFICATIONS ---
         composable(Routes.NOTIFICATIONS) {
-            NotificationsScreen(navController = navController, viewModel = employeeViewModel)
+            val notificationsViewModel: NotificationsViewModel = hiltViewModel()
+            NotificationsScreen(navController = navController, viewModel = notificationsViewModel)
         }
 
         // --- Gallery Screen ---
         composable(Routes.GALLERY_SCREEN) {
-            val isAdmin by employeeViewModel.isAdmin.collectAsStateWithLifecycle()
             GalleryScreen(
-                navController = navController,
-                isAdmin = isAdmin
+                navController = navController
             )
         }
 
@@ -318,31 +219,9 @@ private fun AppNavHostContent(
             TermsAndConditionsScreen(navController = navController)
         }
 
-
-
         // --- USEFUL LINKS ---
         composable(Routes.USEFUL_LINKS) {
             UsefulLinksScreen(navController = navController, viewModel = employeeViewModel)
-        }
-
-        // --- MANAGE CONSTANTS ---
-        composable(
-            route = "${Routes.MANAGE_CONSTANTS}?initialTab={initialTab}",
-            arguments = listOf(
-                navArgument("initialTab") {
-                    type = NavType.IntType
-                    defaultValue = -1
-                }
-            )
-        ) { backStackEntry ->
-            val initialTab = backStackEntry.arguments?.getInt("initialTab") ?: -1
-            // Using hiltViewModel() to get scoped instance of ConstantsViewModel
-            val constantsViewModel: com.example.policemobiledirectory.viewmodel.ConstantsViewModel = hiltViewModel()
-            com.example.policemobiledirectory.ui.screens.ManageConstantsScreen(
-                navController = navController,
-                viewModel = constantsViewModel,
-                initialTab = initialTab
-            )
         }
 
         // --- LEAVE MANAGER ---
@@ -350,13 +229,13 @@ private fun AppNavHostContent(
             val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
             LeaveDashboardScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToCl = { navController.navigate(Routes.LEAVE_CL) },
-                onNavigateToEl = { navController.navigate(Routes.LEAVE_EL) },
-                onNavigateToHpl = { navController.navigate(Routes.LEAVE_HPL) },
-                onNavigateToWo = { navController.navigate(Routes.LEAVE_WO) },
-                onNavigateToCcl = { navController.navigate(Routes.LEAVE_CCL) },
-                onNavigateToMcl = { navController.navigate(Routes.LEAVE_MCL) },
-                onNavigateToOther = { navController.navigate(Routes.LEAVE_OTHER) },
+                onNavigateToCl = { navController.navigate("${Routes.LEAVE_ENTRY}?type=CL") },
+                onNavigateToEl = { navController.navigate("${Routes.LEAVE_ENTRY}?type=EL") },
+                onNavigateToHpl = { navController.navigate("${Routes.LEAVE_ENTRY}?type=HPL") },
+                onNavigateToWo = { navController.navigate("${Routes.LEAVE_ENTRY}?type=WO") },
+                onNavigateToCcl = { navController.navigate("${Routes.LEAVE_ENTRY}?type=CCL") },
+                onNavigateToMcl = { navController.navigate("${Routes.LEAVE_ENTRY}?type=MCL") },
+                onNavigateToOther = { navController.navigate("${Routes.LEAVE_ENTRY}?type=ML") },
                 onNavigateToReports = { navController.navigate(Routes.LEAVE_REPORTS) },
                 employeeViewModel = employeeViewModel,
                 leaveViewModel = leaveViewModel
@@ -442,7 +321,7 @@ private fun AppNavHostContent(
 
         composable(
             route = "${Routes.LEAVE_ENTRY}?type={type}",
-            arguments = listOf(androidx.navigation.navArgument("type") {
+            arguments = listOf(navArgument("type") {
                 defaultValue = "CL"
             })
         ) { backStackEntry ->
@@ -458,7 +337,7 @@ private fun AppNavHostContent(
 
         composable(
             route = Routes.LEAVE_EDIT,
-            arguments = listOf(androidx.navigation.navArgument("entryId") { defaultValue = "" })
+            arguments = listOf(navArgument("entryId") { defaultValue = "" })
         ) { backStackEntry ->
             val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
             val entryId = backStackEntry.arguments?.getString("entryId") ?: ""

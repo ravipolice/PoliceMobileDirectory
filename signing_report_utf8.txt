@@ -1,0 +1,60 @@
+﻿Configuration on demand is an incubating feature.
+
+> Task :app:signingReport
+Variant: adminDebug
+Config: debug
+Store: C:\Users\ravip\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: D1:0F:1A:EC:09:BB:6B:72:E5:9E:71:44:68:CB:1B:89
+SHA1: 6A:0D:5A:DD:2B:6F:79:D5:42:75:4F:BA:E0:5B:EA:35:99:0C:29:07
+SHA-256: E2:CD:5C:61:E5:CF:34:FF:13:17:FC:29:4D:4C:98:71:35:88:D3:AE:A0:26:8C:6E:8B:4A:83:94:9E:97:62:CF
+Valid until: Monday, 6 September, 2055
+----------
+Variant: userDebug
+Config: debug
+Store: C:\Users\ravip\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: D1:0F:1A:EC:09:BB:6B:72:E5:9E:71:44:68:CB:1B:89
+SHA1: 6A:0D:5A:DD:2B:6F:79:D5:42:75:4F:BA:E0:5B:EA:35:99:0C:29:07
+SHA-256: E2:CD:5C:61:E5:CF:34:FF:13:17:FC:29:4D:4C:98:71:35:88:D3:AE:A0:26:8C:6E:8B:4A:83:94:9E:97:62:CF
+Valid until: Monday, 6 September, 2055
+----------
+Variant: adminRelease
+Config: release
+Store: C:\Users\ravip\AndroidStudioProjects\PMD Key\upload_key.jks
+Alias: upload
+MD5: 60:F9:6F:0D:A7:D4:FC:14:6D:74:1B:90:D2:53:4B:9E
+SHA1: 9D:0D:BF:9B:DC:F0:0F:AC:E7:88:1E:26:7D:7F:3E:B7:6F:53:1E:AB
+SHA-256: 2F:07:56:CD:A0:78:A5:EE:CB:DB:00:E8:50:0D:0E:24:A5:D3:84:21:69:19:D8:B6:C6:FE:59:17:EF:85:E1:4D
+Valid until: Monday, 7 July, 2053
+----------
+Variant: userRelease
+Config: release
+Store: C:\Users\ravip\AndroidStudioProjects\PMD Key\upload_key.jks
+Alias: upload
+MD5: 60:F9:6F:0D:A7:D4:FC:14:6D:74:1B:90:D2:53:4B:9E
+SHA1: 9D:0D:BF:9B:DC:F0:0F:AC:E7:88:1E:26:7D:7F:3E:B7:6F:53:1E:AB
+SHA-256: 2F:07:56:CD:A0:78:A5:EE:CB:DB:00:E8:50:0D:0E:24:A5:D3:84:21:69:19:D8:B6:C6:FE:59:17:EF:85:E1:4D
+Valid until: Monday, 7 July, 2053
+----------
+Variant: adminDebugAndroidTest
+Config: debug
+Store: C:\Users\ravip\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: D1:0F:1A:EC:09:BB:6B:72:E5:9E:71:44:68:CB:1B:89
+SHA1: 6A:0D:5A:DD:2B:6F:79:D5:42:75:4F:BA:E0:5B:EA:35:99:0C:29:07
+SHA-256: E2:CD:5C:61:E5:CF:34:FF:13:17:FC:29:4D:4C:98:71:35:88:D3:AE:A0:26:8C:6E:8B:4A:83:94:9E:97:62:CF
+Valid until: Monday, 6 September, 2055
+----------
+Variant: userDebugAndroidTest
+Config: debug
+Store: C:\Users\ravip\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: D1:0F:1A:EC:09:BB:6B:72:E5:9E:71:44:68:CB:1B:89
+SHA1: 6A:0D:5A:DD:2B:6F:79:D5:42:75:4F:BA:E0:5B:EA:35:99:0C:29:07
+SHA-256: E2:CD:5C:61:E5:CF:34:FF:13:17:FC:29:4D:4C:98:71:35:88:D3:AE:A0:26:8C:6E:8B:4A:83:94:9E:97:62:CF
+Valid until: Monday, 6 September, 2055
+----------
+
+BUILD SUCCESSFUL in 10s
+1 actionable task: 1 executed

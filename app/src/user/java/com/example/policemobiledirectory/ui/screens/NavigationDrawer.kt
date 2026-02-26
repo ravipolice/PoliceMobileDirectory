@@ -48,7 +48,8 @@ fun NavigationDrawer(
     navController: NavController,
     drawerState: DrawerState,
     scope: CoroutineScope,
-    viewModel: EmployeeViewModel = hiltViewModel()
+    viewModel: EmployeeViewModel = hiltViewModel(),
+    onLogout: () -> Unit
 ) {
     val context = LocalContext.current
     val currentUser by viewModel.currentUser.collectAsState()
@@ -297,14 +298,9 @@ fun NavigationDrawer(
                                     isLoggingOut = true
                                     scope.launch {
                                         drawerState.close()
-                                        viewModel.logout {
-                                            isLoggingOut = false
-                                            showLogoutDialog = false
-                                            navController.navigate(Routes.LOGIN) {
-                                                popUpTo(0) { inclusive = true }
-                                                launchSingleTop = true
-                                            }
-                                        }
+                                        onLogout()
+                                        isLoggingOut = false
+                                        showLogoutDialog = false
                                     }
                                 }
                             ) {

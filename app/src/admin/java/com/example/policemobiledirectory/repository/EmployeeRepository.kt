@@ -381,6 +381,11 @@ open class EmployeeRepository @Inject constructor(
                             // Continue anyway - not critical for login
                         }
                     }
+
+                    // ✅ Synchronize admin UID for Firestore rules
+                    if (isAdminCollection || remoteEmployee?.isAdmin == true) {
+                        syncAdminUid(normalizedEmail, firebaseUid)
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Firebase anonymous login failed (PIN login)", e)
@@ -638,6 +643,11 @@ open class EmployeeRepository @Inject constructor(
                     } catch (e: Exception) {
                         Log.w(TAG, "⚠️ Failed to update firebaseUid in Firestore: ${e.message}")
                         // Continue anyway - not critical for login
+                    }
+
+                    // ✅ Synchronize admin UID for Firestore rules
+                    if (emp.isAdmin) {
+                        syncAdminUid(normalizedEmail, firebaseUid)
                     }
                 }
             } catch (e: Exception) {
@@ -1153,6 +1163,29 @@ open class EmployeeRepository @Inject constructor(
     }.flowOn(ioDispatcher)
 
     // -------------------------------------------------------------------
+    // ADMIN UID SYNC (for Firestore Security Rules)
+    // -------------------------------------------------------------------
+    /**
+     * Ensures the 'admins' collection contains a document with ID = firebaseUid.
+     * This is required for the Firestore security rule 'isUidAdmin()' to work.
+     */
+    private suspend fun syncAdminUid(email: String, firebaseUid: String) {
+        try {
+            val adminData = mapOf(
+                "email" to email,
+                "isActive" to true,
+                "uid" to firebaseUid,
+                "updatedAt" to System.currentTimeMillis()
+            )
+            // Use firebaseUid as the document ID so rules can find it easily
+            firestore.collection("admins").document(firebaseUid).set(adminData, SetOptions.merge()).await()
+            Log.d(TAG, "✅ Synchronized admin UID ($firebaseUid) for $email in 'admins' collection")
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ Failed to sync admin UID: ${e.message}")
+        }
+    }
+
+    // -------------------------------------------------------------------
     // HELPERS
     // -------------------------------------------------------------------
     private suspend fun generateAutoId(): String = withContext(ioDispatcher) {
@@ -1211,6 +1244,12 @@ open class EmployeeRepository @Inject constructor(
         var remote = doc?.toObject(Employee::class.java)?.copy(kgid = docKgid)
         if (isAdminCollection && remote != null) {
             remote = remote.copy(isAdmin = true)
+            
+            // ✅ Ensure current UID is synchronized as admin (for rules)
+            val currentAuthUid = auth.currentUser?.uid
+            if (currentAuthUid != null) {
+                syncAdminUid(normalizedEmail, currentAuthUid)
+            }
         }
 
         if (remote != null && doc != null) {

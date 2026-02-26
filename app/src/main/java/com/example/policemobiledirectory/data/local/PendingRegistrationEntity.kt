@@ -2,6 +2,7 @@ package com.example.policemobiledirectory.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.util.Date
 
 @Entity(tableName = "pending_registrations")
 data class PendingRegistrationEntity(
@@ -32,5 +33,6 @@ data class PendingRegistrationEntity(
     val createdAt: java.util.Date? = null,
     val isManualStation: Boolean = false,
     val gender: String = "Male",
-    val serviceStartDate: java.util.Date? = null
+    val serviceStartDate: java.util.Date? = null,
+    val dateOfBirth: java.util.Date? = null
 )

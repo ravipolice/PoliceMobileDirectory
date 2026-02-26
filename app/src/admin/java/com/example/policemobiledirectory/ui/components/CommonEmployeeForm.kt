@@ -793,57 +793,28 @@ fun CommonEmployeeForm(
             }
 
             // KCSR Fields: Gender and Service Start Date
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // KCSR Fields: Gender (Date of Appointment hidden)
+            ExposedDropdownMenuBox(
+                expanded = genderExpanded,
+                onExpandedChange = { genderExpanded = !genderExpanded },
+                modifier = Modifier.fillMaxWidth()
             ) {
-                // Gender
-                ExposedDropdownMenuBox(
-                    expanded = genderExpanded,
-                    onExpandedChange = { genderExpanded = !genderExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    OutlinedTextField(
-                        value = gender,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Gender*") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }
-                    )
-                    ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
-                        listOf("Male", "Female").forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                gender = selection
-                                genderExpanded = false
-                            })
-                        }
-                    }
-                }
-
-                // Service Start Date
-                val dateStr = serviceStartDate?.let { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(it) } ?: "Select Date"
                 OutlinedTextField(
-                    value = dateStr,
+                    value = gender,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Service Start Date") },
-                    modifier = Modifier.weight(1f).clickable {
-                        val cal = java.util.Calendar.getInstance()
-                        serviceStartDate?.let { cal.time = it }
-                        android.app.DatePickerDialog(context, { _, y, m, d ->
-                            val selected = java.util.Calendar.getInstance()
-                            selected.set(y, m, d)
-                            serviceStartDate = selected.time
-                        }, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH)).show()
-                    },
-                    enabled = false,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                        disabledBorderColor = MaterialTheme.colorScheme.outline,
-                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    label = { Text("Gender*") },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }
                 )
+                ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
+                    listOf("Male", "Female").forEach { selection ->
+                        DropdownMenuItem(text = { Text(selection) }, onClick = {
+                            gender = selection
+                            genderExpanded = false
+                        })
+                    }
+                }
             }
             Spacer(Modifier.height(fieldSpacing))
 
@@ -1163,57 +1134,28 @@ fun CommonEmployeeForm(
                 Spacer(Modifier.height(fieldSpacing))
 
                 // KCSR Fields: Gender and Service Start Date
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // KCSR Fields: Gender (Date of Appointment hidden)
+                ExposedDropdownMenuBox(
+                    expanded = genderExpanded,
+                    onExpandedChange = { genderExpanded = !genderExpanded },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Gender
-                    ExposedDropdownMenuBox(
-                        expanded = genderExpanded,
-                        onExpandedChange = { genderExpanded = !genderExpanded },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        OutlinedTextField(
-                            value = gender,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Gender*") },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }
-                        )
-                        ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
-                            listOf("Male", "Female").forEach { selection ->
-                                DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                    gender = selection
-                                    genderExpanded = false
-                                })
-                            }
-                        }
-                    }
-
-                    // Service Start Date
-                    val dateStr = serviceStartDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "Select Date"
                     OutlinedTextField(
-                        value = dateStr,
+                        value = gender,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Service Start Date") },
-                        modifier = Modifier.weight(1f).clickable {
-                            val cal = java.util.Calendar.getInstance()
-                            serviceStartDate?.let { cal.time = it }
-                            android.app.DatePickerDialog(context, { _, y, m, d ->
-                                val selected = java.util.Calendar.getInstance()
-                                selected.set(y, m, d)
-                                serviceStartDate = selected.time
-                            }, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH)).show()
-                        },
-                        enabled = false,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline,
-                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        label = { Text("Gender*") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }
                     )
+                    ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
+                        listOf("Male", "Female").forEach { selection ->
+                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                gender = selection
+                                genderExpanded = false
+                            })
+                        }
+                    }
                 }
                 Spacer(Modifier.height(sectionSpacing))
             }

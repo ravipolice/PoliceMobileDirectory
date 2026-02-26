@@ -30,8 +30,8 @@ fun AppNavGraph(
     employeeViewModel: EmployeeViewModel,
     isDarkTheme: Boolean,
     onThemeToggle: () -> Unit,
-    // ✅ 1. Accept the Google Sign-In callback from MainActivity
-    onGoogleSignInClicked: () -> Unit
+    onGoogleSignInClicked: () -> Unit,
+    onLogout: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -55,7 +55,8 @@ fun AppNavGraph(
                     navController = navController,
                     drawerState = drawerState,
                     scope = scope,
-                    viewModel = employeeViewModel
+                    viewModel = employeeViewModel,
+                    onLogout = onLogout
                 )
             }
         ) {

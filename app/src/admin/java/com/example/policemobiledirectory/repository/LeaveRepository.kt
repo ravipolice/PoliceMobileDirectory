@@ -26,6 +26,10 @@ class LeaveRepository @Inject constructor(
         leaveCollection.document(kgid).collection("logs")
 
     suspend fun getLeaveBalance(kgid: String): LeaveBalance? {
+        if (kgid.isBlank()) {
+            Log.e(TAG, "getLeaveBalance: KGID is blank")
+            return null
+        }
         return try {
             Log.d(TAG, "Fetching leave balance for KGID: $kgid")
             val doc = leaveCollection.document(kgid).get().await()
@@ -40,7 +44,7 @@ class LeaveRepository @Inject constructor(
                 newBalance
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching leave balance for KGID: $kgid", e)
+            Log.e(TAG, "Error fetching leave balance for KGID: $kgid. Reason: ${e.message}", e)
             null
         }
     }
@@ -124,6 +128,11 @@ class LeaveRepository @Inject constructor(
     }
 
     fun getLeaveEntries(kgid: String): Flow<List<LeaveEntry>> = flow {
+        if (kgid.isBlank()) {
+            Log.e(TAG, "getLeaveEntries: KGID is blank")
+            emit(emptyList())
+            return@flow
+        }
         try {
             val snapshot = getEntriesCollection(kgid)
                 .orderBy("dateFrom", Query.Direction.DESCENDING)
@@ -131,7 +140,7 @@ class LeaveRepository @Inject constructor(
                 .await()
             emit(snapshot.toObjects(LeaveEntry::class.java))
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching leave entries", e)
+            Log.e(TAG, "Error fetching leave entries for KGID: $kgid. Reason: ${e.message}", e)
             emit(emptyList())
         }
     }
@@ -180,6 +189,10 @@ class LeaveRepository @Inject constructor(
     }
 
     suspend fun getLeaveStatistics(kgid: String, year: Int): com.example.policemobiledirectory.model.LeaveStatistics? {
+        if (kgid.isBlank()) {
+            Log.e(TAG, "getLeaveStatistics: KGID is blank")
+            return null
+        }
         return try {
             val balance = getLeaveBalance(kgid) ?: return null
             val snapshot = getEntriesCollection(kgid)

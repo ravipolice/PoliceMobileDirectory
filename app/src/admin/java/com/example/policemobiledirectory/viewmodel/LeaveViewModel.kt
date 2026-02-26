@@ -62,6 +62,11 @@ class LeaveViewModel @Inject constructor(
     val otherEntries: StateFlow<List<LeaveEntry>> = _otherEntries.asStateFlow()
 
     fun refreshData(employee: Employee) {
+        if (employee.kgid.isBlank()) {
+            Log.e(TAG, "refreshData: Profile for ${employee.name} is incomplete (Missing KGID)")
+            _uiState.value = LeaveUiState.Error("Profile incomplete: Please update your KGID in My Profile")
+            return
+        }
         viewModelScope.launch {
             _uiState.value = LeaveUiState.Loading
             try {
@@ -92,10 +97,10 @@ class LeaveViewModel @Inject constructor(
                         _uiState.value = LeaveUiState.Success
                     }
                 } else {
-                    _uiState.value = LeaveUiState.Error("Failed to fetch leave balance")
+                    _uiState.value = LeaveUiState.Error("Failed to fetch leave balance for ${employee.kgid}")
                 }
             } catch (e: Exception) {
-                _uiState.value = LeaveUiState.Error(e.message ?: "An error occurred")
+                _uiState.value = LeaveUiState.Error("Error: ${e.message ?: "An unknown error occurred"}")
             }
         }
     }

@@ -67,6 +67,7 @@ fun LoginScreen(
     var nameToRegister by remember { mutableStateOf<String?>(null) }
     val authStatus by viewModel.authStatus.collectAsState()
     val googleSignInEvent by viewModel.googleSignInUiEvent.collectAsState()
+    val isAccountPickerLoading by viewModel.isGoogleAccountPickerLoading.collectAsState()
 
     // --- STATE OBSERVERS ---
 
@@ -185,8 +186,19 @@ fun LoginScreen(
         )
 
         // Foreground content with padding
-        if (isLoading) {
-            CircularProgressIndicator()
+        if (isLoading || isAccountPickerLoading) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator()
+                if (isAccountPickerLoading) {
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "Please wait...\nLoading Google accounts",
+                        textAlign = TextAlign.Center,
+                        color = androidx.compose.ui.graphics.Color.White,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
         } else {
             // The main login form UI
             Column(

@@ -29,21 +29,39 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 import android.content.pm.PackageManager
+import android.content.Intent
+import androidx.activity.result.ActivityResultLauncher
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.tasks.Task
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
+import com.example.policemobiledirectory.model.Employee
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val viewModel: EmployeeViewModel by viewModels()
     private var wasLoggedOut = false
+    private lateinit var googleSignInClient: GoogleSignInClient
+
+    private val legacyGoogleSignInLauncher: ActivityResultLauncher<Intent> =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            // Always try to extract the account/task result info
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            handleLegacySignInResult(task)
+        }
 
     // ✅ Permission launcher for notifications (Android 13+)
     private val requestPermissionLauncher = registerForActivityResult(
@@ -71,6 +89,13 @@ class MainActivity : ComponentActivity() {
             auth.signOut()
         }
 
+        // ✅ Initialize Legacy Google Sign-In
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestIdToken(getString(com.example.policemobiledirectory.R.string.default_web_client_id))
+            .build()
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
+
         // ✅ 2️⃣ Continue normal setup
         setupContent()
         askNotificationPermission()
@@ -84,26 +109,29 @@ class MainActivity : ComponentActivity() {
      * ✅ Launch Google Sign-In (only called if user selects Google login)
      */
     private suspend fun launchGoogleSignIn() {
-        val clientId = getString(R.string.default_web_client_id)
+        val clientId = getString(com.example.policemobiledirectory.R.string.default_web_client_id)
         Log.d("Auth", "🚀 Launching Google Sign-In with Client ID: $clientId")
+        viewModel.setGoogleAccountPickerLoading(true)
 
         val credentialManager = CredentialManager.create(this)
         
         try {
             val googleIdOption = GetGoogleIdOption.Builder()
                 .setServerClientId(clientId)
-                .setFilterByAuthorizedAccounts(false) // Allow selecting any account (fixed)
-                .setAutoSelectEnabled(false) // Disable auto-select for explicit button clicks
+                .setFilterByAuthorizedAccounts(false)
+                .setAutoSelectEnabled(false)
                 .build()
 
             val request = GetCredentialRequest.Builder()
                 .addCredentialOption(googleIdOption)
                 .build()
 
-            val result: GetCredentialResponse = credentialManager.getCredential(this, request)
+            // Increased timeout to 5s for better reliability
+            val result: GetCredentialResponse = kotlinx.coroutines.withTimeout(5000L) {
+                 credentialManager.getCredential(this@MainActivity, request)
+            }
             val credential = result.credential
             
-            // Extract Google ID Token using library helper
             val googleIdTokenCredential = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(credential.data)
             val googleIdToken = googleIdTokenCredential.idToken
             val email = googleIdTokenCredential.id
@@ -117,17 +145,59 @@ class MainActivity : ComponentActivity() {
                 Log.e("Auth", "❌ No ID token found in credential data")
                 Toast.makeText(this, "No ID token found.", Toast.LENGTH_SHORT).show()
             }
+        } catch (e: androidx.credentials.exceptions.GetCredentialCancellationException) {
+            Log.d("Auth", "⚠️ Sign-In cancelled by user")
+        } catch (e: androidx.credentials.exceptions.NoCredentialException) {
+            Log.e("Auth", "❌ No credentials available: ${e.message}")
+            Toast.makeText(this, "No Google Accounts Found. Trying fallback...", Toast.LENGTH_LONG).show()
+            launchLegacyGoogleSignIn()
         } catch (e: androidx.credentials.exceptions.GetCredentialException) {
-            Log.e("Auth", "❌ Google Sign-In failed (Credential Manager): ${e.type} - ${e.message}", e)
-            val errorMsg = when {
-                e.message?.contains("canceled") == true -> "Sign-In canceled"
-                e.message?.contains("No credential") == true -> "No valid Google account found. Please check your account settings."
-                else -> "Sign-In Failed: ${e.message}"
-            }
-            Toast.makeText(this, errorMsg, Toast.LENGTH_LONG).show()
+            Log.e("Auth", "❌ Google Sign-In failed: ${e.type} - ${e.message}", e)
+            Toast.makeText(this, "Sign-In Error. Trying fallback...", Toast.LENGTH_LONG).show()
+            launchLegacyGoogleSignIn()
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+             Log.e("Auth", "❌ Google Sign-In timed out - Triggering Legacy Fallback")
+             launchLegacyGoogleSignIn()
         } catch (e: Exception) {
             Log.e("Auth", "❌ Google Sign-In unexpected error", e)
             Toast.makeText(this, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+        } finally {
+            viewModel.setGoogleAccountPickerLoading(false)
+        }
+    }
+
+    private fun launchLegacyGoogleSignIn() {
+        Log.d("Auth", "🚀 Launching Legacy Google Sign-In flow")
+        val signInIntent = googleSignInClient.signInIntent
+        legacyGoogleSignInLauncher.launch(signInIntent)
+    }
+
+    private fun handleLegacySignInResult(completedTask: Task<GoogleSignInAccount>) {
+        try {
+            val account = completedTask.getResult(ApiException::class.java)
+            val idToken = account.idToken
+            val email = account.email
+            
+            if (idToken != null && email != null) {
+                Log.d("Auth", "✅ Legacy Google Sign-In success: $email")
+                viewModel.handleGoogleSignIn(email, idToken)
+                wasLoggedOut = false
+            } else {
+                Log.e("Auth", "❌ Legacy Sign-In: ID Token or Email is null")
+                Toast.makeText(this, "Legacy Error: Missing account info", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: ApiException) {
+            Log.e("Auth", "❌ Legacy Sign-In failed with status code: ${e.statusCode}")
+            val errorMsg = when (e.statusCode) {
+                12501 -> "Sign-In Cancelled"
+                10 -> "Configuration Error (Code 10)\nCheck SHA-1/Package Name"
+                12500 -> "Configuration Error (Code 12500)"
+                7 -> "Network Error (Check Internet)"
+                else -> "Sign-In Error (Code: ${e.statusCode})"
+            }
+            Toast.makeText(this, errorMsg, Toast.LENGTH_LONG).show()
+        } finally {
+            viewModel.setGoogleAccountPickerLoading(false)
         }
     }
 
@@ -148,8 +218,19 @@ class MainActivity : ComponentActivity() {
 
                 // ✅ Define logout action (manual only)
                 val logoutAction: () -> Unit = {
-                    scope.launch {
+                    scope.launch(Dispatchers.Main) {
                         viewModel.logout {
+                            // ✅ Clear Credential Manager state
+                            val credentialManager = CredentialManager.create(this@MainActivity)
+                            scope.launch(Dispatchers.Main) {
+                                try {
+                                    credentialManager.clearCredentialState(androidx.credentials.ClearCredentialStateRequest())
+                                    Log.d("Auth", "Credential Manager state cleared")
+                                } catch (e: Exception) {
+                                    Log.e("Auth", "Error clearing credential state", e)
+                                }
+                            }
+
                             Toast.makeText(
                                 this@MainActivity,
                                 "Logged out successfully",
@@ -206,8 +287,9 @@ class MainActivity : ComponentActivity() {
                     startDestination = startDestination,
                     employeeViewModel = viewModel,
                     isDarkTheme = isDarkTheme,
-                    onGoogleSignInClicked = { scope.launch { launchGoogleSignIn() } },
-                    onThemeToggle = { viewModel.toggleTheme() }
+                    onGoogleSignInClicked = { scope.launch(Dispatchers.Main) { launchGoogleSignIn() } },
+                    onThemeToggle = { viewModel.toggleTheme() },
+                    onLogout = logoutAction
                 )
             }
         }
@@ -236,7 +318,7 @@ class MainActivity : ComponentActivity() {
      */
     private fun observeUserLoginForFCM() {
         var previousUserUid: String? = viewModel.currentUser.value?.firebaseUid
-        lifecycleScope.launch {
+        lifecycleScope.launch(Dispatchers.Main) {
             viewModel.currentUser.collectLatest { employeeUser ->
                 val currentUserUid = employeeUser?.firebaseUid
                 if (currentUserUid != null && currentUserUid != previousUserUid) {

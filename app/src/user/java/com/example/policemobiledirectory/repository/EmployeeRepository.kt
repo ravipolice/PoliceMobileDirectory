@@ -1063,7 +1063,8 @@ open class EmployeeRepository @Inject constructor(
                     photoUrl = it.photoUrl ?: "",
                     firebaseUid = it.firebaseUid ?: "",
                     createdAt = it.createdAt ?: Date(),
-                    isManualStation = it.isManualStation
+                    isManualStation = it.isManualStation,
+                    dateOfBirth = it.dateOfBirth
                 )
             }
         }
@@ -1271,7 +1272,8 @@ open class EmployeeRepository @Inject constructor(
             isManualStation = isManualStation,
             searchBlob = searchBlob,
             gender = gender,
-            serviceStartDate = serviceStartDate
+            serviceStartDate = serviceStartDate,
+            dateOfBirth = dateOfBirth
         )
     }
 
@@ -1315,7 +1317,8 @@ open class EmployeeRepository @Inject constructor(
             searchBlob = blob,
             isManualStation = isManualStation,
             gender = gender,
-            serviceStartDate = serviceStartDate
+            serviceStartDate = serviceStartDate,
+            dateOfBirth = dateOfBirth
         )
     }
 
@@ -1357,7 +1360,8 @@ open class EmployeeRepository @Inject constructor(
                 searchBlob = blob,
                 isManualStation = emp.isManualStation,
                 gender = emp.gender ?: "Male",
-                serviceStartDate = emp.serviceStartDate
+                serviceStartDate = emp.serviceStartDate,
+                dateOfBirth = emp.dateOfBirth
             )
         } else {
             // If doc couldn't be mapped to Employee, build from fields directly
@@ -1403,7 +1407,8 @@ open class EmployeeRepository @Inject constructor(
                 searchBlob = blob,
                 isManualStation = doc.getBoolean("isManualStation") ?: false,
                 gender = doc.getString("gender") ?: "Male",
-                serviceStartDate = doc.getDate("serviceStartDate")
+                serviceStartDate = doc.getDate("serviceStartDate"),
+                dateOfBirth = doc.getDate("dateOfBirth")
             )
         }
     }
@@ -1435,7 +1440,8 @@ open class EmployeeRepository @Inject constructor(
             isApproved = data["isApproved"] as? Boolean ?: true,
             unit = str("unit").ifBlank { null },
             gender = str("gender").ifBlank { "Male" },
-            serviceStartDate = data["serviceStartDate"] as? Date
+            serviceStartDate = data["serviceStartDate"] as? Date,
+            dateOfBirth = data["dateOfBirth"] as? Date
         )
     }
 
@@ -1469,7 +1475,8 @@ open class EmployeeRepository @Inject constructor(
             searchBlob = blob,
             isManualStation = emp.isManualStation,
             gender = emp.gender,
-            serviceStartDate = emp.serviceStartDate
+            serviceStartDate = emp.serviceStartDate,
+            dateOfBirth = emp.dateOfBirth
         )
     }
 
@@ -1489,7 +1496,8 @@ open class EmployeeRepository @Inject constructor(
         firebaseUid = firebaseUid,
         createdAt = createdAt,
         gender = gender,
-        serviceStartDate = serviceStartDate
+        serviceStartDate = serviceStartDate,
+        dateOfBirth = dateOfBirth
     )
 
     // -------------------------

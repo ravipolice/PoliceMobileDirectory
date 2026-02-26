@@ -109,7 +109,20 @@ fun CommonEmployeeForm(
     val policeStationRanks by constantsViewModel.policeStationRanks.collectAsStateWithLifecycle()
     val highRankingOfficers by constantsViewModel.highRankingOfficers.collectAsStateWithLifecycle()
     val units by constantsViewModel.units.collectAsStateWithLifecycle()
+    val fullUnits by constantsViewModel.fullUnits.collectAsStateWithLifecycle() // ✅ Need full objects for hidden flag
+    val globalHiddenFields by constantsViewModel.globalHiddenFields.collectAsStateWithLifecycle() // ✅ Global Hidden Fields
+
     val ksrpBattalions by constantsViewModel.ksrpBattalions.collectAsStateWithLifecycle()
+
+    // Filter hidden units for Registration Form
+    val filteredUnits = remember(units, fullUnits, isRegistration) {
+        if (isRegistration) {
+            val hiddenUnitNames = fullUnits.filter { it.hideFromRegistration }.map { it.name }.toSet()
+            units.filter { !hiddenUnitNames.contains(it) }
+        } else {
+            units
+        }
+    }
 
     // fields
     var kgid by remember(initialEmployee, initialKgid) { mutableStateOf(initialEmployee?.kgid ?: initialKgid.orEmpty()) }
@@ -133,13 +146,28 @@ fun CommonEmployeeForm(
     
     // KCSR specific extras
     var gender by remember(initialEmployee) { mutableStateOf(initialEmployee?.gender ?: "Male") }
-    var serviceStartDate by remember(initialEmployee) { mutableStateOf(initialEmployee?.serviceStartDate) }
+    var serviceStartDate by remember(initialEmployee) { mutableStateOf<Date?>(initialEmployee?.serviceStartDate) }
+    var dateOfBirth by remember(initialEmployee) { mutableStateOf<Date?>(initialEmployee?.dateOfBirth) } // ✅ New DOB field
     var genderExpanded by remember { mutableStateOf(false) }
 
     // registration extras
     var pin by remember { mutableStateOf("") }
     var confirmPin by remember { mutableStateOf("") }
     var acceptedTerms by remember { mutableStateOf(false) }
+
+    // ✅ Get selected Unit Model to check for hidden fields (Unit Level)
+    val selectedUnitModel = remember(unit, fullUnits) {
+        fullUnits.find { it.name == unit }
+    }
+
+    // Helper to check if field is visible (Hybrid Logic: Global OR Unit)
+    // Returns TRUE if field is NOT hidden in Global AND NOT hidden in Unit
+    val isFieldVisible: (String) -> Boolean = { fieldId ->
+        val isHiddenGlobally = globalHiddenFields.contains(fieldId)
+        val isHiddenInUnit = selectedUnitModel?.hiddenFields?.contains(fieldId) == true
+        
+        !isHiddenGlobally && !isHiddenInUnit
+    }
 
     // UI states
     var rankExpanded by remember { mutableStateOf(false) }
@@ -222,15 +250,7 @@ fun CommonEmployeeForm(
         }
     }
 
-    // Get Full Unit Model for dynamic configuration
-    val selectedUnitModel by produceState<com.example.policemobiledirectory.model.UnitModel?>(initialValue = null, key1 = unit) {
-        if (unit.isNotBlank()) {
-            val models = constantsViewModel.fullUnits.value
-            value = models.find { it.name == unit }
-        } else {
-            value = null
-        }
-    }
+
 
     // Validate Station Selection when options change (e.g. Unit change filters stations)
     // We can't rely solely on district change because Unit A and Unit B might share a district
@@ -450,18 +470,20 @@ fun CommonEmployeeForm(
             Spacer(Modifier.height(fieldSpacing))
 
             // Row 3: Email
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email*") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                isError = showValidationErrors && !isValidEmail(email)
-            )
-            if (showValidationErrors && !isValidEmail(email)) {
-                Text("Enter valid email", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            if (isFieldVisible("email")) {
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email (Optional)") }, // Made optional as per some unit configs
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    isError = showValidationErrors && email.isNotBlank() && !isValidEmail(email)
+                )
+                if (showValidationErrors && email.isNotBlank() && !isValidEmail(email)) {
+                    Text("Enter valid email", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                Spacer(Modifier.height(fieldSpacing))
             }
-            Spacer(Modifier.height(fieldSpacing))
 
             // Row 4: Mobile 1
             OutlinedTextField(
@@ -478,18 +500,119 @@ fun CommonEmployeeForm(
             Spacer(Modifier.height(fieldSpacing))
 
             // Row 5: Mobile 2
-            OutlinedTextField(
-                value = mobile2,
-                onValueChange = { mobile2 = it.filter { ch -> ch.isDigit() } },
-                label = { Text("Mobile 2 (Optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-            )
+            if (isFieldVisible("mobile2")) {
+                OutlinedTextField(
+                    value = mobile2,
+                    onValueChange = { mobile2 = it.filter { ch -> ch.isDigit() } },
+                    label = { Text("Mobile 2 (Optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                )
+                Spacer(Modifier.height(fieldSpacing))
+            }
+
+
+
+
+
             Spacer(Modifier.height(fieldSpacing))
 
+            // Row 6: KGID, Rank, Metal Number (conditional) - all in same row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // KGID / ID
+                OutlinedTextField(
+                    value = kgid,
+                    onValueChange = { newValue ->
+                        kgid = when {
+                            // Allow anything for high-ranking officers
+                            isOfficer || isHighRankingOfficer -> newValue
+                            // Otherwise, only allow digits
+                            newValue.all { it.isDigit() } -> newValue
+                            // If new input contains non-digits, keep the old value
+                            else -> kgid
+                        }
+                    },
+                    label = { Text(if(isOfficer || isHighRankingOfficer) "Officer ID (AGID)*" else "KGID") },
+                    modifier = Modifier.weight(0.7f),
+                    keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer || isHighRankingOfficer) KeyboardType.Text else KeyboardType.Number),
+                    isError = showValidationErrors && !isKgidValid(kgid),
+                    enabled = (isAdmin || isRegistration) && !isSelfEdit
+                )
 
+                // Rank
+                ExposedDropdownMenuBox(
+                    expanded = rankExpanded,
+                    onExpandedChange = { rankExpanded = !rankExpanded },
+                    modifier = Modifier.weight(1.3f)
+                ) {
+                    OutlinedTextField(
+                        value = rank,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Rank*") },
+                        placeholder = { Text("Select Rank") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
+                        isError = showValidationErrors && rank.isBlank()
+                    )
+                    ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
+                        filteredRanks.forEach { selection ->
+                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                rank = selection
+                                if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
+                                // If rank is ministerial, verify if we need to clear station or just let UI hide it
+                                // Clearing it ensures validation passes if we accidentally had one selected
+                                if (ministerialRanks.any { it.equals(selection, ignoreCase = true) }) {
+                                    station = ""
+                                }
+                                if (highRankingOfficers.contains(selection)) {
+                                    district = ""
+                                    station = ""
+                                }
+                                rankExpanded = false
+                            })
+                        }
+                    }
+                }
+                if (showValidationErrors && rank.isBlank()) {
+                    Text(
+                        "Rank is required",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp, top = 4.dp).weight(1f)
+                    )
+                }
 
-
+                // Metal Number (conditional - only show when required AND NOT OFFICER AND VISIBLE)
+                if (showMetalNumberField && !isOfficer && isFieldVisible("metalNumber")) {
+                    OutlinedTextField(
+                        value = metalNumber,
+                        onValueChange = { metalNumber = it.filter { ch -> ch.isDigit() } },
+                        label = { Text("Metal No") },
+                        modifier = Modifier.weight(0.7f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = showValidationErrors && metalNumber.isBlank()
+                    )
+                }
+            }
+            // Error messages below the row
+            if (showValidationErrors) {
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    if (!isKgidValid(kgid)) {
+                        Text(if(isOfficer) "ID required" else "KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    }
+                    if (rank.isBlank()) {
+                        Text("Rank required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    }
+                    if (showMetalNumberField && metalNumber.isBlank() && !isOfficer && isFieldVisible("metalNumber")) {
+                        Text("Metal no. required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+            Spacer(Modifier.height(fieldSpacing))
 
             // Row 7: Unit and District (Unit first, then District)
             val isSpecialUnit = remember(selectedUnitModel) {
@@ -671,102 +794,6 @@ fun CommonEmployeeForm(
 
 
 
-            // Row 6: KGID, Rank, Metal Number (conditional) - all in same row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // KGID / ID
-                OutlinedTextField(
-                    value = kgid,
-                    onValueChange = { newValue ->
-                        kgid = when {
-                            // Allow anything for high-ranking officers
-                            isOfficer || isHighRankingOfficer -> newValue
-                            // Otherwise, only allow digits
-                            newValue.all { it.isDigit() } -> newValue
-                            // If new input contains non-digits, keep the old value
-                            else -> kgid
-                        }
-                    },
-                    label = { Text(if(isOfficer || isHighRankingOfficer) "Officer ID (AGID)*" else "KGID") },
-                    modifier = Modifier.weight(0.7f),
-                    keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer || isHighRankingOfficer) KeyboardType.Text else KeyboardType.Number),
-                    isError = showValidationErrors && !isKgidValid(kgid),
-                    enabled = (isAdmin || isRegistration) && !isSelfEdit
-                )
-
-                // Rank
-                ExposedDropdownMenuBox(
-                    expanded = rankExpanded,
-                    onExpandedChange = { rankExpanded = !rankExpanded },
-                    modifier = Modifier.weight(1.3f)
-                ) {
-                    OutlinedTextField(
-                        value = rank,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Rank*") },
-                        placeholder = { Text("Select Rank") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
-                        isError = showValidationErrors && rank.isBlank()
-                    )
-                    ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
-                        filteredRanks.forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                rank = selection
-                                if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
-                                // If rank is ministerial, verify if we need to clear station or just let UI hide it
-                                // Clearing it ensures validation passes if we accidentally had one selected
-                                if (ministerialRanks.any { it.equals(selection, ignoreCase = true) }) {
-                                    station = ""
-                                }
-                                if (highRankingOfficers.contains(selection)) {
-                                    district = ""
-                                    station = ""
-                                }
-                                rankExpanded = false
-                            })
-                        }
-                    }
-                }
-                if (showValidationErrors && rank.isBlank()) {
-                    Text(
-                        "Rank is required",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(start = 16.dp, top = 4.dp).weight(1f)
-                    )
-                }
-
-                // Metal Number (conditional - only show when required AND NOT OFFICER)
-                if (showMetalNumberField && !isOfficer) {
-                    OutlinedTextField(
-                        value = metalNumber,
-                        onValueChange = { metalNumber = it.filter { ch -> ch.isDigit() } },
-                        label = { Text("Metal No") },
-                        modifier = Modifier.weight(0.7f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        isError = showValidationErrors && metalNumber.isBlank()
-                    )
-                }
-            }
-            // Error messages below the row
-            if (showValidationErrors) {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    if (!isKgidValid(kgid)) {
-                        Text(if(isOfficer) "ID required" else "KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    }
-                    if (rank.isBlank()) {
-                        Text("Rank required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    }
-                    if (showMetalNumberField && metalNumber.isBlank() && !isOfficer) {
-                        Text("Metal no. required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-            Spacer(Modifier.height(fieldSpacing))
 
 
             Spacer(Modifier.height(fieldSpacing))
@@ -805,58 +832,28 @@ fun CommonEmployeeForm(
                 }
                 Spacer(Modifier.height(fieldSpacing))
 
-                // KCSR Fields: Gender and Service Start Date
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // KCSR Fields: Gender (Date of Appointment hidden)
+                ExposedDropdownMenuBox(
+                    expanded = genderExpanded,
+                    onExpandedChange = { genderExpanded = !genderExpanded },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Gender
-                    ExposedDropdownMenuBox(
-                        expanded = genderExpanded,
-                        onExpandedChange = { genderExpanded = !genderExpanded },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        OutlinedTextField(
-                            value = gender,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Gender*") },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }
-                        )
-                        ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
-                            listOf("Male", "Female").forEach { selection ->
-                                DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                    gender = selection
-                                    genderExpanded = false
-                                })
-                            }
-                        }
-                    }
-
-                    // Service Start Date
-                    val dateStr = serviceStartDate?.let { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(it) } ?: "Select Date"
                     OutlinedTextField(
-                        value = dateStr,
+                        value = gender,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Service Start Date") },
-                        modifier = Modifier.weight(1f).clickable {
-                            val cal = java.util.Calendar.getInstance()
-                            serviceStartDate?.let { cal.time = it }
-                            android.app.DatePickerDialog(context, { _, y, m, d ->
-                                val selected = java.util.Calendar.getInstance()
-                                selected.set(y, m, d)
-                                serviceStartDate = selected.time
-                            }, cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH), cal.get(java.util.Calendar.DAY_OF_MONTH)).show()
-                        },
-                        enabled = false,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline,
-                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        label = { Text("Gender*") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }
                     )
+                    ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
+                        listOf("Male", "Female").forEach { selection ->
+                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                gender = selection
+                                genderExpanded = false
+                            })
+                        }
+                    }
                 }
 
                 if (showValidationErrors && station.isBlank() && !isHighRankingOfficer && !isDistrictLevelUnit && !isMinisterial) {
@@ -868,6 +865,80 @@ fun CommonEmployeeForm(
                         Spacer(Modifier.height(fieldSpacing))
                     }
                 }
+
+            // Date of Birth
+             if (isFieldVisible("dateOfBirth")) {
+                 val dobCalendar = Calendar.getInstance()
+                 dateOfBirth?.let { dobCalendar.time = it }
+                 
+                 val dobDatePicker = DatePickerDialog(
+                     context,
+                     { _, year, month, dayOfMonth ->
+                         val cal = Calendar.getInstance()
+                         cal.set(year, month, dayOfMonth)
+                         dateOfBirth = cal.time
+                     },
+                     dobCalendar.get(Calendar.YEAR),
+                     dobCalendar.get(Calendar.MONTH),
+                     dobCalendar.get(Calendar.DAY_OF_MONTH)
+                 )
+
+                 OutlinedTextField(
+                     value = dateOfBirth?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "",
+                     onValueChange = { },
+                     label = { Text("Date of Birth") },
+                     readOnly = true,
+                     trailingIcon = {
+                         Icon(Icons.Default.Edit, contentDescription = "Select Date", modifier = Modifier.clickable { dobDatePicker.show() })
+                     },
+                     modifier = Modifier.fillMaxWidth().clickable { dobDatePicker.show() },
+                     enabled = false, // Make text field disabled so click passes to modifier
+                     colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                     )
+                 )
+                Spacer(Modifier.height(fieldSpacing))
+             }
+
+             // Date of Appointment
+             if (isFieldVisible("dateOfAppointment")) {
+                 val apptCalendar = Calendar.getInstance()
+                 serviceStartDate?.let { apptCalendar.time = it }
+                 
+                 val apptDatePicker = DatePickerDialog(
+                     context,
+                     { _, year, month, dayOfMonth ->
+                         val cal = Calendar.getInstance()
+                         cal.set(year, month, dayOfMonth)
+                         serviceStartDate = cal.time
+                     },
+                     apptCalendar.get(Calendar.YEAR),
+                     apptCalendar.get(Calendar.MONTH),
+                     apptCalendar.get(Calendar.DAY_OF_MONTH)
+                 )
+
+                 OutlinedTextField(
+                     value = serviceStartDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "",
+                     onValueChange = { },
+                     label = { Text("Date of Appointment") },
+                     readOnly = true,
+                     trailingIcon = {
+                         Icon(Icons.Default.Edit, contentDescription = "Select Date", modifier = Modifier.clickable { apptDatePicker.show() })
+                     },
+                     modifier = Modifier.fillMaxWidth().clickable { apptDatePicker.show() },
+                     enabled = false,
+                     colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                     )
+                 )
+                Spacer(Modifier.height(sectionSpacing))
+             }
 
             // Row 9: Create PIN, Confirm PIN (on same row) - Hide for Officer
             if (!isOfficer) {
@@ -1025,7 +1096,7 @@ fun CommonEmployeeForm(
                     Text("Unit required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
-                    units.forEach { selection ->
+                    filteredUnits.forEach { selection ->
                         DropdownMenuItem(text = { Text(selection) }, onClick = {
                             unit = selection
                             unitExpanded = false
@@ -1154,8 +1225,8 @@ fun CommonEmployeeForm(
 
             Spacer(Modifier.height(fieldSpacing))
 
-            // Blood group (Hide for Officer)
-            if (!isOfficer) {
+            // Blood Group row (Hide for Officer, Hide if configured hidden)
+            if (!isOfficer && isFieldVisible("bloodGroup")) {
                 ExposedDropdownMenuBox(expanded = bloodGroupExpanded, onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded }) {
                     OutlinedTextField(
                         value = bloodGroup.ifEmpty { "Select Blood Group" },
@@ -1180,62 +1251,108 @@ fun CommonEmployeeForm(
                 }
                 
                 Spacer(Modifier.height(fieldSpacing))
+            }
 
-                // KCSR Fields: Gender and Service Start Date
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // KCSR Fields: Gender
+            if (isFieldVisible("gender")) {
+                ExposedDropdownMenuBox(
+                    expanded = genderExpanded,
+                    onExpandedChange = { genderExpanded = !genderExpanded },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Gender
-                    ExposedDropdownMenuBox(
-                        expanded = genderExpanded,
-                        onExpandedChange = { genderExpanded = !genderExpanded },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        OutlinedTextField(
-                            value = gender,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Gender*") },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }
-                        )
-                        ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
-                            listOf("Male", "Female").forEach { selection ->
-                                DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                    gender = selection
-                                    genderExpanded = false
-                                })
-                            }
-                        }
-                    }
-
-                    // Service Start Date
-                    val dateStr = serviceStartDate?.let { java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(it) } ?: "Select Date"
                     OutlinedTextField(
-                        value = dateStr,
+                        value = gender,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Service Start Date") },
-                        modifier = Modifier.weight(1f).clickable {
-                            val cal = Calendar.getInstance()
-                            serviceStartDate?.let { cal.time = it }
-                            android.app.DatePickerDialog(context, { _, y, m, d ->
-                                val selected = Calendar.getInstance()
-                                selected.set(y, m, d)
-                                serviceStartDate = selected.time
-                            }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
-                        },
-                        enabled = false,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline,
-                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        label = { Text("Gender*") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }
                     )
+                    ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
+                        listOf("Male", "Female").forEach { selection ->
+                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                gender = selection
+                                genderExpanded = false
+                            })
+                        }
+                    }
                 }
                 Spacer(Modifier.height(sectionSpacing))
             }
+
+             // Date of Birth
+             if (isFieldVisible("dateOfBirth")) {
+                 val dobCalendar = Calendar.getInstance()
+                 dateOfBirth?.let { dobCalendar.time = it }
+                 
+                 val dobDatePicker = DatePickerDialog(
+                     context,
+                     { _, year, month, dayOfMonth ->
+                         val cal = Calendar.getInstance()
+                         cal.set(year, month, dayOfMonth)
+                         dateOfBirth = cal.time
+                     },
+                     dobCalendar.get(Calendar.YEAR),
+                     dobCalendar.get(Calendar.MONTH),
+                     dobCalendar.get(Calendar.DAY_OF_MONTH)
+                 )
+
+                 OutlinedTextField(
+                     value = dateOfBirth?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "",
+                     onValueChange = { },
+                     label = { Text("Date of Birth") },
+                     readOnly = true,
+                     trailingIcon = {
+                         Icon(Icons.Default.Edit, contentDescription = "Select Date", modifier = Modifier.clickable { dobDatePicker.show() })
+                     },
+                     modifier = Modifier.fillMaxWidth().clickable { dobDatePicker.show() },
+                     enabled = false, // Make text field disabled so click passes to modifier
+                     colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                     )
+                 )
+                Spacer(Modifier.height(fieldSpacing))
+             }
+
+             // Date of Appointment
+             if (isFieldVisible("dateOfAppointment")) {
+                 val apptCalendar = Calendar.getInstance()
+                 serviceStartDate?.let { apptCalendar.time = it }
+                 
+                 val apptDatePicker = DatePickerDialog(
+                     context,
+                     { _, year, month, dayOfMonth ->
+                         val cal = Calendar.getInstance()
+                         cal.set(year, month, dayOfMonth)
+                         serviceStartDate = cal.time
+                     },
+                     apptCalendar.get(Calendar.YEAR),
+                     apptCalendar.get(Calendar.MONTH),
+                     apptCalendar.get(Calendar.DAY_OF_MONTH)
+                 )
+
+                 OutlinedTextField(
+                     value = serviceStartDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "",
+                     onValueChange = { },
+                     label = { Text("Date of Appointment") },
+                     readOnly = true,
+                     trailingIcon = {
+                         Icon(Icons.Default.Edit, contentDescription = "Select Date", modifier = Modifier.clickable { apptDatePicker.show() })
+                     },
+                     modifier = Modifier.fillMaxWidth().clickable { apptDatePicker.show() },
+                     enabled = false,
+                     colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                     )
+                 )
+                Spacer(Modifier.height(sectionSpacing))
+             }
         }
 
         // Terms and condition (for registration)
@@ -1263,91 +1380,81 @@ fun CommonEmployeeForm(
         // Submit
         Button(
             onClick = {
-                android.util.Log.d("CommonEmployeeForm", "🔵🔵🔵 BUTTON CLICKED 🔵🔵🔵")
-                android.util.Log.d("CommonEmployeeForm", "isSubmitting: $isSubmitting, isLoading: $isLoading")
-                android.util.Log.d("CommonEmployeeForm", "hasPhoto: ${croppedPhotoUri != null}, photoUri: $croppedPhotoUri")
-                
-                // ✅ Prevent duplicate submissions
+                // ✅ Prevent duplicate submissions (Immediate check)
                 if (isSubmitting || isLoading) {
-                    android.util.Log.d("CommonEmployeeForm", "⚠️ Already submitting, returning early")
-                    Toast.makeText(context, "Please wait, submission in progress...", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
                 
-                android.util.Log.d("CommonEmployeeForm", "✅ Starting validation...")
+                // ✅ Set submitting state IMMEDIATELY
+                isSubmitting = true
+                
                 showValidationErrors = true
                 
                 // Basic validation
-                // Officer email is optional, Employee email is required
-                val isEmailValid = if (isOfficer && email.isNullOrBlank()) true else isValidEmail(email ?: "")
+                val isEmailValid = if (!isFieldVisible("email")) true else if (isOfficer && email.isNullOrBlank()) true else isValidEmail(email ?: "")
                 if (!isEmailValid || !isValidMobile(mobile1) || name.isBlank()) {
                     Toast.makeText(context, "Please fix validation errors", Toast.LENGTH_SHORT).show()
+                    isSubmitting = false // Reset
                     return@Button
                 }
                 
-                // KGID validation (required for admin add and registration, optional for self-edit)
+                // KGID validation
                 if (!isSelfEdit && kgid.isBlank()) {
                     Toast.makeText(context, "Please fix validation errors", Toast.LENGTH_SHORT).show()
+                    isSubmitting = false // Reset
                     return@Button
                 }
                 
                 // General validation
-                // ADMINS: Bypass mandatory checks for rank/district/station/metal
-                // REGISTRATION & USER EDIT: Enforce checks
                 if (!isAdmin) {
-                    // Validate rank
                     if (rank.isBlank()) {
                         Toast.makeText(context, "Rank is required", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false // Reset
                         return@Button
                     }
-                    // Validate metal number if required for selected rank (except for Officers who don't use it)
-                    if (showMetalNumberField && metalNumber.isBlank() && !isOfficer) {
+                    if (showMetalNumberField && metalNumber.isBlank() && !isOfficer && isFieldVisible("metalNumber")) {
                         Toast.makeText(context, "Metal number is required for this rank", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false // Reset
                         return@Button
                     }
-                    // Validate district
                     if (district.isBlank() && !isHighRankingOfficer) {
                         Toast.makeText(context, "District is required", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false // Reset
                         return@Button
                     }
-                    // Validate Station/Section
                     if (station.isBlank() && !isHighRankingOfficer && !isDistrictLevelUnit && !isMinisterial) {
                         Toast.makeText(context, "${if(unit == "State INT" || unitSections.isNotEmpty()) "Section" else "Station"} is required", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false // Reset
                         return@Button
                     }
-                    
-                    // Validate Manual Section
                     if (station == "Others" && manualSection.isBlank()) {
                         Toast.makeText(context, "Please specify your section name", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false // Reset
                         return@Button
                     }
-                    // Validate blood group (except for Officers)
-                    if (bloodGroup.isBlank() && !isOfficer) {
+                    if (bloodGroup.isBlank() && !isOfficer && isFieldVisible("bloodGroup")) {
                         Toast.makeText(context, "Blood Group is required", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false // Reset
                         return@Button
                     }
                 }
 
                 // Registration-specific validation
                 if (isRegistration) {
-                    // Validate PIN
                     if (pin.length != 6 || pin != confirmPin) {
                         Toast.makeText(context, "PIN mismatch or invalid", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false // Reset
                         return@Button
                     }
-                    // Validate terms acceptance
                     if (!acceptedTerms) {
                         Toast.makeText(context, "Accept terms to continue", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false // Reset
                         return@Button
                     }
                 }
 
-                // ✅ Set submitting state to prevent duplicate clicks
-                android.util.Log.d("CommonEmployeeForm", "✅ Validation passed, setting isSubmitting = true")
-                isSubmitting = true
 
                 val finalKgid = if (kgid.isBlank()) "TEMP-${System.currentTimeMillis()}" else kgid
-                android.util.Log.d("CommonEmployeeForm", "📝 Final KGID: $finalKgid")
 
                 val isManual = station == "Others" // Determine if manual station
 
@@ -1369,7 +1476,9 @@ fun CommonEmployeeForm(
                     photoUrl = croppedPhotoUri?.toString() ?: currentPhotoUrl,
                     isManualStation = isManual,
                     gender = gender,
-                    serviceStartDate = serviceStartDate
+                    serviceStartDate = serviceStartDate,
+                    dateOfBirth = dateOfBirth, // ✅ Pass DOB
+                    isHidden = false // defaults
                 )
 
                 // ✅ Submit in coroutine scope
@@ -1399,7 +1508,8 @@ fun CommonEmployeeForm(
                                 photoUrl = emp.photoUrl,
                                 isManualStation = emp.isManualStation,
                                 gender = emp.gender,
-                                serviceStartDate = emp.serviceStartDate
+                                serviceStartDate = emp.serviceStartDate,
+                                dateOfBirth = emp.dateOfBirth // ✅ Include DOB in pending
                             )
                             onRegisterSubmit?.invoke(pending, croppedPhotoUri)
                         } else {

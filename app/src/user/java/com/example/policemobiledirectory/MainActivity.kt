@@ -66,13 +66,9 @@ class MainActivity : ComponentActivity() {
     private val legacyGoogleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-            handleLegacySignInResult(task)
-        } else {
-            Log.e("Auth", "❌ Legacy Sign-In cancelled or failed (code: ${result.resultCode})")
-            ToastUtil.showToast(this, "Legacy Sign-In Cancelled")
-        }
+        // Always try to extract the account/task result info
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        handleLegacySignInResult(task)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,7 +85,7 @@ class MainActivity : ComponentActivity() {
         // ✅ Initialize Legacy Google Sign-In
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
-            .requestIdToken("603972083927-rog2v7ucndnu1399fugu3pemrjchov7t.apps.googleusercontent.com")
+            .requestIdToken(getString(com.example.policemobiledirectory.R.string.default_web_client_id))
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
@@ -111,13 +107,12 @@ class MainActivity : ComponentActivity() {
      * ✅ Launch Google Sign-In (only called if user selects Google login)
      */
     private suspend fun launchGoogleSignIn() {
-        ToastUtil.showToast(this, "DEBUG: Starting Google Sign-In...")
-        Log.d("Auth", "DEBUG: Starting Google Sign-In process")
+        Log.d("Auth", "Starting Google Sign-In process")
+        viewModel.setGoogleAccountPickerLoading(true)
 
         val credentialManager = CredentialManager.create(this)
         val googleIdOption = GetGoogleIdOption.Builder()
-            // ✅ FIXED: Using correct Web Client ID from google-services.json for com.pmd.userapp
-            .setServerClientId("603972083927-rog2v7ucndnu1399fugu3pemrjchov7t.apps.googleusercontent.com")
+            .setServerClientId(getString(com.example.policemobiledirectory.R.string.default_web_client_id))
             .setFilterByAuthorizedAccounts(false)
             .setAutoSelectEnabled(false)
             .build()
@@ -127,15 +122,14 @@ class MainActivity : ComponentActivity() {
             .build()
 
         try {
-            Log.d("Auth", "DEBUG: Requesting credential...")
-            ToastUtil.showToast(this, "DEBUG: Requesting Accounts...")
+            Log.d("Auth", "Requesting credential...")
 
-            // Reduced timeout to 2s to trigger fallback quickly
-            val result: GetCredentialResponse = kotlinx.coroutines.withTimeout(2000L) {
-                 Log.d("Auth", "DEBUG: calling credentialManager.getCredential")
+            // Increased timeout to 5s for better reliability
+            val result: GetCredentialResponse = kotlinx.coroutines.withTimeout(5000L) {
+                 Log.d("Auth", "calling credentialManager.getCredential")
                  credentialManager.getCredential(this@MainActivity, request)
             }
-            Log.d("Auth", "DEBUG: credentialManager.getCredential returned")
+            Log.d("Auth", "credentialManager.getCredential returned")
             val credential = result.credential
             
             // Extract Google ID Token using library helper
@@ -144,7 +138,6 @@ class MainActivity : ComponentActivity() {
             val email = googleIdTokenCredential.id
             
             Log.d("Auth", "✅ Google Sign-In success for email: $email")
-            ToastUtil.showToast(this, "DEBUG: Account selected: $email")
             Log.v("Auth", "Token: ${googleIdToken.take(10)}...")
 
             if (googleIdToken.isNotEmpty()) {
@@ -152,32 +145,34 @@ class MainActivity : ComponentActivity() {
                 wasLoggedOut = false
             } else {
                 Log.e("Auth", "❌ No ID token found in credential data")
-                ToastUtil.showToast(this, "DEBUG: Error: No ID Token retrieved.")
             }
         } catch (e: androidx.credentials.exceptions.GetCredentialCancellationException) {
             Log.d("Auth", "⚠️ Sign-In cancelled by user")
-            ToastUtil.showToast(this, "DEBUG: Sign-In Cancelled by User")
         } catch (e: androidx.credentials.exceptions.NoCredentialException) {
             Log.e("Auth", "❌ No credentials available: ${e.message}")
-            ToastUtil.showToast(this, "DEBUG: No Google Accounts Found\n(Make sure you are logged into Google on this device)", Toast.LENGTH_LONG)
+            ToastUtil.showToast(this, "No Google Accounts Found. Trying fallback...", Toast.LENGTH_LONG)
+            launchLegacyGoogleSignIn()
         } catch (e: androidx.credentials.exceptions.GetCredentialProviderConfigurationException) {
             Log.e("Auth", "❌ Provider configuration error (SHA-1/Package mismatch?): ${e.message}")
-            ToastUtil.showToast(this, "DEBUG: CONFIG ERROR\n${e.message}\n(May be SHA-1 mismatch)", Toast.LENGTH_LONG)
+            ToastUtil.showToast(this, "Sign-In Error. Trying fallback...", Toast.LENGTH_LONG)
+            launchLegacyGoogleSignIn()
         } catch (e: androidx.credentials.exceptions.GetCredentialUnknownException) {
             Log.e("Auth", "❌ Unknown credential error: ${e.message}")
-            ToastUtil.showToast(this, "DEBUG: Unknown Auth Error: ${e.message}", Toast.LENGTH_LONG)
+            ToastUtil.showToast(this, "Sign-In Error. Trying fallback...", Toast.LENGTH_LONG)
+            launchLegacyGoogleSignIn()
         } catch (e: androidx.credentials.exceptions.GetCredentialException) {
             Log.e("Auth", "❌ Google Sign-In failed: ${e.type} - ${e.message}", e)
-            ToastUtil.showToast(this, "DEBUG: Sign-In Error: ${e.type}\n${e.message}", Toast.LENGTH_LONG)
+            ToastUtil.showToast(this, "Sign-In error. Trying fallback...", Toast.LENGTH_LONG)
+            launchLegacyGoogleSignIn()
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
              Log.e("Auth", "❌ Google Sign-In timed out (30s) - Triggering Legacy Fallback")
              ToastUtil.showToast(this, "Still waiting? Falling back to Legacy Sign-In...", Toast.LENGTH_LONG)
              launchLegacyGoogleSignIn()
         } catch (e: Exception) {
-             Log.e("Auth", "❌ Google Sign-In unexpected error: ${e.javaClass.simpleName}", e)
-             ToastUtil.showToast(this, "DEBUG: Unexpected Error: ${e.javaClass.simpleName}\n${e.localizedMessage}", Toast.LENGTH_LONG)
+            Log.e("Auth", "❌ Google Sign-In unexpected error: ${e.javaClass.simpleName}", e)
         } finally {
-             Log.d("Auth", "DEBUG: Google Sign-In flow completed")
+            Log.d("Auth", "Google Sign-In flow completed")
+            viewModel.setGoogleAccountPickerLoading(false)
         }
     }
 
@@ -195,7 +190,6 @@ class MainActivity : ComponentActivity() {
             
             if (idToken != null && email != null) {
                 Log.d("Auth", "✅ Legacy Google Sign-In success: $email")
-                ToastUtil.showToast(this, "Legacy Success: $email")
                 viewModel.handleGoogleSignIn(email, idToken)
                 wasLoggedOut = false
             } else {
@@ -203,8 +197,17 @@ class MainActivity : ComponentActivity() {
                 ToastUtil.showToast(this, "Legacy Error: Missing account info")
             }
         } catch (e: ApiException) {
-            Log.e("Auth", "❌ Legacy Sign-In failed with code: ${e.statusCode}")
-            ToastUtil.showToast(this, "Legacy Sign-In Error (Code: ${e.statusCode})")
+            Log.e("Auth", "❌ Legacy Sign-In failed with status code: ${e.statusCode}")
+            val errorMsg = when (e.statusCode) {
+                12501 -> "Sign-In Cancelled"
+                10 -> "Configuration Error (Code 10)\nCheck SHA-1/Package Name"
+                12500 -> "Configuration Error (Code 12500)"
+                7 -> "Network Error (Check Internet)"
+                else -> "Sign-In Error (Code: ${e.statusCode})"
+            }
+            ToastUtil.showToast(this, errorMsg, Toast.LENGTH_LONG)
+        } finally {
+            viewModel.setGoogleAccountPickerLoading(false)
         }
     }
 
@@ -227,11 +230,26 @@ class MainActivity : ComponentActivity() {
                 val logoutAction: () -> Unit = {
                     scope.launch {
                         viewModel.logout {
+                            // ✅ Clear Google Sign-In session to force account picker next time
+                            googleSignInClient.signOut().addOnCompleteListener {
+                                Log.d("Auth", "Google Sign-In signed out")
+                            }
+                            
+                            // ✅ Clear Credential Manager state
+                            val credentialManager = CredentialManager.create(this@MainActivity)
+                            scope.launch {
+                                try {
+                                    credentialManager.clearCredentialState(androidx.credentials.ClearCredentialStateRequest())
+                                    Log.d("Auth", "Credential Manager state cleared")
+                                } catch (e: Exception) {
+                                    Log.e("Auth", "Error clearing credential state", e)
+                                }
+                            }
 
-                        ToastUtil.showToast(
-                            this@MainActivity,
-                            "Logged out successfully"
-                        )
+                            ToastUtil.showToast(
+                                this@MainActivity,
+                                "Logged out successfully"
+                            )
 
                             // ✅ Navigate to login only after clearing session
                             wasLoggedOut = true
@@ -277,7 +295,8 @@ class MainActivity : ComponentActivity() {
                     employeeViewModel = viewModel,
                     isDarkTheme = isDarkTheme,
                     onGoogleSignInClicked = { lifecycleScope.launch { launchGoogleSignIn() } },
-                    onThemeToggle = { viewModel.toggleTheme() }
+                    onThemeToggle = { viewModel.toggleTheme() },
+                    onLogout = logoutAction
                 )
             }
         }

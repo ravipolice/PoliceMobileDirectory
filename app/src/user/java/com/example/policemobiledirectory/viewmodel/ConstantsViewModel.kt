@@ -43,6 +43,9 @@ class ConstantsViewModel @Inject constructor(
     private val _units = MutableStateFlow<List<String>>(emptyList())
     val units: StateFlow<List<String>> = _units.asStateFlow()
 
+    // Global Hidden Fields (DOB, DOA, etc.)
+    val globalHiddenFields: StateFlow<List<String>> = constantsRepository.globalHiddenFields
+
     private val _fullUnits = MutableStateFlow<List<com.example.policemobiledirectory.model.UnitModel>>(emptyList())
     val fullUnits: StateFlow<List<com.example.policemobiledirectory.model.UnitModel>> = _fullUnits.asStateFlow()
 

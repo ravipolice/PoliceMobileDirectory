@@ -9,6 +9,7 @@ data class Employee(
     val kgid: String = "",
     val name: String = "",
     val email: String = "",
+    val dateOfBirth: Date? = null, // ✅ Added DOB
     val pin: String? = null,
     val mobile1: String? = null,   // STRING after migration
     val mobile2: String? = null,

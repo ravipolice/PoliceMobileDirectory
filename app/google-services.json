@@ -23,11 +23,27 @@
           }
         },
         {
+          "client_id": "603972083927-ca3gc1jgj625du14isq5e1a9pll39goc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.policemobiledirectory",
+            "certificate_hash": "9d0dbf9bdcf00face7881e267d7f3eb76f531eab"
+          }
+        },
+        {
           "client_id": "603972083927-rhq7k9qeph214p2kcndbfsa5942oaabo.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.policemobiledirectory",
             "certificate_hash": "a4aab1d56df7e046df21f27f9fdad941ba43a11b"
+          }
+        },
+        {
+          "client_id": "603972083927-tmv7vu83fbee6vtv83nmi0cf0ebv5i8e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.policemobiledirectory",
+            "certificate_hash": "47d8adcd535c94c69c2d0259dee44c4e06d06dea"
           }
         },
         {
@@ -65,6 +81,14 @@
           "android_info": {
             "package_name": "com.pmd.adminapp",
             "certificate_hash": "47d8adcd535c94c69c2d0259dee44c4e06d06dea"
+          }
+        },
+        {
+          "client_id": "603972083927-1lveu5ai8hsj44c6cql65p49ol7puhkc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pmd.adminapp",
+            "certificate_hash": "9d0dbf9bdcf00face7881e267d7f3eb76f531eab"
           }
         },
         {
@@ -126,6 +150,14 @@
           "android_info": {
             "package_name": "com.pmd.userapp",
             "certificate_hash": "a4aab1d56df7e046df21f27f9fdad941ba43a11b"
+          }
+        },
+        {
+          "client_id": "603972083927-e6q96d91vom32i6qo0cpkjpdk3m1b3g3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pmd.userapp",
+            "certificate_hash": "9d0dbf9bdcf00face7881e267d7f3eb76f531eab"
           }
         },
         {

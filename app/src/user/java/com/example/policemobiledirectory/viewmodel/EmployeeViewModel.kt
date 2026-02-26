@@ -141,6 +141,14 @@ open class EmployeeViewModel @Inject constructor(
         val rank: String
     )
 
+    private val _isGoogleAccountPickerLoading = MutableStateFlow(false)
+    val isGoogleAccountPickerLoading: StateFlow<Boolean> = _isGoogleAccountPickerLoading.asStateFlow()
+
+    fun setGoogleAccountPickerLoading(loading: Boolean) {
+        _isGoogleAccountPickerLoading.value = loading
+    }
+
+
     private var adminNotificationsListener: ListenerRegistration? = null
 
 

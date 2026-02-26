@@ -11,6 +11,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.tasks.await
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -53,6 +56,11 @@ class ConstantsRepository @Inject constructor(
     private val DISTRICTS_CACHE_KEY = "districts_cache"
     private val RANKS_CACHE_KEY = "ranks_cache"
     private val STATIONS_CACHE_KEY = "stations_cache"
+    private val GLOBAL_CONFIG_CACHE_KEY = "global_config_cache"    
+
+    // Global Config State
+    private val _globalHiddenFields = MutableStateFlow<List<String>>(emptyList())
+    val globalHiddenFields: StateFlow<List<String>> = _globalHiddenFields.asStateFlow()
 
     /**
      * Check if cache needs refresh (expired or doesn't exist)
@@ -254,7 +262,9 @@ class ConstantsRepository @Inject constructor(
                             isHqLevel = doc.getBoolean("isHqLevel") ?: false,
                             scopes = (doc.get("scopes") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList(),
                             applicableRanks = (doc.get("applicableRanks") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList(),
-                            stationKeyword = stationKeyword
+                            stationKeyword = stationKeyword,
+                            hideFromRegistration = doc.getBoolean("hideFromRegistration") ?: false,
+                            hiddenFields = (doc.get("hiddenFields") as? List<String>) ?: emptyList()
                         )
                     } else null
                 }.sortedBy { it.name }
@@ -285,7 +295,39 @@ class ConstantsRepository @Inject constructor(
     }
 
     /**
-     * Get districts for a specific unit using Hybrid Strategy:
+     * Fetch Global App Config (including Hidden Fields)
+     */
+    private suspend fun fetchGlobalConfig() {
+        try {
+            val doc = firestore.collection("app_config").document("main_app").get().await()
+            if (doc.exists()) {
+                val hiddenFields = (doc.get("hiddenFields") as? List<String>) ?: emptyList()
+                Log.d("ConstantsRepository", "✅ Fetched Global Hidden Fields: $hiddenFields")
+                
+                // Update State
+                _globalHiddenFields.value = hiddenFields
+                
+                // Cache
+                prefs.edit()
+                    .putString(GLOBAL_CONFIG_CACHE_KEY, Gson().toJson(hiddenFields))
+                    .apply()
+            }
+        } catch (e: Exception) {
+            Log.e("ConstantsRepository", "❌ Failed to fetch global config", e)
+            // Fallback to cache
+            loadGlobalConfigFromCache()
+        }
+    }
+
+    private fun loadGlobalConfigFromCache() {
+        val json = prefs.getString(GLOBAL_CONFIG_CACHE_KEY, null)
+        if (json != null) {
+            val type = object : TypeToken<List<String>>() {}.type
+            _globalHiddenFields.value = Gson().fromJson(json, type)
+            Log.d("ConstantsRepository", "loaded global config cache: ${_globalHiddenFields.value}")
+        }
+    }
+    /**
      * 1. Dynamic (Cache)
      * 2. Hardcoded Fallback (Safety Net)
      */
@@ -776,14 +818,18 @@ class ConstantsRepository @Inject constructor(
         }
     }
 
-    suspend fun deleteUnit(name: String): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun deleteUnit(name: String): Result<Boolean> = withContext(Dispatchers.IO) {
         try {
             firestore.collection("units").document(name.trim())
                 .delete()
                 .await()
-            clearCache()
+            // 2. Fetch Units (parallel)
             fetchUnitsFromFirestore()
-            Result.success("Unit '$name' deleted successfully")
+            
+            // 3. Fetch Global Config
+            fetchGlobalConfig()
+
+            return@withContext Result.success(true)
         } catch (e: Exception) {
             Result.failure(e)
         }

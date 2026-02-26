@@ -1,0 +1,26 @@
+﻿Alias name: upload
+Creation date: 19-Feb-2026
+Entry type: PrivateKeyEntry
+Certificate chain length: 1
+Certificate[1]:
+Owner: CN=Ravikumar J, OU=Nandija, O=Nandija, L=chikkaballapura, ST=karnataka, C=IN
+Issuer: CN=Ravikumar J, OU=Nandija, O=Nandija, L=chikkaballapura, ST=karnataka, C=IN
+Serial number: 9a28c4cc60ecd17
+Valid from: Thu Feb 19 11:41:08 IST 2026 until: Mon Jul 07 11:41:08 IST 2053
+Certificate fingerprints:
+	 SHA1: 9D:0D:BF:9B:DC:F0:0F:AC:E7:88:1E:26:7D:7F:3E:B7:6F:53:1E:AB
+	 SHA256: 2F:07:56:CD:A0:78:A5:EE:CB:DB:00:E8:50:0D:0E:24:A5:D3:84:21:69:19:D8:B6:C6:FE:59:17:EF:85:E1:4D
+Signature algorithm name: SHA384withRSA
+Subject Public Key Algorithm: 2048-bit RSA key
+Version: 3
+
+Extensions: 
+
+#1: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: 64 CC 51 82 ED E6 59 1F   93 38 26 31 6D F8 C2 A0  d.Q...Y..8&1m...
+0010: AB A6 28 90                                        ..(.
+]
+]
+
