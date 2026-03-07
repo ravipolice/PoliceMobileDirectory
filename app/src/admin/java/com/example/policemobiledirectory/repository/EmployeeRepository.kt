@@ -271,6 +271,11 @@ open class EmployeeRepository @Inject constructor(
             // Step 1 — Local lookup (Room)
             val localEmployee = employeeDao.getEmployeeByEmail(normalizedEmail)
             if (localEmployee != null) {
+                if (!localEmployee.isApproved) {
+                    emit(RepoResult.Error(null, "Your app access has been disabled. Please contact an admin."))
+                    return@flow
+                }
+                
                 val storedHash = localEmployee.pin
                 if (!storedHash.isNullOrEmpty() && PinHasher.verifyPin(pin, storedHash)) {
                     Log.d(TAG, "LoginFlow: offline login success for $email")
@@ -341,6 +346,12 @@ open class EmployeeRepository @Inject constructor(
             }
 
             val doc = snapshot.documents.first()
+            val isApproved = doc.getBoolean("isApproved") ?: true
+            if (!isApproved) {
+                emit(RepoResult.Error(null, "Your app access has been disabled. Please contact an admin."))
+                return@flow
+            }
+            
             // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
             val docKgid = doc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc.id
             var remoteEmployee = doc.toObject(Employee::class.java)?.copy(kgid = docKgid)
@@ -623,6 +634,10 @@ open class EmployeeRepository @Inject constructor(
             }
 
             val emp = mapEmployeeFromResponse(empData)
+            
+            if (!emp.isApproved) {
+                return RepoResult.Error(null, "Your app access has been disabled. Please contact an admin.")
+            }
             
             try {
                 val authResult = FirebaseAuth.getInstance().signInAnonymously().await()
@@ -1154,8 +1169,18 @@ open class EmployeeRepository @Inject constructor(
                 snapshot = firestore.collection("admins").whereEqualTo("email", email).limit(1).get().await()
             }
             
-            if (snapshot.isEmpty) emit(RepoResult.Error(null,"User not found: $email"))
-            else emit(RepoResult.Success(true))
+            
+            if (snapshot.isEmpty) {
+                emit(RepoResult.Error(null,"User not found: $email"))
+            } else {
+                val doc = snapshot.documents.first()
+                val isApproved = doc.getBoolean("isApproved") ?: true
+                if (!isAdminCollection && !isApproved) {
+                    emit(RepoResult.Error(null, "Your app access has been disabled. Please contact an admin."))
+                } else {
+                    emit(RepoResult.Success(true))
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "signInWithGoogleIdToken failed", e)
             emit(RepoResult.Error(null,e.message ?: "Google Sign-In failed"))
@@ -1285,10 +1310,47 @@ open class EmployeeRepository @Inject constructor(
         }
     }
 
+    /**
+     * ✅ Checks the LIVE isApproved value directly from Firestore for the given email.
+     * Returns true (approved), false (disabled), or null (network error → don't logout).
+     */
+    suspend fun checkIsApprovedFromFirestore(email: String): Boolean? = withContext(ioDispatcher) {
+        try {
+            val normalizedEmail = email.trim().lowercase()
+            val snapshot = employeesCollection
+                .whereEqualTo(FIELD_EMAIL, normalizedEmail)
+                .limit(1)
+                .get()
+                .await()
+
+            if (snapshot.isEmpty) {
+                Log.w(TAG, "checkIsApprovedFromFirestore: No doc found for $normalizedEmail")
+                return@withContext null
+            }
+
+            val doc = snapshot.documents.first()
+            val isApproved = doc.getBoolean("isApproved") ?: true
+            Log.d(TAG, "checkIsApprovedFromFirestore: $normalizedEmail → isApproved=$isApproved")
+
+            // Sync the updated value into local Room cache
+            val localEntity = employeeDao.getEmployeeByEmail(normalizedEmail)
+            if (localEntity != null && localEntity.isApproved != isApproved) {
+                employeeDao.insertEmployee(localEntity.copy(isApproved = isApproved))
+                Log.d(TAG, "checkIsApprovedFromFirestore: Synced isApproved=$isApproved in Room")
+            }
+
+            isApproved
+        } catch (e: Exception) {
+            Log.w(TAG, "checkIsApprovedFromFirestore: Network error — skipping logout check: ${e.message}")
+            null // null = unable to check → don't force logout (offline safety)
+        }
+    }
+
     suspend fun logout() = withContext(ioDispatcher) {
         auth.signOut()
         employeeDao.clearEmployees()
     }
+
 
     // -------------------------------------------------------------------
     // ENTITY MAPPERS (Room <-> Domain)

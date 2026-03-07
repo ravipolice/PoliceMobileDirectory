@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -85,10 +86,9 @@ fun GalleryScreen(
 
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
+        contentWindowInsets = WindowInsets(0),
         topBar = {
             TopAppBar(
-                windowInsets = WindowInsets(0.dp),
                 title = { Text("Gallery") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -100,9 +100,9 @@ fun GalleryScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = androidx.compose.ui.graphics.Color.White,
-                    navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
-                    actionIconContentColor = androidx.compose.ui.graphics.Color.White
+                    titleContentColor = ComposeColor.White,
+                    navigationIconContentColor = ComposeColor.White,
+                    actionIconContentColor = ComposeColor.White
                 ),
                 actions = {
                     // View mode toggle (Grid/List) - Grid button cycles through column counts

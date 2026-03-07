@@ -11,11 +11,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
@@ -72,15 +72,18 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        
+
         // ✅ TEST LOG - This should ALWAYS appear when app starts
         Log.e("TEST_LOG", "═══════════════════════════════════════")
         Log.e("TEST_LOG", "🚀🚀🚀 MAINACTIVITY ONCREATE CALLED 🚀🚀🚀")
         Log.e("TEST_LOG", "═══════════════════════════════════════")
         android.util.Log.e("TEST_LOG2", "Android Log test - MainActivity started")
         System.out.println("SYSOUT: MainActivity onCreate called")
+
+        // ✅ Force status bar to match app primary teal (same as PMD Home top bar)
+        window.statusBarColor = android.graphics.Color.parseColor("#00BCD4")
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
 
         // ✅ Initialize Legacy Google Sign-In
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)

@@ -479,5 +479,9 @@ private fun AppNavHostContent(
                 leaveViewModel = leaveViewModel
             )
         }
+
+        composable(Routes.LEAVE_MANAGER_ADMIN) {
+            LeaveManagerAdminScreen(navController = navController)
+        }
     }
 }

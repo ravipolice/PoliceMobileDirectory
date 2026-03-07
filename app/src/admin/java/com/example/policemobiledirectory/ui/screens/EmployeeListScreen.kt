@@ -433,6 +433,12 @@ private fun EmployeeListContent(
                                     onDelete = { emp -> 
                                         viewModel.deleteEmployee(emp.kgid, emp.photoUrl ?: emp.photoUrlFromGoogle) 
                                     },
+                                    onStatusChange = { emp, isApproved ->
+                                        viewModel.updateEmployeeStatus(emp.kgid, isApproved)
+                                    },
+                                    onVisibilityChange = { emp, isHidden ->
+                                        viewModel.updateEmployeeVisibility(emp.kgid, isHidden)
+                                    },
                                     context = context,
                                     cardStyle = cardStyle
                                 )

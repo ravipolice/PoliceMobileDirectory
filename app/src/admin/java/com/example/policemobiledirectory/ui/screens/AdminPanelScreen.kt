@@ -361,6 +361,15 @@ fun AdminUnifiedDashboard(
                 onClick = { navController.navigate(Routes.SEND_NOTIFICATION) }
             )
         }
+        item(span = { GridItemSpan(2) }) {
+            DashboardActionCardLarge(
+                title = "Leave Manager Admin",
+                icon = Icons.Default.AdminPanelSettings,
+                colorStart = Color(0xFF673AB7),
+                colorEnd = Color(0xFF9575CD),
+                onClick = { navController.navigate(Routes.LEAVE_MANAGER_ADMIN) }
+            )
+        }
 
         // --- 4. APP RESOURCES ---
         item(span = { GridItemSpan(2) }) {

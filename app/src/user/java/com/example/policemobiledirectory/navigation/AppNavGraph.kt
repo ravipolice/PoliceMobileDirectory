@@ -1,5 +1,6 @@
 package com.example.policemobiledirectory.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -17,6 +18,9 @@ import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import kotlinx.coroutines.launch
 import android.net.Uri
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.Schedule
 import com.example.policemobiledirectory.viewmodel.UserDocumentsViewModel
 import com.example.policemobiledirectory.viewmodel.NotificationsViewModel
 
@@ -57,6 +61,7 @@ fun AppNavGraph(
             }
         ) {
             Scaffold(
+                contentWindowInsets = WindowInsets(0),
                 bottomBar = {
                     BottomNavigationBar(
                         navController = navController,
@@ -222,6 +227,26 @@ private fun AppNavHostContent(
         // --- USEFUL LINKS ---
         composable(Routes.USEFUL_LINKS) {
             UsefulLinksScreen(navController = navController, viewModel = employeeViewModel)
+        }
+
+        // --- NUDI CONVERTER (Coming Soon) ---
+        composable(Routes.NUDI_CONVERTER) {
+            ComingSoonScreen(
+                navController = navController,
+                title = "Nudi Converter",
+                icon = Icons.Default.Translate,
+                description = "Convert text between Nudi and Unicode Kannada fonts. This feature is under development."
+            )
+        }
+
+        // --- DUTY REGISTER (Coming Soon) ---
+        composable(Routes.DUTY_REGISTER) {
+            ComingSoonScreen(
+                navController = navController,
+                title = "Duty Register",
+                icon = Icons.Default.Schedule,
+                description = "Manage and track duty schedules, shifts, and assignments. This feature is under development."
+            )
         }
 
         // --- LEAVE MANAGER ---

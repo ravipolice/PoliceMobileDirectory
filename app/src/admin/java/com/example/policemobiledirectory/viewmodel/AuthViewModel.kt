@@ -103,15 +103,39 @@ class AuthViewModel @Inject constructor(
                     // Try Room first
                     val localUser = employeeRepo.getEmployeeByEmail(email)
                     if (localUser != null) {
+                        if (!localUser.isApproved) {
+                            Log.w("Session", "⚠️ User access disabled. Forcing logout.")
+                            sessionManager.clearSession()
+                            _isLoggedIn.value = false
+                            return@collect
+                        }
                         _currentUser.value = localUser.toEmployee()
                         _isAdmin.value = localUser.isAdmin
                         _isLoggedIn.value = true
                         Log.d("Session", "✅ Loaded user ${localUser.name} (Admin=${localUser.isAdmin})")
+
+                        // 🔴 Background live check from Firestore
+                        viewModelScope.launch {
+                            val liveApproved = employeeRepo.checkIsApprovedFromFirestore(email)
+                            if (liveApproved == false) {
+                                Log.w("Session", "🔴 Firestore says user is DISABLED. Forcing logout.")
+                                sessionManager.clearSession()
+                                _isLoggedIn.value = false
+                                _currentUser.value = null
+                                _isAdmin.value = false
+                            }
+                        }
                     } else {
                         // Fallback to Firestore if Room is empty
                         when (val remoteResult = employeeRepo.getUserByEmail(email)) {
                             is RepoResult.Success -> {
                                 remoteResult.data?.let { user ->
+                                    if (!user.isApproved) {
+                                        Log.w("Session", "⚠️ Remote user access disabled. Forcing logout.")
+                                        sessionManager.clearSession()
+                                        _isLoggedIn.value = false
+                                        return@let
+                                    }
                                     _currentUser.value = user
                                     _isAdmin.value = user.isAdmin
                                     _isLoggedIn.value = true
@@ -204,6 +228,11 @@ class AuthViewModel @Inject constructor(
                     val existingUser = employeeRepo.getEmployeeByEmail(email)
                     if (existingUser != null) {
                         val user = existingUser.toEmployee()
+                        if (!user.isApproved) {
+                            _googleSignInUiEvent.value = GoogleSignInUiEvent.Error("Your app access has been disabled. Please contact an admin.")
+                            auth.signOut()
+                            return@launch
+                        }
                         sessionManager.saveLogin(user.email, user.isAdmin)
                         _currentUser.value = user
                         _isLoggedIn.value = true
@@ -381,8 +410,22 @@ class AuthViewModel @Inject constructor(
                         val user = userEntity?.toEmployee()
 
                         if (user != null) {
+                            if (!user.isApproved) {
+                                Log.w("Session", "⚠️ User access disabled during load. Forcing logout.")
+                                logout()
+                                return@launch
+                            }
                             _currentUser.value = user
                             Log.d("Session", "✅ Session restored for user: ${user.name}, admin=$isAdmin")
+
+                            // 🔴 Background live Firestore check on startup
+                            viewModelScope.launch {
+                                val liveApproved = employeeRepo.checkIsApprovedFromFirestore(email)
+                                if (liveApproved == false) {
+                                    Log.w("Session", "🔴 Firestore says user is DISABLED. Forcing logout.")
+                                    logout()
+                                }
+                            }
                         } else {
                             Log.e("Session", "❌ Session exists for $email but user not found in DB. Forcing logout.")
                             logout()

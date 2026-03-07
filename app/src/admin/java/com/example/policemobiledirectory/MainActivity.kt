@@ -72,8 +72,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        
+
         // ✅ TEST LOG - This should ALWAYS appear when app starts
         Log.e("TEST_LOG", "═══════════════════════════════════════")
         Log.e("TEST_LOG", "🚀🚀🚀 MAINACTIVITY ONCREATE CALLED 🚀🚀🚀")

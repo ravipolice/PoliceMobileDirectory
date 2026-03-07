@@ -1,0 +1,61 @@
+Configuration on demand is an incubating feature.
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preUserDebugBuild UP-TO-DATE
+> Task :app:generateUserDebugBuildConfig UP-TO-DATE
+> Task :app:checkUserDebugAarMetadata UP-TO-DATE
+> Task :app:processUserDebugNavigationResources UP-TO-DATE
+> Task :app:compileUserDebugNavigationResources UP-TO-DATE
+> Task :app:generateUserDebugResValues UP-TO-DATE
+> Task :app:processUserDebugGoogleServices UP-TO-DATE
+> Task :app:mapUserDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateUserDebugResources UP-TO-DATE
+> Task :app:mergeUserDebugResources UP-TO-DATE
+> Task :app:packageUserDebugResources UP-TO-DATE
+> Task :app:parseUserDebugLocalResources UP-TO-DATE
+> Task :app:createUserDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksUserDebug UP-TO-DATE
+> Task :app:processUserDebugMainManifest UP-TO-DATE
+> Task :app:processUserDebugManifest UP-TO-DATE
+> Task :app:processUserDebugManifestForPackage UP-TO-DATE
+> Task :app:processUserDebugResources UP-TO-DATE
+> Task :app:kspUserDebugKotlin
+
+> Task :app:compileUserDebugKotlin FAILED
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:130:45 Unresolved reference 'padding'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:141:18 Unresolved reference 'padding'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:226:33 Unresolved reference 'size'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:240:38 Unresolved reference 'size'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:272:22 Unresolved reference 'padding'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:278:41 Unresolved reference 'size'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:283:41 Unresolved reference 'size'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:301:57 Unresolved reference 'size'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:318:60 Unresolved reference 'size'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:356:22 Unresolved reference 'padding'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:371:49 Unresolved reference 'size'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:378:45 Unresolved reference 'size'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:405:22 Unresolved reference 'padding'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:420:49 Unresolved reference 'size'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:428:49 Unresolved reference 'size'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:434:49 Unresolved reference 'size'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:479:41 Unresolved reference 'size'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:510:18 Unresolved reference 'padding'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:520:26 Unresolved reference 'size'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:528:26 Unresolved reference 'size'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/user/java/com/example/policemobiledirectory/ui/screens/GalleryScreen.kt:537:45 Unresolved reference 'size'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileUserDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 18s
+19 actionable tasks: 2 executed, 17 up-to-date

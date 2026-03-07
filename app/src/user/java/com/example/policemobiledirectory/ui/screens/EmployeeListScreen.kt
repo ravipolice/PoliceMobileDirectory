@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 
 package com.example.policemobiledirectory.ui.screens
 
@@ -9,6 +9,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.lazy.LazyColumn
@@ -70,6 +71,7 @@ import androidx.compose.material.icons.Icons.Default
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,12 +109,20 @@ fun EmployeeListScreen(
         // Constants.kt is the primary source - no automatic syncing
     }
 
+    // ✅ Ensure status bar matches the PMD Home top bar color on this screen
+    val systemUiController = rememberSystemUiController()
+    SideEffect {
+        systemUiController.setStatusBarColor(
+            color = PrimaryTeal,
+            darkIcons = false
+        )
+    }
+
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
+        contentWindowInsets = WindowInsets(0),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                windowInsets = WindowInsets(0.dp),
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("PMD Home")
@@ -154,7 +164,7 @@ fun EmployeeListScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PrimaryTeal, // Solid Teal to match Status Bar
+                    containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = androidx.compose.ui.graphics.Color.White,
                     navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
                     actionIconContentColor = androidx.compose.ui.graphics.Color.White
@@ -391,7 +401,7 @@ private fun EmployeeListContent(
             isAdmin = isAdmin,
             districtLabel = districtLabel,
             stationLabel = stationLabel,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier
         )
 
 

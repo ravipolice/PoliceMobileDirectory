@@ -7,6 +7,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.EventNote
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -60,16 +62,15 @@ fun NavigationDrawer(
 
     ModalDrawerSheet(
         modifier = Modifier
-            .width(280.dp),
+            .width(280.dp)
+            .statusBarsPadding(),
         drawerShape = RectangleShape,
         drawerContainerColor = MaterialTheme.colorScheme.surface,
-        windowInsets = WindowInsets(0.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f))
-                .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
 
             // ============================================================
@@ -246,7 +247,7 @@ fun NavigationDrawer(
 
                 DrawerItem(
                     icon = Icons.Default.EventNote,
-                    text = "Leave Register",
+                    text = "Leave Register (Coming Soon)",
                     selected = currentRoute == Routes.LEAVE_DASHBOARD,
                     onClick = {
                         scope.launch {
@@ -254,6 +255,36 @@ fun NavigationDrawer(
                             navController.navigate(Routes.LEAVE_DASHBOARD) {
                                 launchSingleTop = true
                                 restoreState = true
+                                popUpTo(Routes.EMPLOYEE_LIST) { inclusive = false }
+                            }
+                        }
+                    }
+                )
+
+                DrawerItem(
+                    icon = Icons.Default.Translate,
+                    text = "Nudi Converter (Coming Soon)",
+                    selected = currentRoute == Routes.NUDI_CONVERTER,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate(Routes.NUDI_CONVERTER) {
+                                launchSingleTop = true
+                                popUpTo(Routes.EMPLOYEE_LIST) { inclusive = false }
+                            }
+                        }
+                    }
+                )
+
+                DrawerItem(
+                    icon = Icons.Default.Schedule,
+                    text = "Duty Register (Coming Soon)",
+                    selected = currentRoute == Routes.DUTY_REGISTER,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate(Routes.DUTY_REGISTER) {
+                                launchSingleTop = true
                                 popUpTo(Routes.EMPLOYEE_LIST) { inclusive = false }
                             }
                         }

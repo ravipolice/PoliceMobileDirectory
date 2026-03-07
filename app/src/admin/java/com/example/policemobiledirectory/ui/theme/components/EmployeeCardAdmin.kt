@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -38,6 +39,8 @@ fun EmployeeCardAdmin(
     fontScale: Float,
     navController: NavController,
     onDelete: (Employee) -> Unit,
+    onStatusChange: ((Employee, Boolean) -> Unit)? = null,
+    onVisibilityChange: ((Employee, Boolean) -> Unit)? = null,
     context: Context,
     cardStyle: CardStyle = CardStyle.Vibrant // Default style
 ) {
@@ -285,6 +288,73 @@ fun EmployeeCardAdmin(
                                     onDelete(employee)
                                 }
                             )
+                        }
+                    }
+
+                    // 🛠️ NEW: App Access & Home Visibility Toggles (Admin Only)
+                    if (isAdmin) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            color = Color.Black.copy(alpha = 0.05f)
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // App Access Toggle
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "App Access",
+                                    fontSize = (11 * fontScale).sp,
+                                    color = Color.Black.copy(alpha = 0.7f),
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Switch(
+                                    checked = employee.isApproved,
+                                    onCheckedChange = { isChecked ->
+                                        onStatusChange?.invoke(employee, isChecked)
+                                    },
+                                    modifier = Modifier.scale(0.7f),
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color(0xFF2E7D32),
+                                        checkedTrackColor = Color(0xFF81C784),
+                                        uncheckedThumbColor = Color.Gray,
+                                        uncheckedTrackColor = Color.LightGray
+                                    )
+                                )
+                            }
+
+                            // Home Visibility Toggle
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "Hidden",
+                                    fontSize = (11 * fontScale).sp,
+                                    color = Color.Black.copy(alpha = 0.7f),
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Switch(
+                                    checked = employee.isHidden,
+                                    onCheckedChange = { isChecked ->
+                                        onVisibilityChange?.invoke(employee, isChecked)
+                                    },
+                                    modifier = Modifier.scale(0.7f),
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color(0xFFC62828),
+                                        checkedTrackColor = Color(0xFFE57373),
+                                        uncheckedThumbColor = Color.Gray,
+                                        uncheckedTrackColor = Color.LightGray
+                                    )
+                                )
+                            }
                         }
                     }
                 }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -75,10 +76,9 @@ fun DocumentsScreen(
 
     // Handle delete status
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
+        contentWindowInsets = WindowInsets(0),
         topBar = {
             TopAppBar(
-                windowInsets = WindowInsets(0.dp),
                 title = { Text("Documents") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -87,9 +87,9 @@ fun DocumentsScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = androidx.compose.ui.graphics.Color.White,
-                    navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
-                    actionIconContentColor = androidx.compose.ui.graphics.Color.White
+                    titleContentColor = ComposeColor.White,
+                    navigationIconContentColor = ComposeColor.White,
+                    actionIconContentColor = ComposeColor.White
                 ),
                 actions = {
                     IconButton(onClick = { viewModel.fetchDocuments(forceRefresh = true) }) {

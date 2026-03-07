@@ -1816,6 +1816,27 @@ open class EmployeeViewModel @Inject constructor(
     // =========================================================
     //  UI CONTROLS
     // =========================================================
+    fun updateEmployeeStatus(kgid: String, isApproved: Boolean) {
+        viewModelScope.launch {
+            employeeRepo.updateEmployeeFields(kgid, mapOf("isApproved" to isApproved)).collect { result ->
+                if (result is RepoResult.Success) {
+                    refreshEmployees()
+                }
+            }
+        }
+    }
+
+    fun updateEmployeeVisibility(kgid: String, isHidden: Boolean) {
+        viewModelScope.launch {
+            employeeRepo.updateEmployeeFields(kgid, mapOf("isHidden" to isHidden)).collect { result ->
+                if (result is RepoResult.Success) {
+                    refreshEmployees()
+                }
+            }
+        }
+    }
+
+    // =========================================================
     // =========================================================
     //  UI CONTROLS
     // =========================================================

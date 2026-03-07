@@ -283,7 +283,7 @@ fun SearchFilterBar(
         }
 
         val placeholderText = if (searchFilter == SearchFilter.ALL) {
-            "Search by Name, Mobile, Rank, Station, Blood..."
+            "Name, Mobile, Rank, Station, Blood..."
         } else {
             "Search by $searchLabel"
         }
@@ -296,7 +296,7 @@ fun SearchFilterBar(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
-            placeholder = { Text(placeholderText) },
+            placeholder = { Text(placeholderText, maxLines = 1) },
             leadingIcon = { Icon(Icons.Default.Search, null, tint = PrimaryTeal) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
@@ -311,6 +311,7 @@ fun SearchFilterBar(
             shape = RoundedCornerShape(15.dp),
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             singleLine = true,
+            maxLines = 1,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = PrimaryTeal,
                 unfocusedBorderColor = Color.LightGray,
@@ -325,7 +326,6 @@ fun SearchFilterBar(
             contentPadding = PaddingValues(horizontal = 2.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 8.dp)
         ) {
             items(searchFields) { filter ->
                 if (filter == SearchFilter.KGID && !isAdmin) return@items

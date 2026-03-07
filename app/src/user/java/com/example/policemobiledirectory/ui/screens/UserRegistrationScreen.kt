@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.unit.dp
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -87,7 +88,6 @@ fun UserRegistrationScreen(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp)
     ) { paddingValues ->
         val isProcessing = pendingStatus is OperationStatus.Loading || hasSubmittedState.value
         

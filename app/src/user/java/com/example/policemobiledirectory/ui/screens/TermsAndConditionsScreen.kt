@@ -1,6 +1,8 @@
 package com.example.policemobiledirectory.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -16,10 +18,8 @@ import androidx.navigation.NavController
 @Composable
 fun TermsAndConditionsScreen(navController: NavController) {
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
-                windowInsets = WindowInsets(0.dp),
                 title = { Text("Terms & Conditions") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {

@@ -329,4 +329,3 @@ fun LeaveEntryScreen(
         )
     }
 }
-}

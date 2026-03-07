@@ -277,43 +277,62 @@ open class EmployeeRepository @Inject constructor(
             // Step 1 — Local lookup (Room)
             val localEmployee = employeeDao.getEmployeeByEmail(normalizedEmail)
             if (localEmployee != null) {
+                if (!localEmployee.isApproved) {
+                    emit(RepoResult.Error(null, "Your app access has been disabled. Please contact an admin."))
+                    return@flow
+                }
+                
                 val storedHash = localEmployee.pin
                 if (!storedHash.isNullOrEmpty() && PinHasher.verifyPin(pin, storedHash)) {
                     Log.d(TAG, "LoginFlow: offline login success for $email")
                     
-                    // ✅ Sign in anonymously and update firebaseUid even for offline login
+                    // ✅ Step 1.1: Live check if possible before confirming login
                     try {
                         val authResult = FirebaseAuth.getInstance().signInAnonymously().await()
                         val firebaseUid = authResult.user?.uid
+                        
                         if (firebaseUid != null) {
-                            // Update firebaseUid in Firestore if different
                             val kgid = localEmployee.kgid.takeIf { !it.isNullOrBlank() }
                             if (kgid != null) {
-                                try {
-                                    val docRef = employeesCollection.document(kgid)
-                                    val currentDoc = docRef.get().await()
-                                    val currentFirebaseUid = currentDoc.getString("firebaseUid")
-                                    if (currentFirebaseUid != firebaseUid) {
-                                        docRef.update("firebaseUid", firebaseUid).await()
-                                        Log.d(TAG, "✅ Updated firebaseUid in Firestore (offline login): $firebaseUid")
-                                    }
-                                } catch (e: Exception) {
-                                    Log.w(TAG, "⚠️ Failed to update firebaseUid in Firestore (offline): ${e.message}")
+                                val docRef = employeesCollection.document(kgid)
+                                val currentDoc = docRef.get().await()
+                                
+                                // 🔴 LIVE APPROVAL CHECK
+                                val isApproved = currentDoc.getBoolean("isApproved") ?: true
+                                if (!isApproved) {
+                                    Log.w(TAG, "🔴 Live check: User access disabled for $email")
+                                    // Update local cache to prevent future offline login
+                                    employeeDao.insertEmployee(localEmployee.copy(isApproved = false))
+                                    emit(RepoResult.Error(null, "Your app access has been disabled. Please contact an admin."))
+                                    return@flow
                                 }
+
+                                // Update firebaseUid if different
+                                val currentFirebaseUid = currentDoc.getString("firebaseUid")
+                                if (currentFirebaseUid != firebaseUid) {
+                                    docRef.update("firebaseUid", firebaseUid).await()
+                                    Log.d(TAG, "✅ Updated firebaseUid in Firestore: $firebaseUid")
+                                }
+                                
+                                // Update local cache with firebaseUid and latest info
+                                val updatedEmployee = localEmployee.copy(
+                                    firebaseUid = firebaseUid,
+                                    isApproved = true // Already checked above
+                                )
+                                employeeDao.insertEmployee(updatedEmployee)
+                                emit(RepoResult.Success(updatedEmployee.toEmployee()))
+                                return@flow
                             }
-                            
-                            // Update local cache with firebaseUid
-                            val updatedEmployee = localEmployee.copy(firebaseUid = firebaseUid)
-                            employeeDao.insertEmployee(updatedEmployee)
-                            emit(RepoResult.Success(updatedEmployee.toEmployee()))
-                        } else {
-                            emit(RepoResult.Success(localEmployee.toEmployee()))
                         }
                     } catch (e: Exception) {
-                        Log.w(TAG, "⚠️ Failed to sign in anonymously (offline login): ${e.message}")
-                        // Continue with offline login anyway
+                        Log.w(TAG, "⚠️ Failed to perform live check (offline fallback): ${e.message}")
+                        // If network fails, we fall back to local data (existing behavior)
                         emit(RepoResult.Success(localEmployee.toEmployee()))
+                        return@flow
                     }
+
+                    // Fallback for cases where kgid is missing or anonymous login failed
+                    emit(RepoResult.Success(localEmployee.toEmployee()))
                     return@flow
                 }
             }
@@ -331,6 +350,12 @@ open class EmployeeRepository @Inject constructor(
             }
 
             val doc = snapshot.documents.first()
+            val isApproved = doc.getBoolean("isApproved") ?: true
+            if (!isApproved) {
+                emit(RepoResult.Error(null, "Your app access has been disabled. Please contact an admin."))
+                return@flow
+            }
+            
             // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
             val docKgid = doc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc.id
             val remoteEmployee = doc.toObject(Employee::class.java)?.copy(kgid = docKgid)
@@ -602,6 +627,10 @@ open class EmployeeRepository @Inject constructor(
             }
 
             val emp = mapEmployeeFromResponse(empData)
+            
+            if (!emp.isApproved) {
+                return RepoResult.Error(null, "Your app access has been disabled. Please contact an admin.")
+            }
             
             try {
                 val authResult = FirebaseAuth.getInstance().signInAnonymously().await()
@@ -1124,8 +1153,17 @@ open class EmployeeRepository @Inject constructor(
             val user = result.user ?: throw IllegalStateException("Firebase user is null")
             val email = user.email ?: throw IllegalStateException("Google account has no email")
             val snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, email).limit(1).get().await()
-            if (snapshot.isEmpty) emit(RepoResult.Error(null,"User not found: $email"))
-            else emit(RepoResult.Success(true))
+            if (snapshot.isEmpty) {
+                emit(RepoResult.Error(null,"User not found: $email"))
+            } else {
+                val doc = snapshot.documents.first()
+                val isApproved = doc.getBoolean("isApproved") ?: true
+                if (!isApproved) {
+                    emit(RepoResult.Error(null, "Your app access has been disabled. Please contact an admin."))
+                } else {
+                    emit(RepoResult.Success(true))
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "signInWithGoogleIdToken failed", e)
             emit(RepoResult.Error(null,e.message ?: "Google Sign-In failed"))
@@ -1239,10 +1277,53 @@ open class EmployeeRepository @Inject constructor(
         }
     }
 
+    /**
+     * ✅ Checks the LIVE isApproved value directly from Firestore for the given email.
+     * This bypasses the local Room cache and is used to detect if an admin has disabled
+     * a user who is already logged in with a cached session.
+     * Returns:
+     *  - true  → user is approved / access enabled
+     *  - false → user is NOT approved / access disabled
+     *  - null  → could not reach Firestore (network off, etc.) → do NOT logout
+     */
+    suspend fun checkIsApprovedFromFirestore(email: String): Boolean? = withContext(ioDispatcher) {
+        try {
+            val normalizedEmail = email.trim().lowercase()
+            val snapshot = employeesCollection
+                .whereEqualTo(FIELD_EMAIL, normalizedEmail)
+                .limit(1)
+                .get()
+                .await()
+
+            if (snapshot.isEmpty) {
+                Log.w(TAG, "checkIsApprovedFromFirestore: No doc found for $normalizedEmail")
+                return@withContext null
+            }
+
+            val doc = snapshot.documents.first()
+            val isApproved = doc.getBoolean("isApproved") ?: true
+            Log.d(TAG, "checkIsApprovedFromFirestore: $normalizedEmail → isApproved=$isApproved")
+
+            // Sync the updated value into local Room cache so next offline check is correct
+            val kgid = doc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc.id
+            val localEntity = employeeDao.getEmployeeByEmail(normalizedEmail)
+            if (localEntity != null && localEntity.isApproved != isApproved) {
+                employeeDao.insertEmployee(localEntity.copy(isApproved = isApproved))
+                Log.d(TAG, "checkIsApprovedFromFirestore: Synced isApproved=$isApproved for $kgid")
+            }
+
+            isApproved
+        } catch (e: Exception) {
+            Log.w(TAG, "checkIsApprovedFromFirestore: Network error — skipping logout check: ${e.message}")
+            null // null = unable to check → don't force logout (offline safety)
+        }
+    }
+
     suspend fun logout() = withContext(ioDispatcher) {
         auth.signOut()
         employeeDao.clearEmployees()
     }
+
 
     // -------------------------------------------------------------------
     // ENTITY MAPPERS (Room <-> Domain)
