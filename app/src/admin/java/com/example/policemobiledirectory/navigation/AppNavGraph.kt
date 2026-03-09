@@ -1,5 +1,6 @@
 package com.example.policemobiledirectory.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -61,10 +62,11 @@ fun AppNavGraph(
             }
         ) {
             Scaffold(
+                contentWindowInsets = WindowInsets(0),
                 bottomBar = {
                     BottomNavigationBar(
                         navController = navController,
-                        drawerState = drawerState, scope = scope // Removed drawerState and scope as they are not needed in the BottomBar
+                        drawerState = drawerState, scope = scope
                     )
                 }
             ) { innerPadding ->

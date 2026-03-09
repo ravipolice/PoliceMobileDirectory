@@ -62,8 +62,7 @@ fun NavigationDrawer(
 
     ModalDrawerSheet(
         modifier = Modifier
-            .width(280.dp)
-            .statusBarsPadding(),
+            .width(280.dp),
         drawerShape = RectangleShape,
         drawerContainerColor = MaterialTheme.colorScheme.surface,
     ) {
@@ -84,6 +83,7 @@ fun NavigationDrawer(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .statusBarsPadding()
                         .padding(vertical = 26.dp, horizontal = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {

@@ -959,6 +959,27 @@ open class EmployeeRepository @Inject constructor(
         }
     }.flowOn(ioDispatcher)
 
+    // Update specific fields on an employee document (e.g., isApproved, isHidden)
+    fun updateEmployeeFields(kgid: String, fields: Map<String, Any>): Flow<RepoResult<Boolean>> = flow {
+        emit(RepoResult.Loading)
+        try {
+            employeesCollection.document(kgid).update(fields).await()
+            // Sync to local Room cache
+            employeeDao.getEmployeeByKgid(kgid)?.let { local ->
+                val updated = if (fields.containsKey("isApproved")) {
+                    local.copy(isApproved = fields["isApproved"] as Boolean)
+                } else {
+                    local
+                }
+                employeeDao.insertEmployee(updated)
+            }
+            emit(RepoResult.Success(true))
+        } catch (e: Exception) {
+            Log.e(TAG, "updateEmployeeFields failed", e)
+            emit(RepoResult.Error(null, "Failed to update employee: ${e.message}"))
+        }
+    }.flowOn(ioDispatcher)
+
     // Delete employee by email (helper function)
     suspend fun deleteEmployeeByEmail(email: String): RepoResult<Boolean> = withContext(ioDispatcher) {
         try {
@@ -1165,10 +1186,11 @@ open class EmployeeRepository @Inject constructor(
             var snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, email).limit(1).get().await()
             
             // ✅ Fallback to admins collection
+            var isAdminCollection = false
             if (snapshot.isEmpty) {
                 snapshot = firestore.collection("admins").whereEqualTo("email", email).limit(1).get().await()
+                if (!snapshot.isEmpty) isAdminCollection = true
             }
-            
             
             if (snapshot.isEmpty) {
                 emit(RepoResult.Error(null,"User not found: $email"))
