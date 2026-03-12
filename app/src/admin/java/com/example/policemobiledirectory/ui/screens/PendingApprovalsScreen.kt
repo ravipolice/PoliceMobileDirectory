@@ -256,9 +256,21 @@ fun PendingApprovalCard(
             entity.mobile2?.takeIf { it.isNotBlank() }?.let { Text("Mobile 2: $it") }
             Text("District: ${entity.district}")
             Text("Station: ${entity.station}")
+            entity.unit?.takeIf { it.isNotBlank() }?.let { Text("Unit: $it") }
             Text("Rank: ${entity.rank}")
             entity.metalNumber?.takeIf { it.isNotBlank() }?.let { Text("Metal No: $it") }
-            Text("Blood Group: ${entity.bloodGroup ?: "??"}")
+            
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("Gender: ${entity.gender}")
+                Text("Blood Group: ${entity.bloodGroup ?: "??"}")
+            }
+            
+            Text("Date of Birth: ${formatDate(entity.dateOfBirth, context)}")
+            Text("Service Start Date: ${formatDate(entity.serviceStartDate, context)}")
+            
+            entity.landline?.takeIf { it.isNotBlank() }?.let { Text("Landline: $it") }
+            entity.landline2?.takeIf { it.isNotBlank() }?.let { Text("Landline 2: $it") }
+            
             Text("Registered On: ${formatDate(entity.createdAt, context)}")
 
             Spacer(modifier = Modifier.height(12.dp))

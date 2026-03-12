@@ -27,6 +27,7 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -64,14 +65,30 @@ fun GalleryScreen(
     var viewMode by remember { mutableStateOf(ViewMode.Grid) } // Grid or List view
     var columnsPerRow by remember { mutableStateOf(4) } // 1, 2, 4, 6, 8 images per row
 
-    // Get the current back stack entry to detect when screen comes back into focus
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+    var showDriveNotice by remember { mutableStateOf(false) }
+    val prefs = remember { context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
     
     // 🔹 Fetch gallery images on initial composition
     LaunchedEffect(Unit) {
+        val hasSeenNotice = prefs.getBoolean("seen_gallery_drive_notice", false)
+        if (!hasSeenNotice) {
+            showDriveNotice = true
+        }
         android.util.Log.d("GalleryScreen", "🔄 LaunchedEffect(Unit) - Fetching gallery images on initial load")
         viewModel.fetchGalleryImages()
+    }
+    
+    // Get the current back stack entry to detect when screen comes back into focus
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    if (showDriveNotice) {
+        GoogleDriveNoticeDialog(
+            onDismiss = {
+                showDriveNotice = false
+                prefs.edit().putBoolean("seen_gallery_drive_notice", true).apply()
+            }
+        )
     }
     
     // 🔹 Fetch gallery images when coming back to this screen
@@ -119,6 +136,9 @@ fun GalleryScreen(
                         },
                         modifier = Modifier.padding(end = 8.dp)
                     )
+                    IconButton(onClick = { shareAppLink(context) }) {
+                        Icon(Icons.Default.Share, contentDescription = "Share App")
+                    }
                     IconButton(onClick = { viewModel.fetchGalleryImages(forceRefresh = true) }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
@@ -165,11 +185,11 @@ fun GalleryScreen(
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    // ✅ Filter out invalid images before displaying
                                     items(galleryImages.filter { it.isValid }) { image ->
                                         GalleryImageItem(
                                             image = image,
-                                            onClick = { fullScreenImage = image.resolvedUrl ?: image.displayUrl }
+                                            onClick = { fullScreenImage = image.resolvedUrl ?: image.displayUrl },
+                                            onImageError = { url -> viewModel.markImageAsBroken(url) }
                                         )
                                     }
                                 }
@@ -180,11 +200,11 @@ fun GalleryScreen(
                                     contentPadding = PaddingValues(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    // ✅ Filter out invalid images before displaying
                                     items(galleryImages.filter { it.isValid }) { image ->
                                         GalleryImageListItem(
                                             image = image,
-                                            onClick = { fullScreenImage = image.resolvedUrl ?: image.displayUrl }
+                                            onClick = { fullScreenImage = image.resolvedUrl ?: image.displayUrl },
+                                            onImageError = { url -> viewModel.markImageAsBroken(url) }
                                         )
                                     }
                                 }
@@ -193,6 +213,14 @@ fun GalleryScreen(
                     }
                 }
                 is OperationStatus.Idle -> EmptySection(icon = Icons.Default.PhotoLibrary, message = "No images loaded")
+            }
+
+            // 💡 Google Drive Fetching Disclaimer
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                GoogleDriveDisclaimerBanner()
             }
         }
     }
@@ -433,7 +461,8 @@ fun ViewModeToggle(
 @Composable
 fun GalleryImageItem(
     image: GalleryImage,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onImageError: (String) -> Unit = {}
 ) {
     // ✅ Use displayUrl and convert Drive URL to direct image URL for display
     val displayUrl = image.displayUrl
@@ -447,28 +476,81 @@ fun GalleryImageItem(
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
     ) {
-        if (imageUrl.isNotBlank()) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = "Gallery Image",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            // Show placeholder when URL is invalid
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
+                    .weight(1f)
+                    .fillMaxWidth()
             ) {
-                Icon(
-                    imageVector = Icons.Default.Image,
-                    contentDescription = "No Image",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.size(48.dp)
-                )
+                if (imageUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = "Gallery Image",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        onError = {
+                            onImageError(image.resolvedUrl ?: image.displayUrl ?: "")
+                        }
+                    )
+                } else {
+                    // Show placeholder when URL is invalid
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = "No Image",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
+                }
             }
+            
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = image.resolvedTitle,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            fontWeight = FontWeight.Bold
+                        )
+                        image.resolvedCategory?.let { category ->
+                            val badgeColor = when {
+                                category.contains("Missing", ignoreCase = true) -> Color(0xFFE53935) // Red
+                                category.contains("Unidentified", ignoreCase = true) -> Color(0xFFFB8C00) // Orange
+                                else -> MaterialTheme.colorScheme.primary
+                            }
+                            Surface(
+                                color = badgeColor,
+                                shape = RoundedCornerShape(4.dp),
+                                modifier = Modifier.padding(top = 2.dp)
+                            ) {
+                                Text(
+                                    text = category.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                        }
+                    }
+                }
         }
     }
 }
@@ -479,7 +561,8 @@ fun GalleryImageItem(
 @Composable
 fun GalleryImageListItem(
     image: GalleryImage,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onImageError: (String) -> Unit = {}
 ) {
     // ✅ Use displayUrl and convert Drive URL to direct image URL for display
     val displayUrl = image.displayUrl
@@ -501,7 +584,6 @@ fun GalleryImageListItem(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Image thumbnail
             if (imageUrl.isNotBlank()) {
                 AsyncImage(
                     model = imageUrl,
@@ -509,7 +591,10 @@ fun GalleryImageListItem(
                     modifier = Modifier
                         .size(80.dp)
                         .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    onError = {
+                        onImageError(image.resolvedUrl ?: image.displayUrl ?: "")
+                    }
                 )
             } else {
                 // Show placeholder when URL is invalid
@@ -539,12 +624,24 @@ fun GalleryImageListItem(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )
-                image.resolvedCategory?.let {
-                    Text(
-                        text = "Category: $it",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
+                image.resolvedCategory?.let { category ->
+                    val badgeColor = when {
+                        category.contains("Missing", ignoreCase = true) -> Color(0xFFE53935)
+                        category.contains("Unidentified", ignoreCase = true) -> Color(0xFFFB8C00)
+                        else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                    }
+                    Surface(
+                        color = badgeColor,
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = category.uppercase(),
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
                 image.resolvedDescription?.let {
                     if (it.isNotBlank()) {

@@ -30,7 +30,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -65,6 +69,7 @@ fun NavigationDrawer(
             .width(280.dp),
         drawerShape = RectangleShape,
         drawerContainerColor = MaterialTheme.colorScheme.surface,
+        windowInsets = WindowInsets(0, 0, 0, 0) // Draw completely edge-to-edge
     ) {
         Column(
             modifier = Modifier
@@ -84,7 +89,7 @@ fun NavigationDrawer(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
-                        .padding(vertical = 26.dp, horizontal = 12.dp),
+                        .padding(vertical = 12.dp, horizontal = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Profile Image with Blood Group in top right corner
@@ -163,24 +168,28 @@ fun NavigationDrawer(
 
                     Spacer(modifier = Modifier.height(10.dp))
                     
-                    // Name (bold, prominent) + rank (smaller, no brackets)
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // Name + Rank
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    ) {
                         Text(
-                            text = currentUser?.name ?: "",
+                            text = buildAnnotatedString {
+                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                    append(currentUser?.name ?: "")
+                                }
+                                currentUser?.displayRank?.takeIf { it.isNotBlank() }?.let { rank ->
+                                    withStyle(style = SpanStyle(fontWeight = FontWeight.Normal, fontSize = 16.sp)) {
+                                        append(" $rank")
+                                    }
+                                }
+                            },
                             style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
                                 color = Color.White
-                            )
+                            ),
+                            textAlign = TextAlign.Center
                         )
-                        currentUser?.displayRank?.takeIf { it.isNotBlank() }?.let { rank ->
-                            Text(
-                                text = rank,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = Color.White.copy(alpha = 0.9f),
-                                    fontSize = 13.sp
-                                )
-                            )
-                        }
                     }
                     
                     // KGID (larger)
@@ -399,7 +408,26 @@ fun NavigationDrawer(
                     onClick = { showLogoutDialog = true }
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                DrawerItem(
+                    icon = Icons.Default.ExitToApp,
+                    text = "Rate App",
+                    onClick = {
+                        val packageName = "com.pmd.userapp"
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            data = Uri.parse("market://details?id=$packageName")
+                            setPackage("com.android.vending")
+                        }
+                        try {
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            // Fallback to browser if Play Store app is not installed
+                            val browserIntent = Intent(Intent.ACTION_VIEW).apply {
+                                data = Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+                            }
+                            context.startActivity(browserIntent)
+                        }
+                    }
+                )
 
                 DrawerItem(
                     icon = Icons.Default.Email,
@@ -448,7 +476,7 @@ fun DrawerItem(
             .fillMaxWidth()
             .background(containerColor)
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(

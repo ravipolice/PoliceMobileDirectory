@@ -946,6 +946,59 @@ open class EmployeeRepository @Inject constructor(
             emit(RepoResult.Error(null,"Failed to add/update employee: ${e.message}"))
         }
     }.flowOn(ioDispatcher)
+    
+    /**
+     * Checks if a KGID or Email already exists in either the 'employees' or 'pending_registrations' collection.
+     * Returns a descriptive error message if a duplicate is found, otherwise null.
+     */
+    suspend fun checkDuplicates(kgid: String, email: String, excludeKgid: String? = null): String? = withContext(ioDispatcher) {
+        val normalizedEmail = email.trim().lowercase()
+        val normalizedKgid = kgid.trim()
+        
+        try {
+            // 1. Check active employees collection
+            // Check KGID (document ID)
+            if (normalizedKgid != excludeKgid) {
+                val kgidDoc = employeesCollection.document(normalizedKgid).get().await()
+                if (kgidDoc.exists()) return@withContext "KGID $normalizedKgid is already registered to ${kgidDoc.getString("name")}."
+            }
+            
+            // Check Email
+            val emailQuery = employeesCollection.whereEqualTo(FIELD_EMAIL, normalizedEmail).limit(1).get().await()
+            if (!emailQuery.isEmpty) {
+                val doc = emailQuery.documents.first()
+                if (doc.id != excludeKgid) {
+                    return@withContext "Email $normalizedEmail is already registered to ${doc.getString("name")} (KGID: ${doc.id})."
+                }
+            }
+            
+            // 2. Check pending_registrations collection
+            val pendingCollection = firestore.collection("pending_registrations")
+            
+            // Check KGID in pending
+            val pendingKgidQuery = pendingCollection.whereEqualTo("kgid", normalizedKgid)
+                .whereEqualTo("status", "pending")
+                .limit(1).get().await()
+            if (!pendingKgidQuery.isEmpty) {
+                val doc = pendingKgidQuery.documents.first()
+                return@withContext "KGID $normalizedKgid has a pending registration for ${doc.getString("name")}."
+            }
+            
+            // Check Email in pending
+            val pendingEmailQuery = pendingCollection.whereEqualTo("email", normalizedEmail)
+                .whereEqualTo("status", "pending")
+                .limit(1).get().await()
+            if (!pendingEmailQuery.isEmpty) {
+                val doc = pendingEmailQuery.documents.first()
+                return@withContext "Email $normalizedEmail has a pending registration for ${doc.getString("name")}."
+            }
+            
+            null // No duplicates found
+        } catch (e: Exception) {
+            Log.e(TAG, "checkDuplicates failed", e)
+            null // Fallback to allowing in case of error (Firestore will enforce security rules if any)
+        }
+    }
 
     fun deleteEmployee(kgid: String): Flow<RepoResult<Boolean>> = flow {
         emit(RepoResult.Loading)
@@ -1075,6 +1128,33 @@ open class EmployeeRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "getEmployees failed", e)
             emit(RepoResult.Error(null,"Failed to fetch employees: ${e.message}"))
+        }
+    }.flowOn(ioDispatcher)
+
+    fun getEmployeeByKgid(kgid: String): Flow<RepoResult<Employee>> = flow {
+        emit(RepoResult.Loading)
+        try {
+            // 1. Try local cache first
+            val cached = employeeDao.getEmployeeByKgid(kgid)
+            if (cached != null) {
+                emit(RepoResult.Success(cached.toEmployee()))
+            }
+            
+            // 2. Fallback to Firestore (fetch by Doc ID which is KGID)
+            val doc = employeesCollection.document(kgid).get().await()
+            if (doc.exists()) {
+                val entity = buildEmployeeEntityFromDoc(doc)
+                employeeDao.insertEmployee(entity)
+                emit(RepoResult.Success(entity.toEmployee()))
+            } else if (cached == null) {
+                emit(RepoResult.Error(null, "Employee not found"))
+            } else {
+                // Already emitted success from cache, but Firestore doc doesn't exist? 
+                // Just stop here.
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "getEmployeeByKgid failed", e)
+            emit(RepoResult.Error(null, "Failed to fetch employee: ${e.message}"))
         }
     }.flowOn(ioDispatcher)
 

@@ -17,6 +17,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.policemobiledirectory.ui.screens.*
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import android.net.Uri
 import com.example.policemobiledirectory.viewmodel.AddEditEmployeeViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -40,12 +41,13 @@ fun AppNavGraph(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val hideBars = currentRoute in listOf(
-        Routes.SPLASH,
-        Routes.LOGIN,
-        Routes.USER_REGISTRATION,
-        Routes.FORGOT_PIN
-    )
+    val hideBars = currentRoute?.let { route ->
+        route.startsWith(Routes.SPLASH) ||
+        route.startsWith(Routes.LOGIN) ||
+        route.startsWith(Routes.REGISTER) ||
+        route.startsWith(Routes.USER_REGISTRATION) ||
+        route.startsWith(Routes.FORGOT_PIN)
+    } ?: true
 
     // ✅ Global Navigation Drawer (only wraps if not hidden)
     if (!hideBars) {
@@ -77,6 +79,7 @@ fun AppNavGraph(
                     // ✅ 2. Pass the callback down to the content host
                     onGoogleSignInClicked = onGoogleSignInClicked,
                     startDestination = startDestination,
+                    scope = scope,
                     modifier = androidx.compose.ui.Modifier.padding(innerPadding)
                 )
             }
@@ -88,7 +91,8 @@ fun AppNavGraph(
             onThemeToggle = onThemeToggle,
             // ✅ 3. Also pass it here for the initial composition
             onGoogleSignInClicked = onGoogleSignInClicked,
-            startDestination = startDestination
+            startDestination = startDestination,
+            scope = scope
         )
     }
 }
@@ -99,6 +103,7 @@ private fun AppNavHostContent(
     onThemeToggle: () -> Unit,
     onGoogleSignInClicked: () -> Unit,
     startDestination: String,
+    scope: kotlinx.coroutines.CoroutineScope,
     modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier
 ) {
     val isAdmin by employeeViewModel.isAdmin.collectAsStateWithLifecycle()
@@ -121,9 +126,19 @@ private fun AppNavHostContent(
         composable(Routes.LOGIN) {
             LoginScreen(
                 viewModel = employeeViewModel,
-                onLoginSuccess = {
-                    navController.navigate(Routes.EMPLOYEE_LIST) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
+                onLoginSuccess = { isAdmin ->
+                    scope.launch {
+                        var target = Routes.EMPLOYEE_LIST
+                        if (isAdmin) {
+                            employeeViewModel.refreshPendingRegistrations()
+                            delay(500)
+                            if (employeeViewModel.pendingApprovalsTotalCount.value > 0) {
+                                target = Routes.PENDING_APPROVALS
+                            }
+                        }
+                        navController.navigate(target) {
+                            popUpTo(Routes.LOGIN) { inclusive = true }
+                        }
                     }
                 },
                 onRegisterNewUser = { email, name ->

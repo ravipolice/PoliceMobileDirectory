@@ -58,6 +58,8 @@ class ConstantsViewModel @Inject constructor(
     private val _ksrpBattalions = MutableStateFlow(Constants.ksrpBattalions)
     val ksrpBattalions: StateFlow<List<String>> = _ksrpBattalions.asStateFlow()
 
+    val globalHiddenFields: StateFlow<List<String>> = constantsRepository.globalHiddenFields
+
     // Loading and error states for refresh operation
     private val _refreshStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
     val refreshStatus: StateFlow<OperationStatus<String>> = _refreshStatus.asStateFlow()

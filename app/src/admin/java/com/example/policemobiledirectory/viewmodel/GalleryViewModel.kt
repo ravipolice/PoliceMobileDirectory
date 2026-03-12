@@ -74,7 +74,7 @@ class GalleryViewModel @Inject constructor(
                     repository.fetchGalleryImages()
                 }
                 
-                val imageList = images ?: emptyList()
+                val imageList = (images ?: emptyList())
                 
                 // Update cache
                 cachedImages = imageList
@@ -168,13 +168,22 @@ class GalleryViewModel @Inject constructor(
             
             // Optimistic update - remove from UI immediately
             val imageToDelete = _galleryImages.value.find { it.resolvedTitle == title }
-            val updatedList = _galleryImages.value.filter { it.resolvedTitle != title }
+            
+            // Mark as pending deletion in repository (Singleton)
+            val urlToDelete = imageToDelete?.resolvedUrl ?: imageToDelete?.displayUrl
+            urlToDelete?.let { repository.markAsDeleting(it) }
+            
+            val updatedList = _galleryImages.value.filter { 
+                val url = it.resolvedUrl ?: it.displayUrl
+                it.resolvedTitle != title || (url != null && url != urlToDelete)
+            }
             _galleryImages.value = updatedList
             
             try {
                 val userEmail = sessionManager.userEmail.first()
                 val request = GalleryDeleteRequest(
                     title = title,
+                    url = urlToDelete,
                     userEmail = userEmail
                 )
                 
@@ -186,12 +195,9 @@ class GalleryViewModel @Inject constructor(
                     _deleteStatus.value = OperationStatus.Success("Image deleted successfully")
                     
                     // Delete from Firestore (non-blocking)
-                    imageToDelete?.let { image ->
-                        val url = image.resolvedUrl ?: image.displayUrl
-                        if (url != null) {
-                            launch {
-                                deleteFromFirestore(url)
-                            }
+                    urlToDelete?.let { url ->
+                        launch {
+                            deleteFromFirestore(url)
                         }
                     }
                     
@@ -200,12 +206,14 @@ class GalleryViewModel @Inject constructor(
                     fetchGalleryImages(forceRefresh = true)
                 } else {
                     // Revert optimistic update on failure
+                    urlToDelete?.let { repository.clearDeletionMarker(it) }
                     _galleryImages.value = _galleryImages.value + listOfNotNull(imageToDelete)
                     val errorMsg = response.error ?: "Delete failed"
                     _deleteStatus.value = OperationStatus.Error(errorMsg)
                 }
             } catch (e: Exception) {
                 // Revert optimistic update on failure
+                urlToDelete?.let { repository.clearDeletionMarker(it) }
                 _galleryImages.value = _galleryImages.value + listOfNotNull(imageToDelete)
                 val errorInfo = ErrorHandler.handleException(e, "GalleryViewModel.deleteGalleryImage")
                 _deleteStatus.value = OperationStatus.Error(errorInfo.userFriendlyMessage)

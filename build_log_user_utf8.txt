@@ -1,0 +1,100 @@
+﻿Configuration on demand is an incubating feature.
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preUserDebugBuild UP-TO-DATE
+> Task :app:generateUserDebugBuildConfig FROM-CACHE
+> Task :app:processUserDebugNavigationResources FROM-CACHE
+> Task :app:compileUserDebugNavigationResources FROM-CACHE
+> Task :app:generateUserDebugResValues FROM-CACHE
+> Task :app:processUserDebugGoogleServices FROM-CACHE
+> Task :app:mapUserDebugSourceSetPaths
+> Task :app:generateUserDebugResources FROM-CACHE
+> Task :app:checkUserDebugAarMetadata
+> Task :app:mergeUserDebugResources FROM-CACHE
+> Task :app:packageUserDebugResources FROM-CACHE
+> Task :app:parseUserDebugLocalResources FROM-CACHE
+> Task :app:createUserDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksUserDebug FROM-CACHE
+> Task :app:processUserDebugMainManifest FROM-CACHE
+> Task :app:processUserDebugManifest FROM-CACHE
+> Task :app:processUserDebugManifestForPackage FROM-CACHE
+> Task :app:processUserDebugResources FROM-CACHE
+> Task :app:kspUserDebugKotlin
+
+> Task :app:compileUserDebugKotlin
+./gradlew : e: file:///C:/Us
+ers/ravip/AndroidStudioProje
+cts/PoliceMobileDirectory/ap
+p/src/user/java/com/example/
+policemobiledirectory/ui/scr
+eens/CommonUi.kt:66:26 
+Unresolved reference 
+'FontWeight'.
+At line:1 char:1
++ ./gradlew 
+:app:compileUserDebugKotlin 
+> build_log_user.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~
+    + CategoryInfo          
+    : NotSpecified: (e: fi  
+  le:///C:/U...e 'FontWei   
+ ght'.:String) [], Remot    
+eException
+    + FullyQualifiedErrorId 
+    : NativeCommandError
+ 
+e: file:///C:/Users/ravip/An
+droidStudioProjects/PoliceMo
+bileDirectory/app/src/user/j
+ava/com/example/policemobile
+directory/ui/screens/CommonU
+i.kt:78:21 Unresolved 
+reference 
+'RoundedCornerShape'.
+e: file:///C:/Users/ravip/An
+droidStudioProjects/PoliceMo
+bileDirectory/app/src/user/j
+ava/com/example/policemobile
+directory/ui/screens/CommonU
+i.kt:80:68 None of the 
+following candidates is 
+applicable:
+fun Modifier.size(size: 
+Dp): Modifier
+fun Modifier.size(width: 
+Dp, height: Dp): Modifier
+fun Modifier.size(size: 
+DpSize): Modifier
+
+> Task :app:compileUserDebugKotlin FAILED
+
+FAILURE: Build failed with 
+an exception.
+
+* What went wrong:
+Execution failed for task ':
+app:compileUserDebugKotlin'.
+> A failure occurred while 
+executing org.jetbrains.kotl
+in.compilerRunner.GradleComp
+ilerRunnerWithWorkers$Gradle
+KotlinCompilerWorkAction
+   > Compilation error. See 
+log for more details
+
+* Try:
+> Run with --stacktrace 
+option to get the stack 
+trace.
+> Run with --info or 
+--debug option to get more 
+log output.
+> Run with --scan to get 
+full insights.
+> Get more help at 
+https://help.gradle.org.
+
+BUILD FAILED in 24s
+19 actionable tasks: 5 executed, 14 from cache

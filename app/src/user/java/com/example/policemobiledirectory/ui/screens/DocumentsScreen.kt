@@ -17,6 +17,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import coil.compose.rememberAsyncImagePainter
@@ -57,7 +59,26 @@ fun DocumentsScreen(
     // Get the current back stack entry to detect when screen comes back into focus
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    var showDriveNotice by remember { mutableStateOf(false) }
+    val prefs = remember { context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
     
+    LaunchedEffect(Unit) {
+        val hasSeenNotice = prefs.getBoolean("seen_documents_drive_notice", false)
+        if (!hasSeenNotice) {
+            showDriveNotice = true
+        }
+    }
+
+    if (showDriveNotice) {
+        GoogleDriveNoticeDialog(
+            onDismiss = {
+                showDriveNotice = false
+                prefs.edit().putBoolean("seen_documents_drive_notice", true).apply()
+            }
+        )
+    }
+
     LaunchedEffect(currentRoute) {
         // Only refresh if we're on the documents screen
         if (currentRoute == com.example.policemobiledirectory.navigation.Routes.DOCUMENTS) {
@@ -92,6 +113,9 @@ fun DocumentsScreen(
                     actionIconContentColor = ComposeColor.White
                 ),
                 actions = {
+                    IconButton(onClick = { shareAppLink(context) }) {
+                        Icon(Icons.Default.Share, contentDescription = "Share App")
+                    }
                     IconButton(onClick = { viewModel.fetchDocuments(forceRefresh = true) }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
@@ -203,6 +227,14 @@ fun DocumentsScreen(
                     }
                 )
             }
+
+            // 💡 Google Drive Fetching Disclaimer
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                GoogleDriveDisclaimerBanner()
+            }
         }
     }
 }
@@ -262,8 +294,20 @@ fun DocumentItem(
                     }
                 }
             }
-            doc.resolvedCategory?.let {
-                Text("Category: $it", style = MaterialTheme.typography.bodySmall)
+            doc.resolvedCategory?.let { category ->
+                Surface(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                    shape = RoundedCornerShape(4.dp),
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    Text(
+                        text = category.uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                        color = ComposeColor.White,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
             doc.resolvedDescription?.let {
                 Text("Description: $it", style = MaterialTheme.typography.bodySmall)
@@ -355,12 +399,16 @@ fun FullscreenPreviewDialog(
 
                                     // ✅ Smarter PDF/Drive Viewer Handling
                                     val viewerUrl = when {
-                                        url.contains("drive.google.com") ->
-                                            url.replace("view?usp=sharing", "preview")
-                                        url.endsWith(".pdf", true) ->
-                                            url // Direct PDF links
-                                        else ->
-                                            "https://docs.google.com/gview?embedded=true&url=$url"
+                                        url.contains("drive.google.com") -> {
+                                            if (url.contains("view?usp=sharing")) {
+                                                url.replace("view?usp=sharing", "preview")
+                                            } else if (url.contains("/view")) {
+                                                url.substringBeforeLast("/view") + "/preview"
+                                            } else {
+                                                url
+                                            }
+                                        }
+                                        else -> "https://docs.google.com/gview?embedded=true&url=${Uri.encode(url)}"
                                     }
 
                                     loadUrl(viewerUrl)

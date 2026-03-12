@@ -44,8 +44,8 @@ val bottomNavItems = listOf(
         label = "Home"
     ),
     BottomNavItem(
-        route = Routes.LEAVE_DASHBOARD,
-        icon = Icons.Default.EventNote,
-        label = "Leave Register"
+        route = Routes.PENDING_APPROVALS,
+        icon = Icons.Default.HowToReg,
+        label = "Pending Approval"
     )
 )

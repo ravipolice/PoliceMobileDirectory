@@ -18,6 +18,7 @@ data class GalleryUploadRequest(
 // 🔴 Delete Gallery Image
 data class GalleryDeleteRequest(
     val title: String,
+    val url: String? = null,        // ✅ Added for more reliable identification
     val userEmail: String? = null  // ✅ For Apps Script authentication
 )
 

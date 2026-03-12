@@ -18,6 +18,25 @@ class GalleryRepository @Inject constructor(
     private fun token() = securityConfig.getSecretToken()
     private val gson = Gson()
 
+    // 🕒 Pending deletions to prevent stale data from reappearing across screen transitions
+    private val pendingDeletions = mutableSetOf<String>()
+
+    fun markAsDeleting(url: String) {
+        pendingDeletions.add(url)
+    }
+
+    fun isDeleting(url: String): Boolean {
+        return pendingDeletions.contains(url)
+    }
+
+    fun clearDeletionMarker(url: String) {
+        pendingDeletions.remove(url)
+    }
+    
+    fun clearAllDeletionMarkers() {
+        pendingDeletions.clear()
+    }
+
     suspend fun fetchGalleryImages(): List<GalleryImage> {
         android.util.Log.d("GalleryRepository", "🔄 fetchGalleryImages() called")
         val response: Response<ResponseBody> = api.getGalleryImagesRaw(token = token())
@@ -41,27 +60,22 @@ class GalleryRepository @Inject constructor(
             val images = gson.fromJson<List<GalleryImage>>(bodyStr, listType)
             android.util.Log.d("GalleryRepository", "📥 Parsed ${images.size} images as array")
             
-            // Log first image structure for debugging
-            if (images.isNotEmpty()) {
-                val first = images.first()
-                android.util.Log.d("GalleryRepository", "📋 First image: title='${first.title}', titleLower='${first.titleLower}', resolvedTitle='${first.resolvedTitle}'")
-                android.util.Log.d("GalleryRepository", "📋 First image: url='${first.url}', urlLower='${first.urlLower}', urlMixed='${first.urlMixed}', resolvedUrl='${first.resolvedUrl}'")
-                android.util.Log.d("GalleryRepository", "📋 First image: isValid=${first.isValid}, displayUrl='${first.displayUrl}'")
+            // ✅ Filter out: 
+            // 1. Invalid images (no URL)
+            // 2. Images marked for deletion (Singleton tracking)
+            val filteredImages = images.filter { 
+                val url = it.resolvedUrl ?: it.displayUrl
+                it.isValid && (url == null || !pendingDeletions.contains(url))
             }
             
-            // ✅ Filter out invalid images (those without valid URLs)
-            val validImages = images.filter { it.isValid }
-            android.util.Log.d("GalleryRepository", "✅ Returning ${validImages.size} valid images (filtered from ${images.size} total)")
+            android.util.Log.d("GalleryRepository", "✅ Returning ${filteredImages.size} images (Filtered from ${images.size} total, ${pendingDeletions.size} pending deletions)")
             
-            if (validImages.isEmpty() && images.isNotEmpty()) {
-                android.util.Log.w("GalleryRepository", "⚠️ WARNING: Received ${images.size} images but all were filtered out")
-                // Log why each image was filtered
-                images.forEachIndexed { index, image ->
-                    android.util.Log.w("GalleryRepository", "   Image $index: title='${image.resolvedTitle}', url='${image.resolvedUrl}', isValid=${image.isValid}")
-                }
-            }
+            // Cleanup pending deletions: if an image is no longer in the raw response, 
+            // it's safely deleted from the backend.
+            val rawUrls = images.mapNotNull { it.resolvedUrl ?: it.displayUrl }.toSet()
+            pendingDeletions.removeAll { url -> !rawUrls.contains(url) }
             
-            return validImages
+            return filteredImages
         } catch (e: Exception) {
             android.util.Log.w("GalleryRepository", "⚠️ Failed to parse as array: ${e.message}")
             android.util.Log.w("GalleryRepository", "⚠️ Exception type: ${e.javaClass.simpleName}")

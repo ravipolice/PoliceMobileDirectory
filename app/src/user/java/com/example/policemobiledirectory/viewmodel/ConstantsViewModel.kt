@@ -70,6 +70,9 @@ class ConstantsViewModel @Inject constructor(
     private val _ksrpBattalions = MutableStateFlow(Constants.ksrpBattalions)
     val ksrpBattalions: StateFlow<List<String>> = _ksrpBattalions.asStateFlow()
 
+    private val _ranksWithAutoAgid = MutableStateFlow(Constants.ranksWithAutoAgid)
+    val ranksWithAutoAgid: StateFlow<Set<String>> = _ranksWithAutoAgid.asStateFlow()
+
     // Loading and error states for refresh operation
     private val _refreshStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
     val refreshStatus: StateFlow<OperationStatus<String>> = _refreshStatus.asStateFlow()

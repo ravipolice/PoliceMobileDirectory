@@ -158,6 +158,9 @@ fun EmployeeListScreen(
                         
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        IconButton(onClick = { shareAppLink(context) }) {
+                            Icon(Icons.Default.Share, contentDescription = "Share App")
+                        }
                         IconButton(onClick = {
                             viewModel.refreshEmployees()
                             viewModel.refreshOfficers()

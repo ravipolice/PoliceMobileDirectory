@@ -17,6 +17,7 @@ object Routes {
     const val EMPLOYEE_STATS = "employee_stats"
     const val OFFICER_STATS = "officer_stats"
     const val PENDING_APPROVALS = "pending_approvals"
+    const val PENDING_APPROVAL = "pending_approval"
     const val SEND_NOTIFICATION = "send_notification"
     const val UPLOAD_CSV = "upload_csv"
     const val ADD_USEFUL_LINK = "add_useful_link"

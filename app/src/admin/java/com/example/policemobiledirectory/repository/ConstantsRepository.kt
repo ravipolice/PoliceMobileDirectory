@@ -17,6 +17,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import com.example.policemobiledirectory.model.UnitModel
 import com.example.policemobiledirectory.model.UnitMapping
 
@@ -48,9 +51,15 @@ class ConstantsRepository @Inject constructor(
     private val UNITS_CACHE_KEY = "units_cache"
     private val FULL_UNITS_CACHE_KEY = "full_units_cache"
     private val RANKS_CACHE_KEY = "ranks_cache"
+    private val RANKS_METAL_CACHE_KEY = "ranks_requiring_metal_cache"
     private val STATIONS_CACHE_KEY = "stations_cache"
     private val DISTRICTS_CACHE_KEY = "districts_cache"
     private val UNIT_MAPPINGS_CACHE_KEY = "unit_mappings_cache"
+    private val GLOBAL_CONFIG_CACHE_KEY = "global_config_cache"
+
+    // Global Config State
+    private val _globalHiddenFields = MutableStateFlow<List<String>>(emptyList())
+    val globalHiddenFields: StateFlow<List<String>> = _globalHiddenFields.asStateFlow()
 
     /**
      * Check if cache needs refresh (expired or doesn't exist)
@@ -86,8 +95,10 @@ class ConstantsRepository @Inject constructor(
             .remove(UNITS_CACHE_KEY)
             .remove(FULL_UNITS_CACHE_KEY)
             .remove(RANKS_CACHE_KEY)
+            .remove(RANKS_METAL_CACHE_KEY)
             .remove(STATIONS_CACHE_KEY)
             .remove(DISTRICTS_CACHE_KEY)
+            .remove(GLOBAL_CONFIG_CACHE_KEY)
             .apply()
         Log.d("ConstantsRepository", "✅ Cache cleared - next refresh will fetch from API")
     }
@@ -152,6 +163,9 @@ class ConstantsRepository @Inject constructor(
             // 5. Fetch Stations from Firestore
             fetchStationsFromFirestore()
             
+            // 6. Fetch Global Config
+            fetchGlobalConfig()
+
             // If we reached here without crashing, Firestore operations likely succeeded
             firestoreSuccess = true
 
@@ -311,9 +325,9 @@ class ConstantsRepository @Inject constructor(
                                        mapping.scopes.contains("district_stations")
                     
                     if (mapping.isHqLevel && !hasAreaScope) {
-                        // HQ-only unit: Return all districts + HQ
-                        districts = getDistricts() + "HQ"
-                        source = "Firestore Cache (HQ-Only)"
+                        // HQ-only unit: Return ONLY HQ
+                        districts = listOf("HQ")
+                        source = "Firestore Cache (HQ-Only Fix)"
                     } else {
                         // A. Start with explicit mapping
                         districts = when (mapping.mappingType) {
@@ -353,32 +367,44 @@ class ConstantsRepository @Inject constructor(
 
 
     /**
-     * Fetch Ranks from Firestore "rankMaster" collection
+     * Fetch Ranks from Firestore "rankMaster" collection.
+     * Also caches the set of ranks requiring a metal number.
      */
     private suspend fun fetchRanksFromFirestore() {
         try {
             Log.d("ConstantsRepository", "🔄 Fetching ranks from Firestore...")
             val snapshot = firestore.collection("rankMaster")
                 .whereEqualTo("isActive", true)
-                //.orderBy("seniority_order") // Requires index, do client-side sort if needed
                 .get()
                 .await()
 
             // Map documents to Rank objects to sort
-            val ranks = snapshot.documents.mapNotNull { doc ->
+            val rankDocs = snapshot.documents.mapNotNull { doc ->
                 val id = doc.getString("rank_id") ?: doc.id
                 val order = doc.getLong("seniority_order")?.toInt() ?: 999
-                val label = doc.getString("rank_label") ?: id
-                Triple(id, order, label)
+                val requiresMetal = doc.getBoolean("requiresMetalNumber") ?: false
+                Triple(id, order, requiresMetal)
             }
             
-            // Sort by seniority order
-            val sortedRankIds = ranks.sortedBy { it.second }.map { it.first }
+            // Sort by seniority order as primary, and index in allRanksList as secondary (fallback)
+            val sortedRankIds: List<String> = rankDocs.sortedWith(
+                compareBy<Triple<String, Int, Boolean>> { it.second } // primary: seniority_order
+                .thenBy { Constants.allRanksList.indexOf(it.first).let { if (it == -1) 9999 else it } } // secondary: allRanksList
+            ).map { it.first }
 
+            // Collect ranks where requiresMetalNumber == true
+            val metalRankIds: List<String> = rankDocs
+                .filter { it.third }
+                .map { it.first }
+                .sorted()
+
+            val gson = Gson()
             if (sortedRankIds.isNotEmpty()) {
-                val json = Gson().toJson(sortedRankIds)
-                prefs.edit().putString(RANKS_CACHE_KEY, json).apply()
-                Log.d("ConstantsRepository", "✅ Fetched ${sortedRankIds.size} ranks from Firestore")
+                prefs.edit()
+                    .putString(RANKS_CACHE_KEY, gson.toJson(sortedRankIds))
+                    .putString(RANKS_METAL_CACHE_KEY, gson.toJson(metalRankIds))
+                    .apply()
+                Log.d("ConstantsRepository", "✅ Fetched ${sortedRankIds.size} ranks; ${metalRankIds.size} require metal number")
                 // Log top 5 for debug
                 Log.d("ConstantsRepository", "   Top 5 ranks: ${sortedRankIds.take(5).joinToString(", ")}")
             } else {
@@ -416,6 +442,41 @@ class ConstantsRepository @Inject constructor(
             Log.e("ConstantsRepository", "❌ Failed to fetch districts from Firestore", e)
         }
     }
+
+    /**
+     * Fetch Global App Config (including Hidden Fields)
+     */
+    private suspend fun fetchGlobalConfig() {
+        try {
+            val doc = firestore.collection("app_config").document("main_app").get().await()
+            if (doc.exists()) {
+                val hiddenFields = (doc.get("hiddenFields") as? List<String>) ?: emptyList()
+                Log.d("ConstantsRepository", "✅ Fetched Global Hidden Fields: $hiddenFields")
+                
+                // Update State
+                _globalHiddenFields.value = hiddenFields
+                
+                // Cache
+                prefs.edit()
+                    .putString(GLOBAL_CONFIG_CACHE_KEY, Gson().toJson(hiddenFields))
+                    .apply()
+            }
+        } catch (e: Exception) {
+            Log.e("ConstantsRepository", "❌ Failed to fetch global config", e)
+            // Fallback to cache
+            loadGlobalConfigFromCache()
+        }
+    }
+
+    private fun loadGlobalConfigFromCache() {
+        val json = prefs.getString(GLOBAL_CONFIG_CACHE_KEY, null)
+        if (json != null) {
+            val type = object : TypeToken<List<String>>() {}.type
+            _globalHiddenFields.value = Gson().fromJson(json, type)
+            Log.d("ConstantsRepository", "loaded global config cache: ${_globalHiddenFields.value}")
+        }
+    }
+
     /**
      * Fetch stations from Firestore "stations" collection
      */
@@ -518,12 +579,14 @@ class ConstantsRepository @Inject constructor(
     fun getRanks(): List<String> {
         // 1. Firestore
         val firestoreRanks = getCachedList(RANKS_CACHE_KEY, object : TypeToken<List<String>>() {})
-        if (firestoreRanks.isNotEmpty()) return firestoreRanks
+        if (firestoreRanks.isNotEmpty()) {
+            return sortRanks(firestoreRanks)
+        }
 
         // 2. Sheets (Legacy)
         val cached = getCachedData()
         val sheetRanks = cached?.ranks ?: emptyList()
-        if (sheetRanks.isNotEmpty()) return sheetRanks
+        if (sheetRanks.isNotEmpty()) return sortRanks(sheetRanks)
 
         // 3. Hardcoded Fallback
         return Constants.allRanksList
@@ -660,10 +723,12 @@ class ConstantsRepository @Inject constructor(
     }
 
     /**
-     * Get ranks requiring metal number (still uses hardcoded list)
-     * This could be extended to support dynamic configuration in the future
+     * Get ranks requiring metal number — reads from Firestore cache.
+     * Falls back to hardcoded list only if the cache is empty (first launch without network).
      */
     fun getRanksRequiringMetalNumber(): List<String> {
+        val cached = getCachedList(RANKS_METAL_CACHE_KEY, object : TypeToken<List<String>>() {})
+        if (cached.isNotEmpty()) return cached
         return Constants.ranksRequiringMetalNumber.toList()
     }
 
@@ -693,6 +758,16 @@ class ConstantsRepository @Inject constructor(
             listOf("HQ") + otherItems
         } else {
             otherItems
+        }
+    }
+
+    /**
+     * Helper to sort ranks based on hierarchical order in Constants.allRanksList
+     */
+    private fun sortRanks(ranks: List<String>): List<String> {
+        return ranks.sortedBy { rank ->
+            val index = Constants.allRanksList.indexOf(rank)
+            if (index == -1) 9999 else index
         }
     }
 

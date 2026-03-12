@@ -5,18 +5,31 @@ object Constants {
     // Version number for constants - increment when constants structure changes
     const val LOCAL_CONSTANTS_VERSION = 3
 
-    // Updated list of all ranks in the desired order for dropdowns
+    // Rank order for Registration Form: PC → HC → ASI → PSI → PI → Officers → Support
+    // This is the fallback; live order is controlled by seniority_order in Firestore rankMaster
     val allRanksList = listOf(
-        "APC", "CPC", "WPC", "PCW", "PC", "AHC", "CHC", "WHC", "HCW", "HC",
-        "ASI", "ARSI", "WASI", "ASIW", "RSI", "PSI", "WPSI", "PSIW",
-        "RPI", "CPI", "PI", "PIW", "WPI", "DYSP", "SDA", "FDA", "SS",
-        "GHA", "AO", "Typist", "Steno", "PA",
-        "DG & IGP", "ADGP", "IGP", "DIG", "Commandant", "DCP", "SP", "Addl SP"
-    ).sorted()
+        // PC Group (Constables)
+        "PC", "APC", "WPC", "PCW", "CPC", "S.RPC",
+        // HC Group (Head Constables)
+        "HC", "AHC", "WHC", "CHC", "HCW", "S.RHC",
+        // ASI Group
+        "ASI", "WASI", "ARSI", "ASIW", "S.ARSI",
+        // RSI / PSI Group
+        "RSI", "S.RSI", "PSI", "PSIW", "WPSI",
+        // PI Group
+        "PI", "PIW", "RPI", "S.RPI", "CPI", "WPI",
+        // Officers
+        "ACP", "DSP", "ADDL_SP", "SP", "ASST.CMDT", "DEPT.CMDT", "CMDT",
+        "DCP", "DIG", "IGP", "ADGP", "DG", "DG & IGP",
+        // Ministerial / Support
+        "FDA", "SDA", "SS", "STENO", "TYPIST", "PA", "FOLLOWER",
+        // Intelligence / Others
+        "IA", "AIO", "IO", "SIA", "CIO", "AAO", "AD", "DD", "AO"
+    )
 
-    // Set of ranks that require a metal number
+    // Set of ranks that require a metal number (fallback only — live config is in Firestore rankMaster)
     val ranksRequiringMetalNumber = setOf(
-        "APC", "CPC", "WPC", "PC", "AHC", "CHC", "WHC", "HC"
+        "AHC", "APC", "CHC", "CPC", "S.RHC", "S.RPC", "WHC", "WPC"
     ).sorted()
 
     val bloodGroupsList = listOf(
@@ -31,6 +44,11 @@ object Constants {
     // High Ranking Officers (No District/Station required, use AGID)
     val highRankingOfficers = setOf(
         "DG & IGP", "ADGP", "IGP", "DIG", "Commandant", "DCP", "SP", "Addl SP"
+    )
+
+    // Ranks that trigger Auto-generate AGID and hide field
+    val ranksWithAutoAgid = setOf(
+        "DG & IGP", "DG", "ADGP", "IGP", "DIG", "DCP", "SP"
     )
 
     // Ranks that work in Police Stations (PS)

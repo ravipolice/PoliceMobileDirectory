@@ -169,7 +169,13 @@ open class EmployeeViewModel @Inject constructor(
         SearchFilters(query, filter, unit, district, station, rank)
     }
     
-    val allContacts: StateFlow<List<Contact>> = combine(_employees, _officers, _isAdmin) { employees, officers, isAdmin ->
+    val allContacts: StateFlow<List<Contact>> = combine(_employees, _officers, _isAdmin, _currentUser) { employees, officers, isAdmin, currentUser ->
+        // SECURITY GATE (User App): If not admin and not approved, return empty list
+        if (!isAdmin && currentUser?.isApproved != true) {
+            Log.w("ContactsFilter", "🔒 Security block: User not approved, returning empty contacts")
+            return@combine emptyList()
+        }
+
         // Filter employees: show only approved ones for regular users, all for admins
         val filteredEmployees = if (isAdmin) {
             employees // Admins see all employees
@@ -532,6 +538,7 @@ open class EmployeeViewModel @Inject constructor(
                         Log.d("GoogleSignIn", "🏠 User registered: ${user.name}. Moving to Dashboard.")
                         sessionManager.saveLogin(user.email, user.isAdmin)
                         _currentUser.value = user
+                        _isAdmin.value = user.isAdmin // ✅ Set admin flag
                         _isLoggedIn.value = true
                         
                         // Prefetch data now that we are authenticated
@@ -541,8 +548,17 @@ open class EmployeeViewModel @Inject constructor(
                         
                         _googleSignInUiEvent.value = GoogleSignInUiEvent.SignInSuccess(user)
                     } else {
-                        Log.w("GoogleSignIn", "🆕 User NOT found in database. Redirecting to Registration.")
-                        _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email, authResult.user?.displayName)
+                        Log.w("GoogleSignIn", "🆕 User NOT found in database. Checking for pending registration...")
+                        
+                        // Check if there's a pending registration for this email
+                        val pending = pendingRepo.getPendingByEmail(email)
+                        if (pending != null) {
+                            Log.d("GoogleSignIn", "⏳ Registration found but status is ${pending.status}. Informing user.")
+                            _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationPending(email)
+                        } else {
+                            Log.w("GoogleSignIn", "🆕 No record found. Redirecting to Registration.")
+                            _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email, authResult.user?.displayName)
+                        }
                     }
                 } else {
                     _googleSignInUiEvent.value = GoogleSignInUiEvent.Error("Sign-in failed: Firebase user is null.")
@@ -846,10 +862,15 @@ open class EmployeeViewModel @Inject constructor(
     // EMPLOYEE CRUD + HELPERS
     // =========================================================
     fun refreshEmployees() = viewModelScope.launch {
-        // ✅ GATING-1: Only fetch from Firestore if authenticated
-        if (auth.currentUser == null) {
-            Log.w("EmployeeVM", "⚠️ Skip refreshEmployees: Auth not ready")
-            _employeeStatus.value = OperationStatus.Error("Auth not ready")
+        // 🔥 Re-fetch current user status from Firestore FIRST
+        // This handles the case where the user was just approved on the server
+        refreshCurrentUserInternal()
+
+        // ✅ SECURITY GUARD (User App): Only fetch if approved
+        val user = _currentUser.value
+        if (auth.currentUser == null || (user?.isApproved != true && user?.isAdmin != true)) {
+            Log.w("EmployeeVM", "🔒 Skip refreshEmployees: Auth not ready or user not approved")
+            _employeeStatus.value = OperationStatus.Error("Security constraint: Approval required")
             return@launch
         }
         
@@ -878,6 +899,10 @@ open class EmployeeViewModel @Inject constructor(
      * Call this after updating profile to ensure UI shows latest data
      */
     fun refreshCurrentUser() = viewModelScope.launch {
+        refreshCurrentUserInternal()
+    }
+
+    private suspend fun refreshCurrentUserInternal() {
         val currentKgid = _currentUser.value?.kgid
         
         if (currentKgid != null) {
@@ -895,7 +920,9 @@ open class EmployeeViewModel @Inject constructor(
                 if (firestoreEmp != null) {
                     val finalEmp = firestoreEmp.copy(kgid = currentKgid)
                     _currentUser.value = finalEmp
-                    Log.d("EmployeeViewModel", "✅ Refreshed current user from Firestore: ${finalEmp.name}, metalNumber=${finalEmp.metalNumber}")
+                    _isAdmin.value = finalEmp.isAdmin // ✅ Sync admin flag
+                    sessionManager.saveLogin(finalEmp.email, finalEmp.isAdmin) // ✅ Persist flag
+                    Log.d("EmployeeViewModel", "✅ Refreshed current user from Firestore: ${finalEmp.name}, Admin=${finalEmp.isAdmin}")
                     
                     // Update local cache using mapper
                     val entity = finalEmp.toEntity()
@@ -913,7 +940,9 @@ open class EmployeeViewModel @Inject constructor(
                         is RepoResult.Success -> {
                             result.data?.let { user ->
                                 _currentUser.value = user
-                                Log.d("EmployeeViewModel", "✅ Refreshed current user by email: ${user.name}, metalNumber=${user.metalNumber}")
+                                _isAdmin.value = user.isAdmin // ✅ Sync admin flag
+                                sessionManager.saveLogin(user.email, user.isAdmin) // ✅ Persist flag
+                                Log.d("EmployeeViewModel", "✅ Refreshed current user by email: ${user.name}, Admin=${user.isAdmin}")
                             }
                         }
                         is RepoResult.Error -> {
@@ -929,10 +958,14 @@ open class EmployeeViewModel @Inject constructor(
     }
     
     fun refreshOfficers() = viewModelScope.launch {
-        // ✅ GATING-2: Only fetch from Firestore if authenticated
-        if (auth.currentUser == null) {
-            Log.w("EmployeeVM", "⚠️ Skip refreshOfficers: Auth not ready")
-            _officerStatus.value = OperationStatus.Error("Auth not ready")
+        // 🔥 Re-fetch current user status from Firestore FIRST
+        refreshCurrentUserInternal()
+
+        // ✅ SECURITY GUARD (User App): Only fetch if approved
+        val user = _currentUser.value
+        if (auth.currentUser == null || (user?.isApproved != true && user?.isAdmin != true)) {
+            Log.w("EmployeeVM", "🔒 Skip refreshOfficers: Auth not ready or user not approved")
+            _officerStatus.value = OperationStatus.Error("Security constraint: Approval required")
             return@launch
         }
         
@@ -1038,9 +1071,10 @@ open class EmployeeViewModel @Inject constructor(
     // =========================================================
     fun fetchUsefulLinks() {
         viewModelScope.launch {
-            // ✅ GATING-3: Only fetch from Firestore if authenticated
-            if (auth.currentUser == null) {
-                Log.w("EmployeeVM", "⚠️ Skip fetchUsefulLinks: Auth not ready")
+            // ✅ SECURITY GUARD (User App): Only fetch if approved
+            val user = _currentUser.value
+            if (auth.currentUser == null || (user?.isApproved != true && user?.isAdmin != true)) {
+                Log.w("EmployeeVM", "🔒 Skip fetchUsefulLinks: Auth not ready or user not approved")
                 return@launch
             }
             try {
@@ -1129,36 +1163,63 @@ open class EmployeeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 // 1️⃣ Check for duplicate registration directly in Firestore
-                val hasDuplicate = try {
-                    // Check by KGID
-                    val kgidSnapshot = firestore.collection("pending_registrations")
+                val duplicateReason = try {
+                    // A. Check pending_registrations by KGID
+                    val pendingKgidCount = firestore.collection("pending_registrations")
                         .whereEqualTo("status", "pending")
                         .whereEqualTo("kgid", entity.kgid)
                         .limit(1)
                         .get()
                         .await()
+                        .size()
                     
-                    if (!kgidSnapshot.isEmpty) {
-                        true // Duplicate found by KGID
+                    if (pendingKgidCount > 0) {
+                        "A registration for this KGID already exists and is pending approval."
                     } else {
-                        // Also check by email
-                        val emailSnapshot = firestore.collection("pending_registrations")
+                        // B. Check pending_registrations by Email
+                        val pendingEmailCount = firestore.collection("pending_registrations")
                             .whereEqualTo("status", "pending")
                             .whereEqualTo("email", entity.email)
                             .limit(1)
                             .get()
                             .await()
-                        !emailSnapshot.isEmpty // true if duplicate found
+                            .size()
+                        
+                        if (pendingEmailCount > 0) {
+                            "A registration for this Email already exists and is pending approval."
+                        } else {
+                            // C. Check active employees by KGID
+                            val activeKgidCount = firestore.collection("employees")
+                                .whereEqualTo("kgid", entity.kgid)
+                                .limit(1)
+                                .get()
+                                .await()
+                                .size()
+                            
+                            if (activeKgidCount > 0) {
+                                "User with this KGID is already registered and active. Please login."
+                            } else {
+                                // D. Check active employees by Email
+                                val activeEmailCount = firestore.collection("employees")
+                                    .whereEqualTo("email", entity.email)
+                                    .limit(1)
+                                    .get()
+                                    .await()
+                                    .size()
+                                
+                                if (activeEmailCount > 0) {
+                                    "User with this Email is already registered and active. Please login."
+                                } else null
+                            }
+                        }
                     }
                 } catch (e: Exception) {
-                    Log.w("RegisterUser", "Duplicate check failed, proceeding anyway: ${e.message}")
-                    false // Allow registration if check fails
+                    Log.w("RegisterUser", "Duplicate check failed, proceeding: ${e.message}")
+                    null // Allow registration if check fails (fallback to server-side constraints if any)
                 }
 
-                if (hasDuplicate) {
-                    _pendingStatus.value = OperationStatus.Error(
-                        "A registration for this KGID/Email already exists and is pending approval."
-                    )
+                if (duplicateReason != null) {
+                    _pendingStatus.value = OperationStatus.Error(duplicateReason)
                     return@launch
                 }
 
@@ -1339,14 +1400,13 @@ open class EmployeeViewModel @Inject constructor(
         _fontScale.value = scale.coerceIn(0.8f, 1.8f)
     }
 
-    // =========================================================
-    // ADMIN CHECK
-    // =========================================================
-    // =========================================================
-    // ADMIN CHECK (Removed - Always False)
-    // =========================================================
+    /**
+     * ✅ Checks if current user has administrative rights
+     */
     fun checkIfAdmin() {
-        _isAdmin.value = false
+        val user = _currentUser.value
+        _isAdmin.value = user?.isAdmin == true
+        Log.d("EmployeeVM", "🛠️ checkIfAdmin: ${_isAdmin.value} (user: ${user?.email})")
     }
 
     // This generic helper can be used if needed, but isn't strictly necessary with the current implementations

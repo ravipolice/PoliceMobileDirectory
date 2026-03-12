@@ -1,6 +1,7 @@
 package com.example.policemobiledirectory.ui.screens
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -13,7 +14,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -27,6 +32,7 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommonTopAppBar(title: String, navController: NavController) {
+    val context = LocalContext.current
     TopAppBar(
         windowInsets = WindowInsets(0.dp),
         title = { Text(text = title) },
@@ -37,6 +43,15 @@ fun CommonTopAppBar(title: String, navController: NavController) {
                 }
             } else {
                 Spacer(modifier = Modifier.width(0.dp))
+            }
+        },
+        actions = {
+            IconButton(onClick = { shareAppLink(context) }) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Share App",
+                    tint = Color.White
+                )
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -50,15 +65,38 @@ fun CommonTopAppBar(title: String, navController: NavController) {
 @Composable
 fun ErrorSection(error: String, onRetry: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(Icons.Default.ErrorOutline, contentDescription = null, modifier = Modifier.size(48.dp))
-        Spacer(Modifier.height(12.dp))
-        Text("Failed to load: $error", style = MaterialTheme.typography.bodyMedium)
-        Spacer(Modifier.height(12.dp))
-        Button(onClick = onRetry) { Text("Retry") }
+        Icon(
+            Icons.Default.ErrorOutline, 
+            contentDescription = null, 
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.error
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "Connection Issue", 
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            error, 
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(24.dp))
+        Button(
+            onClick = onRetry,
+            shape = RoundedCornerShape(8.dp)
+        ) { 
+            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Retry") 
+        }
     }
 }
 
@@ -68,13 +106,23 @@ fun EmptySection(
     message: String = "No items found"
 ) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier.fillMaxSize().padding(32.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(48.dp))
-        Spacer(Modifier.height(12.dp))
-        Text(message, style = MaterialTheme.typography.bodyMedium)
+        Icon(
+            icon, 
+            contentDescription = null, 
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            message, 
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
     }
 }
 
@@ -238,4 +286,49 @@ fun convertDriveUrlToDirectImageUrl(driveUrl: String?): String {
         // If conversion fails, return original URL
         driveUrl
     }
+}
+
+@Composable
+fun GoogleDriveDisclaimerBanner() {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        tonalElevation = 4.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.CloudQueue,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = "Note: Fetched from Google Drive; loading may take a few moments.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+fun shareAppLink(context: Context) {
+    val packageName = context.packageName
+    val playStoreLink = "https://play.google.com/store/apps/details?id=$packageName"
+    val shareText = "Check out the Police Mobile Directory app: $playStoreLink"
+    
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, shareText)
+    }
+    
+    context.startActivity(Intent.createChooser(intent, "Share App Via"))
 }

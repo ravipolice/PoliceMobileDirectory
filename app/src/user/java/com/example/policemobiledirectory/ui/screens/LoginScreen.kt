@@ -52,7 +52,8 @@ fun LoginScreen(
     onRegisterNewUser: (String?, String?) -> Unit,
     onForgotPinClicked: () -> Unit,
     onGoogleSignInClicked: () -> Unit,
-    onThemeToggle: () -> Unit = {}
+    onThemeToggle: () -> Unit = {},
+    onLogout: () -> Unit
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -78,7 +79,7 @@ fun LoginScreen(
             is OperationStatus.Success<*> -> {
                 isLoading = false
                 val user = status.data as? Employee
-                if (user != null && viewModel.isLoggedIn.value) {
+                if (user != null) {
                     ToastUtil.showToast(context, "Welcome ${user.name}")
                     onLoginSuccess(viewModel.isAdmin.value)
                 }
@@ -111,6 +112,15 @@ fun LoginScreen(
                 emailToRegister = event.email
                 nameToRegister = event.name
                 showRegisterDialog = true   // ✅ trigger dialog declaratively
+            }
+
+            is GoogleSignInUiEvent.RegistrationPending -> {
+                isLoading = false
+                ToastUtil.showToast(
+                    context, 
+                    "Registration for ${event.email} is pending approval. Please wait for an administrator to approve your account.",
+                    Toast.LENGTH_LONG
+                )
             }
 
             is GoogleSignInUiEvent.Error -> {
@@ -158,10 +168,8 @@ fun LoginScreen(
             dismissButton = {
                 TextButton(onClick = {
                     showRegisterDialog = false
-                    ToastUtil.showToast(
-                        context,
-                        "Please sign in with a registered account."
-                    )
+                    onLogout() // 1️⃣ Clear session and Google state
+                    onGoogleSignInClicked() // 2️⃣ Re-trigger account picker
                 }) {
                     Text("Use another account")
                 }
@@ -396,7 +404,7 @@ fun LoginScreen(
                 
                 // Developer Information
                 Text(
-                    text = "Developed By Ravikumar J, Nandija Tech Group",
+                    text = "Developed By Ravikumar J, AHC, DAR Chikkaballapura",
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.primary,
                     textAlign = TextAlign.Center,

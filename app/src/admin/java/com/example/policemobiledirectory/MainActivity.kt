@@ -266,10 +266,26 @@ class MainActivity : ComponentActivity() {
                     if (currentRoute == Routes.SPLASH) return@LaunchedEffect
 
                     if (isLoggedIn && currentUser != null) {
-                        // Only navigate if we're not already on EMPLOYEE_LIST
-                        if (currentRoute != Routes.EMPLOYEE_LIST) {
-                            Log.d("MainActivity", "🏠 Logged in as ${currentUser.name}, navigating to employee list")
-                            navController.navigate(Routes.EMPLOYEE_LIST) {
+                        val currentRoute = navController.currentDestination?.route
+                        if (currentRoute == Routes.SPLASH) return@LaunchedEffect
+
+                        // ✅ Calculate target screen
+                        val isAdmin = viewModel.isAdmin.value
+                        var targetRoute = Routes.EMPLOYEE_LIST
+                        
+                        if (isAdmin) {
+                            // Fetch latest pending count
+                            viewModel.refreshPendingRegistrations()
+                            delay(500) // Small delay for state to update
+                            if (viewModel.pendingApprovalsTotalCount.value > 0) {
+                                targetRoute = Routes.PENDING_APPROVALS
+                            }
+                        }
+
+                        // Only navigate if we're not already on the target or pending screen
+                        if (currentRoute != targetRoute && currentRoute != Routes.PENDING_APPROVALS) {
+                            Log.d("MainActivity", "🏠 Navigating to $targetRoute")
+                            navController.navigate(targetRoute) {
                                 popUpTo(Routes.LOGIN) { inclusive = true }
                             }
                         }

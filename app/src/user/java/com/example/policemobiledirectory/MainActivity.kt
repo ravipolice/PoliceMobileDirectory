@@ -274,11 +274,15 @@ class MainActivity : ComponentActivity() {
 
                     // 2. Main Logic: Auto-Login Trigger
                     if (isLoggedIn && currentUser != null) {
+                        val isApproved = currentUser.isApproved || currentUser.isAdmin
+                        
                         // We only auto-navigate if:
                         // - We are on LOGIN screen (meaning a successful login just happened or was restored)
                         // - AND we haven't JUST clicked logout (wasLoggedOut check)
-                        if (currentRoute == Routes.LOGIN && !wasLoggedOut) {
-                            Log.d("MainActivity", "🏠 Session detected, auto-navigating to home")
+                        // - AND the user is APPROVED
+                        if (currentRoute == Routes.LOGIN && !wasLoggedOut && isApproved) {
+                            Log.d("MainActivity", "🏠 Session detected and approved, auto-navigating to home")
+                            
                             navController.navigate(Routes.EMPLOYEE_LIST) {
                                 popUpTo(Routes.LOGIN) { inclusive = true }
                             }

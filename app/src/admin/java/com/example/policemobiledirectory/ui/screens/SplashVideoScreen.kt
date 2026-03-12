@@ -26,7 +26,28 @@ fun SplashVideoScreen(
 ) {
     LaunchedEffect(Unit) {
         delay(2000) // 2 second delay
-        val target = if (viewModel.isLoggedIn.value) Routes.EMPLOYEE_LIST else Routes.LOGIN
+        
+        val isLoggedIn = viewModel.isLoggedIn.value
+        val isAdmin = viewModel.isAdmin.value
+        
+        val target = if (isLoggedIn) {
+            if (isAdmin) {
+                // Fetch latest pending registrations
+                viewModel.refreshPendingRegistrations()
+                // Wait a bit for the fetch to complete
+                delay(1000) 
+                if (viewModel.pendingApprovalsTotalCount.value > 0) {
+                    Routes.PENDING_APPROVALS
+                } else {
+                    Routes.EMPLOYEE_LIST
+                }
+            } else {
+                Routes.EMPLOYEE_LIST
+            }
+        } else {
+            Routes.LOGIN
+        }
+
         navController.navigate(target) {
             popUpTo(Routes.SPLASH) { inclusive = true }
             launchSingleTop = true

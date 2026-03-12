@@ -37,11 +37,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -69,12 +71,12 @@ fun NavigationDrawer(
     val isAdmin by viewModel.isAdmin.collectAsState()
     val currentRoute = navController.currentDestination?.route
 
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp,
+    ModalDrawerSheet(
         modifier = Modifier
-            .fillMaxHeight()
-            .width(280.dp)
+            .width(280.dp),
+        drawerShape = RectangleShape,
+        drawerContainerColor = MaterialTheme.colorScheme.surface,
+        windowInsets = WindowInsets(0, 0, 0, 0) // Draw completely edge-to-edge
     ) {
         Column(
             modifier = Modifier
@@ -94,7 +96,8 @@ fun NavigationDrawer(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 26.dp, horizontal = 12.dp),
+                        .statusBarsPadding()
+                        .padding(vertical = 12.dp, horizontal = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Profile Image with Blood Group in top right corner
@@ -173,24 +176,25 @@ fun NavigationDrawer(
 
                     Spacer(modifier = Modifier.height(10.dp))
                     
-                    // Name (bold, prominent) + rank (smaller, no brackets)
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // Name + Rank (bold, prominent)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    ) {
                         Text(
-                            text = currentUser?.name ?: "",
+                            text = buildString {
+                                append(currentUser?.name ?: "")
+                                currentUser?.displayRank?.takeIf { it.isNotBlank() }?.let { rank ->
+                                    append(" ($rank)")
+                                }
+                            },
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
-                            )
+                            ),
+                            textAlign = TextAlign.Center
                         )
-                        currentUser?.displayRank?.takeIf { it.isNotBlank() }?.let { rank ->
-                            Text(
-                                text = rank,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = Color.White.copy(alpha = 0.9f),
-                                    fontSize = 13.sp
-                                )
-                            )
-                        }
                     }
                     
                     // KGID (larger)
@@ -556,8 +560,6 @@ fun NavigationDrawer(
                     onClick = { showLogoutDialog = true }
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
-
                 DrawerItem(
                     icon = Icons.Default.Email,
                     text = "Contact Support",
@@ -592,7 +594,7 @@ fun DrawerItem(
             .fillMaxWidth()
             .background(containerColor)
             .clickable(onClick = onClick)
-            .padding(start = paddingStart, end = 20.dp, top = 12.dp, bottom = 12.dp),
+            .padding(start = paddingStart, end = 20.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(

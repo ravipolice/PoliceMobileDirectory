@@ -28,7 +28,16 @@ fun SplashVideoScreen(
     LaunchedEffect(Unit) {
         // Wait for 2 seconds then navigate
         delay(2000)
-        val target = if (viewModel.isLoggedIn.value) Routes.EMPLOYEE_LIST else Routes.LOGIN
+        // Determine target destination
+        val isLoggedIn = viewModel.isLoggedIn.value
+        val isApproved = viewModel.currentUser.value?.isApproved == true || viewModel.currentUser.value?.isAdmin == true
+        
+        val target = if (isLoggedIn && isApproved) {
+            Routes.EMPLOYEE_LIST
+        } else {
+            Routes.LOGIN
+        }
+        
         navController.navigate(target) {
             popUpTo(Routes.SPLASH) { inclusive = true }
             launchSingleTop = true

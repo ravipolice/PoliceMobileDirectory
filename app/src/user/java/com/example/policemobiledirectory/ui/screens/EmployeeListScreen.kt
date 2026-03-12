@@ -102,6 +102,8 @@ fun EmployeeListScreen(
         // Only refresh if we're on the employee list screen
         if (currentRoute == Routes.EMPLOYEE_LIST) {
             viewModel.checkIfAdmin()
+            // Refresh current user to check for approval status changes
+            viewModel.refreshCurrentUser()
             // Refresh data when screen comes back into focus
             viewModel.refreshEmployees()
             viewModel.refreshOfficers()
@@ -170,6 +172,9 @@ fun EmployeeListScreen(
                     actionIconContentColor = androidx.compose.ui.graphics.Color.White
                 ),
                 actions = {
+                    IconButton(onClick = { shareAppLink(context) }) {
+                        Icon(Icons.Default.Share, contentDescription = "Share App")
+                    }
                     IconButton(onClick = { 
                         viewModel.refreshEmployees()
                         viewModel.refreshOfficers()
@@ -433,47 +438,88 @@ private fun EmployeeListContent(
                     }
                 }
                 filteredContacts.isEmpty() -> {
+                    val isFiltered = searchQuery.isNotEmpty() || 
+                                    selectedDistrict != "All" || 
+                                    selectedUnit != "All" || 
+                                    selectedStation != "All" || 
+                                    selectedRank != "All"
+                    
+                    val isUnapproved = currentUser?.isApproved != true && !isAdmin
+
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                          Column(
                              horizontalAlignment = Alignment.CenterHorizontally,
-                             verticalArrangement = Arrangement.spacedBy(8.dp)
+                             verticalArrangement = Arrangement.spacedBy(8.dp),
+                             modifier = Modifier.padding(32.dp)
                          ) {
-                             Text(
-                                 text = "No contacts found.",
-                                 style = MaterialTheme.typography.bodyLarge,
-                                 color = Color.Gray,
-                                 textAlign = TextAlign.Center
-                             )
-                             if (searchQuery.isNotEmpty() || selectedDistrict != "All" || selectedUnit != "All") {
-                                    TextButton(onClick = {
-                                        // Reset to "All" to show ALL contact cards
-                                        // Update UI state explicitly
-                                        selectedUnit = "All"
-                                        selectedStation = "All"
-                                        selectedRank = "All"
+                             if (isUnapproved) {
+                                 Icon(
+                                     imageVector = Icons.Default.Lock,
+                                     contentDescription = null,
+                                     modifier = Modifier.size(48.dp),
+                                     tint = Color.Gray.copy(alpha = 0.5f)
+                                 )
+                                 Text(
+                                     text = "Access Restricted",
+                                     style = MaterialTheme.typography.titleLarge,
+                                     fontWeight = FontWeight.Bold,
+                                     color = Color.Gray
+                                 )
+                                 Text(
+                                     text = "Your account is pending approval. You will see contacts once an administrator approves your access.",
+                                     style = MaterialTheme.typography.bodyMedium,
+                                     color = Color.Gray,
+                                     textAlign = TextAlign.Center
+                                 )
+                             } else {
+                                 Icon(
+                                     imageVector = Icons.Default.SearchOff,
+                                     contentDescription = null,
+                                     modifier = Modifier.size(48.dp),
+                                     tint = Color.Gray.copy(alpha = 0.5f)
+                                 )
+                                 Text(
+                                     text = if (isFiltered) "No contacts match your filters." else "No contacts found in directory.",
+                                     style = MaterialTheme.typography.bodyLarge,
+                                     color = Color.Gray,
+                                     textAlign = TextAlign.Center
+                                 )
+                                 
+                                 if (isFiltered) {
+                                     Button(
+                                         onClick = {
+                                             selectedUnit = "All"
+                                             selectedStation = "All"
+                                             selectedRank = "All"
+                                             
+                                             if (isAdmin) {
+                                                 selectedDistrict = "All"
+                                                 viewModel.updateSelectedDistrict("All")
+                                             } else {
+                                                 val userDistrict = currentUser?.district?.takeIf { it.isNotBlank() }
+                                                 if (userDistrict != null && districts.contains(userDistrict)) {
+                                                     selectedDistrict = userDistrict
+                                                     viewModel.updateSelectedDistrict(userDistrict)
+                                                 } else {
+                                                     selectedDistrict = "All"
+                                                     viewModel.updateSelectedDistrict("All")
+                                                 }
+                                             }
 
-                                        if (isAdmin) {
-                                            selectedDistrict = "All"
-                                            viewModel.updateSelectedDistrict("All")
-                                        } else {
-                                            // Reset to user's registered district
-                                            val userDistrict = currentUser?.district?.takeIf { it.isNotBlank() }
-                                            if (userDistrict != null && districts.contains(userDistrict)) {
-                                                selectedDistrict = userDistrict
-                                                viewModel.updateSelectedDistrict(userDistrict)
-                                            } else {
-                                                selectedDistrict = "All"
-                                                viewModel.updateSelectedDistrict("All")
-                                            }
-                                        }
-
-                                        // Update ViewModel
-                                        viewModel.updateSelectedUnit("All")
-                                        viewModel.updateSelectedStation("All")
-                                        viewModel.updateSelectedRank("All")
-                                        viewModel.updateSearchQuery("")
-                                    }) {
-                                     Text("Reset All Filters")
+                                             viewModel.updateSelectedUnit("All")
+                                             viewModel.updateSelectedStation("All")
+                                             viewModel.updateSelectedRank("All")
+                                             viewModel.updateSearchQuery("")
+                                         },
+                                         colors = ButtonDefaults.buttonColors(
+                                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                         )
+                                     ) {
+                                         Icon(Icons.Default.FilterAltOff, contentDescription = null, modifier = Modifier.size(18.dp))
+                                         Spacer(Modifier.width(8.dp))
+                                         Text("Reset All Filters")
+                                     }
                                  }
                              }
                          }

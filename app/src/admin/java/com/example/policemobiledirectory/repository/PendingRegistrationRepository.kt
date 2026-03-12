@@ -48,6 +48,25 @@ class PendingRegistrationRepository @Inject constructor(
     fun getLocalPending(): Flow<List<PendingRegistrationEntity>> =
         dao.getAllPending()
 
+    suspend fun getPendingByEmail(email: String): PendingRegistrationEntity? =
+        withContext(ioDispatcher) {
+            // First check local DB
+            val local = dao.getByEmail(email)
+            if (local != null) return@withContext local
+
+            // Then check Firestore as fallback
+            try {
+                val snapshot = firestore.collection("pending_registrations")
+                    .whereEqualTo("email", email)
+                    .whereEqualTo("status", "pending")
+                    .get().await()
+                
+                snapshot.toObjects(PendingRegistrationEntity::class.java).firstOrNull()
+            } catch (e: Exception) {
+                null
+            }
+        }
+
 
     /* ----------------------------------------------------------
         SUBMIT NEW REGISTRATION

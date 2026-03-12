@@ -36,9 +36,9 @@ class AddEditEmployeeViewModel @Inject constructor(
         savedStateHandle.get<String>("employeeId")?.let { employeeId ->
             if (employeeId.isNotEmpty()) {
                 viewModelScope.launch {
-                    employeeRepository.getEmployees().collect { repoResult ->
+                    employeeRepository.getEmployeeByKgid(employeeId).collect { repoResult ->
                         if (repoResult is RepoResult.Success) {
-                            _employee.value = repoResult.data?.find { it.kgid == employeeId }
+                            _employee.value = repoResult.data
                         }
                     }
                 }
@@ -63,6 +63,24 @@ class AddEditEmployeeViewModel @Inject constructor(
         viewModelScope.launch {
             android.util.Log.e("AddEditViewModel", "✅ Inside viewModelScope.launch block")
             try {
+                _saveStatus.value = RepoResult.Loading
+                
+                // 1️⃣ Duplicate check (only for new employees or changed identifiers)
+                val originalKgid = savedStateHandle.get<String>("employeeId")
+                val isNewUser = originalKgid.isNullOrEmpty()
+                
+                // If editing, we check email collision. If adding, we check both.
+                val duplicateError = employeeRepository.checkDuplicates(
+                    kgid = employee.kgid,
+                    email = employee.email ?: "",
+                    excludeKgid = if (!isNewUser) originalKgid else null
+                )
+                
+                if (duplicateError != null) {
+                    _saveStatus.value = RepoResult.Error(message = duplicateError)
+                    return@launch
+                }
+
                 var updatedEmployee = employee
 
                 // Upload new photo if provided

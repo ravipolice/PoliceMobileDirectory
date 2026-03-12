@@ -37,7 +37,10 @@ class GalleryViewModel @Inject constructor(
     // In-memory cache with timestamp
     private var cachedImages: List<GalleryImage>? = null
     private var cacheTimestamp: Long = 0
-    private val CACHE_DURATION_MS = 5 * 60 * 1000L // 5 minutes
+    private val CACHE_DURATION_MS = 60 * 1000L // Reduced to 1 minute for better sync
+
+    // 🚫 Track broken images that failed to load
+    private val brokenImageUrls = mutableSetOf<String>()
 
     // Computed properties for convenience
     val isLoading: Boolean get() = _galleryStatus.value is OperationStatus.Loading
@@ -63,7 +66,10 @@ class GalleryViewModel @Inject constructor(
                     repository.fetchGalleryImages()
                 }
                 
-                val imageList = images ?: emptyList()
+                val imageList = (images ?: emptyList()).filter { image ->
+                    val url = image.resolvedUrl ?: image.displayUrl
+                    url == null || !brokenImageUrls.contains(url)
+                }
                 
                 // Update cache
                 cachedImages = imageList
@@ -90,6 +96,23 @@ class GalleryViewModel @Inject constructor(
                     delay(errorInfo.retryDelay)
                     fetchGalleryImages(forceRefresh = true)
                 }
+            }
+        }
+    }
+
+    /**
+     * Mark an image as broken (failed to load). This will hide it from the UI.
+     */
+    fun markImageAsBroken(url: String) {
+        if (url.isBlank()) return
+        
+        if (brokenImageUrls.add(url)) {
+            android.util.Log.d("GalleryViewModel", "🚫 Image marked as broken: $url")
+            // Re-filter the current list
+            val currentList = _galleryImages.value
+            _galleryImages.value = currentList.filter { 
+                val imgUrl = it.resolvedUrl ?: it.displayUrl
+                imgUrl != url 
             }
         }
     }

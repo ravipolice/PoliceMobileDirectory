@@ -62,6 +62,9 @@ interface PendingRegistrationDao {
     @Query("SELECT * FROM pending_registrations WHERE kgid = :kgid LIMIT 1")
     suspend fun getByKgid(kgid: String): PendingRegistrationEntity?
 
+    @Query("SELECT * FROM pending_registrations WHERE email = :email LIMIT 1")
+    suspend fun getByEmail(email: String): PendingRegistrationEntity?
+
     @Query("SELECT * FROM pending_registrations WHERE firestoreId = :firestoreId LIMIT 1")
     suspend fun findByFirestoreId(firestoreId: String?): PendingRegistrationEntity?
 }

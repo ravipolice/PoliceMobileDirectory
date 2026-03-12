@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -285,6 +286,26 @@ fun DocumentsScreen(
                     }
                 )
             }
+
+            // 💡 Google Drive Fetching Disclaimer
+            Box(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(8.dp),
+                    tonalElevation = 4.dp
+                ) {
+                    Text(
+                        text = "Note: Fetched from Google Drive; loading may take a few moments.",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            }
         }
     }
 }
@@ -448,12 +469,16 @@ fun FullscreenPreviewDialog(
 
                                     // ✅ Smarter PDF/Drive Viewer Handling
                                     val viewerUrl = when {
-                                        url.contains("drive.google.com") ->
-                                            url.replace("view?usp=sharing", "preview")
-                                        url.endsWith(".pdf", true) ->
-                                            url // Direct PDF links
-                                        else ->
-                                            "https://docs.google.com/gview?embedded=true&url=$url"
+                                        url.contains("drive.google.com") -> {
+                                            if (url.contains("view?usp=sharing")) {
+                                                url.replace("view?usp=sharing", "preview")
+                                            } else if (url.contains("/view")) {
+                                                url.substringBeforeLast("/view") + "/preview"
+                                            } else {
+                                                url
+                                            }
+                                        }
+                                        else -> "https://docs.google.com/gview?embedded=true&url=${Uri.encode(url)}"
                                     }
 
                                     loadUrl(viewerUrl)

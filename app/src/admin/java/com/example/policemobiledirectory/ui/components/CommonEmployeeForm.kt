@@ -111,6 +111,8 @@ fun CommonEmployeeForm(
     val policeStationRanks by constantsViewModel.policeStationRanks.collectAsStateWithLifecycle()
     val highRankingOfficers by constantsViewModel.highRankingOfficers.collectAsStateWithLifecycle()
     val units by constantsViewModel.units.collectAsStateWithLifecycle()
+    val fullUnits by constantsViewModel.fullUnits.collectAsStateWithLifecycle() // ✅ Need full objects for hidden flag
+    val globalHiddenFields by constantsViewModel.globalHiddenFields.collectAsStateWithLifecycle() // ✅ Global Hidden Fields
     val ksrpBattalions by constantsViewModel.ksrpBattalions.collectAsStateWithLifecycle()
 
     // fields
@@ -142,6 +144,20 @@ fun CommonEmployeeForm(
     var pin by remember { mutableStateOf("") }
     var confirmPin by remember { mutableStateOf("") }
     var acceptedTerms by remember { mutableStateOf(false) }
+    
+    // ✅ Get selected Unit Model to check for hidden fields (Unit Level)
+    val selectedUnitModel = remember(unit, fullUnits) {
+        fullUnits.find { it.name == unit }
+    }
+
+    // Helper to check if field is visible (Hybrid Logic: Global OR Unit)
+    // Returns TRUE if field is NOT hidden in Global AND NOT hidden in Unit
+    val isFieldVisible: (String) -> Boolean = { fieldId ->
+        val isHiddenGlobally = globalHiddenFields.contains(fieldId)
+        val isHiddenInUnit = selectedUnitModel?.hiddenFields?.contains(fieldId) == true
+        
+        !isHiddenGlobally && !isHiddenInUnit
+    }
 
     // UI states
     var rankExpanded by remember { mutableStateOf(false) }
@@ -162,6 +178,19 @@ fun CommonEmployeeForm(
     // Check if rank is High Ranking Officer (No District/Station, uses AGID)
     val isHighRankingOfficer = remember(rank, highRankingOfficers) {
         highRankingOfficers.contains(rank)
+    }
+
+    // Check if rank triggers Auto-generate AGID and hide field
+    val isAutoAgidRank = remember(rank) {
+        Constants.ranksWithAutoAgid.contains(rank)
+    }
+
+    // Auto-generate AGID for high-ranking officers if it's empty
+    LaunchedEffect(isAutoAgidRank, rank) {
+        if (isAutoAgidRank && kgid.isBlank()) {
+            val randomId = (10000000..99999999).random()
+            kgid = "OFF_$randomId"
+        }
     }
 
     // Dynamic District List Logic
@@ -188,16 +217,6 @@ fun CommonEmployeeForm(
             }
         } else {
             ranks
-        }
-    }
-
-    // Get Full Unit Model for dynamic configuration
-    val selectedUnitModel by produceState<com.example.policemobiledirectory.model.UnitModel?>(initialValue = null, key1 = unit) {
-        if (unit.isNotBlank()) {
-            val models = constantsViewModel.fullUnits.value
-            value = models.find { it.name == unit }
-        } else {
-            value = null
         }
     }
 
@@ -258,9 +277,7 @@ fun CommonEmployeeForm(
 
     // Refactored for readability as per review
     val stationsForSelectedDistrict = remember(district, unit, stationsByDistrict, unitSections, selectedUnitModel) {
-        if (unitSections.isNotEmpty()) {
-            unitSections
-        } else if (district.isBlank()) {
+        if (district.isBlank() && unitSections.isEmpty()) {
             emptyList()
         } else {
             // 1. Find the key case-insensitively using map keys
@@ -282,11 +299,18 @@ fun CommonEmployeeForm(
                 stations
             }
 
-            // 3. Add "Others" option if unit has sections or if it's a generic district
-            if (filtered.isNotEmpty() || unitSections.isNotEmpty()) {
-                filtered + "Others"
+            // 3. Add "Others" option if unit has sections or if it's a generic district or if it's explicitly allowed
+            // Also include unitSections if any (e.g. for specialized units like HQ/INT)
+            val combinedWithSections = if (unitSections.isNotEmpty()) {
+                unitSections + filtered
             } else {
                 filtered
+            }
+
+            if (combinedWithSections.isNotEmpty() || district == "HQ") {
+                combinedWithSections.distinct() + "Others"
+            } else {
+                combinedWithSections.distinct()
             }
         }
     }
@@ -448,18 +472,20 @@ fun CommonEmployeeForm(
             Spacer(Modifier.height(fieldSpacing))
 
             // Row 3: Email
-            OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
-                label = { Text("Email*") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                isError = showValidationErrors && !isValidEmail(email)
-            )
-            if (showValidationErrors && !isValidEmail(email)) {
-                Text("Enter valid email", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            if (isFieldVisible("email")) {
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email (Optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    isError = showValidationErrors && email.isNotBlank() && !isValidEmail(email)
+                )
+                if (showValidationErrors && email.isNotBlank() && !isValidEmail(email)) {
+                    Text("Enter valid email", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                Spacer(Modifier.height(fieldSpacing))
             }
-            Spacer(Modifier.height(fieldSpacing))
 
             // Row 4: Mobile 1
             OutlinedTextField(
@@ -476,14 +502,16 @@ fun CommonEmployeeForm(
             Spacer(Modifier.height(fieldSpacing))
 
             // Row 5: Mobile 2
-            OutlinedTextField(
-                value = mobile2,
-                onValueChange = { mobile2 = it.filter { ch -> ch.isDigit() } },
-                label = { Text("Mobile 2 (Optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-            )
-            Spacer(Modifier.height(fieldSpacing))
+            if (isFieldVisible("mobile2")) {
+                OutlinedTextField(
+                    value = mobile2,
+                    onValueChange = { mobile2 = it.filter { ch -> ch.isDigit() } },
+                    label = { Text("Mobile 2 (Optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                )
+                Spacer(Modifier.height(fieldSpacing))
+            }
 
 
 
@@ -524,18 +552,20 @@ fun CommonEmployeeForm(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // KGID / ID
-                OutlinedTextField(
-                    value = kgid,
-                    onValueChange = { 
-                        // For Officers, allow any characters (AGID). Otherwise, only allow digits (KGID).
-                        if (isOfficer || isHighRankingOfficer) kgid = it else if (it.all { ch -> ch.isDigit() }) kgid = it
-                    },
-                    label = { Text(if(isOfficer || isHighRankingOfficer) "Officer ID (AGID)*" else "KGID*") },
-                    modifier = Modifier.weight(1f),
-                    keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer || isHighRankingOfficer) KeyboardType.Text else KeyboardType.Number),
-                    isError = showValidationErrors && !isKgidValid(kgid),
-                    enabled = (isAdmin || isRegistration) && !isEdit
-                )
+                if (!isAutoAgidRank) {
+                    OutlinedTextField(
+                        value = kgid,
+                        onValueChange = { 
+                            // For Officers, allow any characters (AGID). Otherwise, only allow digits (KGID).
+                            if (isOfficer || isHighRankingOfficer) kgid = it else if (it.all { ch -> ch.isDigit() }) kgid = it
+                        },
+                        label = { Text(if(isOfficer || isHighRankingOfficer) "Officer ID (AGID)*" else "KGID*") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer || isHighRankingOfficer) KeyboardType.Text else KeyboardType.Number),
+                        isError = showValidationErrors && !isKgidValid(kgid),
+                        enabled = (isAdmin || isRegistration) && !isEdit
+                    )
+                }
 
                 // Rank
                 ExposedDropdownMenuBox(
@@ -571,9 +601,10 @@ fun CommonEmployeeForm(
                             })
                         }
                     }
-                
+                }
+
                 // Metal Number (Dynamic)
-                if (showMetalNumberField && !isOfficer) {
+                if (showMetalNumberField && !isOfficer && isFieldVisible("metalNumber")) {
                     OutlinedTextField(
                         value = metalNumber,
                         onValueChange = { metalNumber = it.filter { ch -> ch.isDigit() } },
@@ -582,7 +613,6 @@ fun CommonEmployeeForm(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         isError = showValidationErrors && metalNumber.isBlank()
                     )
-                }
                 }
 
             }

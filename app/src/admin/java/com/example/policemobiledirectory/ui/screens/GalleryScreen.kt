@@ -27,6 +27,7 @@ import androidx.compose.foundation.background
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -349,6 +350,14 @@ fun GalleryScreen(
                     }
                 )
             }
+
+            // 💡 Google Drive Fetching Disclaimer
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                GoogleDriveDisclaimerBanner()
+            }
         }
     }
 }
@@ -604,47 +613,97 @@ fun GalleryImageItem(
                 .clip(RoundedCornerShape(12.dp))
                 .clickable { onClick() }
         ) {
-            if (imageUrl.isNotBlank()) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = "Gallery Image",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                // Show placeholder when URL is invalid
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    if (imageUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = "Gallery Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        // Show placeholder when URL is invalid
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Image,
+                                contentDescription = "No Image",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                    }
+
+                    // Only show delete button for admins
+                    if (isAdmin) {
+                        IconButton(
+                            onClick = { onDelete() },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(4.dp)
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.Black.copy(alpha = 0.5f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+                
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Image,
-                        contentDescription = "No Image",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(48.dp)
-                    )
-                }
-            }
-
-            // Only show delete button for admins
-            if (isAdmin) {
-                IconButton(
-                    onClick = { onDelete() },
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.Black.copy(alpha = 0.5f))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = image.resolvedTitle,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            fontWeight = FontWeight.Bold
+                        )
+                        image.resolvedCategory?.let { category ->
+                            val badgeColor = when {
+                                category.contains("Missing", ignoreCase = true) -> Color(0xFFE53935) // Red
+                                category.contains("Unidentified", ignoreCase = true) -> Color(0xFFFB8C00) // Orange
+                                else -> MaterialTheme.colorScheme.primary
+                            }
+                            Surface(
+                                color = badgeColor,
+                                shape = RoundedCornerShape(4.dp),
+                                modifier = Modifier.padding(top = 2.dp)
+                            ) {
+                                Text(
+                                    text = category.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -718,12 +777,24 @@ fun GalleryImageListItem(
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium
                     )
-                    image.resolvedCategory?.let {
-                        Text(
-                            text = "Category: $it",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
+                    image.resolvedCategory?.let { category ->
+                        val badgeColor = when {
+                            category.contains("Missing", ignoreCase = true) -> Color(0xFFE53935)
+                            category.contains("Unidentified", ignoreCase = true) -> Color(0xFFFB8C00)
+                            else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                        }
+                        Surface(
+                            color = badgeColor,
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = category.uppercase(),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                     image.resolvedDescription?.let {
                         if (it.isNotBlank()) {
@@ -833,7 +904,7 @@ fun UploadGalleryDialog(
                     OutlinedTextField(
                         value = title,
                         onValueChange = { title = it },
-                        label = { Text("Title *") },
+                        label = { Text("Name / Title *") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -925,9 +996,10 @@ fun UploadGalleryDialog(
                     OutlinedTextField(
                         value = category,
                         onValueChange = { category = it },
-                        label = { Text("Category (optional)") },
+                        label = { Text("Image Type (Missing, Unidentified, etc.)") },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        placeholder = { Text("e.g. Missing, Unidentified") }
                     )
 
                     OutlinedTextField(

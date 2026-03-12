@@ -40,12 +40,14 @@ fun AppNavGraph(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val hideBars = currentRoute in listOf(
-        Routes.SPLASH,
-        Routes.LOGIN,
-        Routes.USER_REGISTRATION,
-        Routes.FORGOT_PIN
-    )
+    val hideBars = currentRoute?.let { route ->
+        route.startsWith(Routes.SPLASH) ||
+        route.startsWith(Routes.LOGIN) ||
+        route.startsWith(Routes.REGISTER) ||
+        route.startsWith(Routes.USER_REGISTRATION) ||
+        route.startsWith(Routes.FORGOT_PIN) ||
+        route.startsWith(Routes.PENDING_APPROVAL)
+    } ?: true
 
     if (!hideBars) {
         ModalNavigationDrawer(
@@ -75,6 +77,7 @@ fun AppNavGraph(
                     onThemeToggle = onThemeToggle,
                     onGoogleSignInClicked = onGoogleSignInClicked,
                     startDestination = startDestination,
+                    onLogout = onLogout,
                     modifier = androidx.compose.ui.Modifier.padding(innerPadding)
                 )
             }
@@ -85,7 +88,8 @@ fun AppNavGraph(
             employeeViewModel = employeeViewModel,
             onThemeToggle = onThemeToggle,
             onGoogleSignInClicked = onGoogleSignInClicked,
-            startDestination = startDestination
+            startDestination = startDestination,
+            onLogout = onLogout
         )
     }
 }
@@ -97,6 +101,7 @@ private fun AppNavHostContent(
     onThemeToggle: () -> Unit,
     onGoogleSignInClicked: () -> Unit,
     startDestination: String,
+    onLogout: () -> Unit,
     modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier
 ) {
     val isAdmin by employeeViewModel.isAdmin.collectAsStateWithLifecycle()
@@ -119,9 +124,16 @@ private fun AppNavHostContent(
         composable(Routes.LOGIN) {
             LoginScreen(
                 viewModel = employeeViewModel,
-                onLoginSuccess = {
-                    navController.navigate(Routes.EMPLOYEE_LIST) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
+                onLoginSuccess = { isAdmin ->
+                    val user = employeeViewModel.currentUser.value
+                    if (user != null && !user.isApproved && !isAdmin) {
+                        navController.navigate(Routes.PENDING_APPROVAL) {
+                            popUpTo(Routes.LOGIN) { inclusive = true }
+                        }
+                    } else {
+                        navController.navigate(Routes.EMPLOYEE_LIST) {
+                            popUpTo(Routes.LOGIN) { inclusive = true }
+                        }
                     }
                 },
                 onRegisterNewUser = { email, name ->
@@ -132,7 +144,16 @@ private fun AppNavHostContent(
                     navController.navigate(Routes.FORGOT_PIN)
                 },
                 onGoogleSignInClicked = onGoogleSignInClicked,
-                onThemeToggle = onThemeToggle
+                onThemeToggle = onThemeToggle,
+                onLogout = onLogout
+            )
+        }
+
+        // --- PENDING APPROVAL ---
+        composable(Routes.PENDING_APPROVAL) {
+            PendingApprovalScreen(
+                viewModel = employeeViewModel,
+                onLogout = onLogout
             )
         }
 

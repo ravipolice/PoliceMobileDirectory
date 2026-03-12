@@ -55,6 +55,7 @@ class ConstantsRepository @Inject constructor(
     private val FULL_UNITS_CACHE_KEY = "full_units_cache"
     private val DISTRICTS_CACHE_KEY = "districts_cache"
     private val RANKS_CACHE_KEY = "ranks_cache"
+    private val RANKS_METAL_CACHE_KEY = "ranks_requiring_metal_cache"
     private val STATIONS_CACHE_KEY = "stations_cache"
     private val GLOBAL_CONFIG_CACHE_KEY = "global_config_cache"    
 
@@ -95,6 +96,7 @@ class ConstantsRepository @Inject constructor(
             .remove(CACHE_TIMESTAMP_KEY)
             .remove(UNITS_CACHE_KEY)
             .remove(RANKS_CACHE_KEY)
+            .remove(RANKS_METAL_CACHE_KEY)
             .remove(STATIONS_CACHE_KEY)
             .apply()
         Log.d("ConstantsRepository", "✅ Cache cleared - next refresh will fetch from API")
@@ -357,9 +359,9 @@ class ConstantsRepository @Inject constructor(
                                        mapping.scopes.contains("district_stations")
                     
                     if (mapping.isHqLevel && !hasAreaScope) {
-                        // HQ-only unit: Return all districts + HQ
-                        districts = getDistricts() + "HQ"
-                        source = "Firestore Cache (HQ-Only)"
+                        // HQ-only unit (like SCRB HQ or KPA): Return ONLY HQ
+                        districts = listOf("HQ")
+                        source = "Firestore Cache (HQ-Only Fix)"
                     } else {
                         // A. Start with explicit mapping
                         districts = when (mapping.mappingType) {
@@ -468,7 +470,8 @@ class ConstantsRepository @Inject constructor(
     }
 
     /**
-     * Fetch ranks from Firestore "rankMaster" collection
+     * Fetch ranks from Firestore "rankMaster" collection.
+     * Also caches the set of ranks requiring a metal number.
      */
     private suspend fun fetchRanksFromFirestore() {
         try {
@@ -479,20 +482,32 @@ class ConstantsRepository @Inject constructor(
                 .await()
 
             // Map documents to Rank objects to sort
-            val ranks = snapshot.documents.mapNotNull { doc ->
+            val rankDocs = snapshot.documents.mapNotNull { doc ->
                 val id = doc.getString("rank_id") ?: doc.id
                 val order = doc.getLong("seniority_order")?.toInt() ?: 999
-                val label = doc.getString("rank_label") ?: id
-                Triple(id, order, label)
+                val requiresMetal = doc.getBoolean("requiresMetalNumber") ?: false
+                Triple(id, order, requiresMetal)
             }
             
-            // Sort by seniority order
-            val sortedRankIds: List<String> = ranks.sortedBy { it.second }.map { it.first }
+            // Sort by seniority order as primary, and index in allRanksList as secondary (fallback)
+            val sortedRankIds: List<String> = rankDocs.sortedWith(
+                compareBy<Triple<String, Int, Boolean>> { it.second } // primary: seniority_order
+                .thenBy { Constants.allRanksList.indexOf(it.first).let { if (it == -1) 9999 else it } } // secondary: allRanksList
+            ).map { it.first }
 
+            // Collect ranks where requiresMetalNumber == true
+            val metalRankIds: List<String> = rankDocs
+                .filter { it.third }
+                .map { it.first }
+                .sorted()
+
+            val gson = Gson()
             if (sortedRankIds.isNotEmpty()) {
-                val json = Gson().toJson(sortedRankIds)
-                prefs.edit().putString(RANKS_CACHE_KEY, json).apply()
-                Log.d("ConstantsRepository", "✅ Fetched ${sortedRankIds.size} ranks from Firestore")
+                prefs.edit()
+                    .putString(RANKS_CACHE_KEY, gson.toJson(sortedRankIds))
+                    .putString(RANKS_METAL_CACHE_KEY, gson.toJson(metalRankIds))
+                    .apply()
+                Log.d("ConstantsRepository", "✅ Fetched ${sortedRankIds.size} ranks; ${metalRankIds.size} require metal number")
             } else {
                 Log.w("ConstantsRepository", "⚠️ No active ranks found in Firestore")
             }
@@ -609,15 +624,28 @@ class ConstantsRepository @Inject constructor(
     fun getRanks(): List<String> {
         // 1. Firestore
         val firestoreRanks = getCachedList(RANKS_CACHE_KEY, object : TypeToken<List<String>>() {})
-        if (firestoreRanks.isNotEmpty()) return firestoreRanks
+        if (firestoreRanks.isNotEmpty()) {
+            // Apply sorting again to ensure it's always hierarchical
+            return sortRanks(firestoreRanks)
+        }
 
         // 2. Sheets (Legacy)
         val cached = getCachedData()
         val sheetRanks = cached?.ranks ?: emptyList()
-        if (sheetRanks.isNotEmpty()) return sheetRanks
+        if (sheetRanks.isNotEmpty()) return sortRanks(sheetRanks)
 
         // 3. Hardcoded Fallback
         return Constants.allRanksList
+    }
+
+    /**
+     * Helper to sort ranks based on hierarchical order in Constants.allRanksList
+     */
+    private fun sortRanks(ranks: List<String>): List<String> {
+        return ranks.sortedBy { rank ->
+            val index = Constants.allRanksList.indexOf(rank)
+            if (index == -1) 9999 else index
+        }
     }
 
     /**
@@ -716,10 +744,13 @@ class ConstantsRepository @Inject constructor(
     }
 
     /**
-     * Get ranks requiring metal number (still uses hardcoded list)
-     * This could be extended to support dynamic configuration in the future
+     * Get ranks requiring metal number — reads from Firestore cache.
+     * Falls back to hardcoded list only if the cache is empty (e.g. first launch without network).
      */
     fun getRanksRequiringMetalNumber(): List<String> {
+        val cached = getCachedList(RANKS_METAL_CACHE_KEY, object : TypeToken<List<String>>() {})
+        if (cached.isNotEmpty()) return cached
+        // Fallback: hardcoded list
         return Constants.ranksRequiringMetalNumber
     }
 
