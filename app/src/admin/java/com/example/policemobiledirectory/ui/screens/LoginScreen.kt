@@ -1,6 +1,7 @@
 package com.example.policemobiledirectory.ui.screens
 
 import android.widget.Toast
+import com.example.policemobiledirectory.utils.ToastUtil
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -8,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
@@ -22,6 +24,7 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -43,6 +46,7 @@ import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.utils.OperationStatus
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import com.example.policemobiledirectory.ui.screens.*
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
@@ -51,7 +55,8 @@ fun LoginScreen(
     onRegisterNewUser: (String?, String?) -> Unit,
     onForgotPinClicked: () -> Unit,
     onGoogleSignInClicked: () -> Unit,
-    onThemeToggle: () -> Unit = {}
+    onThemeToggle: () -> Unit = {},
+    onLogout: () -> Unit
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -70,79 +75,67 @@ fun LoginScreen(
 
     // --- STATE OBSERVERS ---
 
-    // Observer for standard PIN-based login
     LaunchedEffect(authStatus) {
         when (val status = authStatus) {
             is OperationStatus.Loading -> isLoading = true
             is OperationStatus.Success<*> -> {
                 isLoading = false
                 val user = status.data as? Employee
-                if (user != null && viewModel.isLoggedIn.value) {
-                    Toast.makeText(context, "Welcome ${user.name}", Toast.LENGTH_SHORT).show()
+                if (user != null) {
+                    ToastUtil.showToast(context, "Welcome ${user.name}")
                     onLoginSuccess(viewModel.isAdmin.value)
                 }
             }
             is OperationStatus.Error -> {
                 isLoading = false
-                Toast.makeText(context, status.message, Toast.LENGTH_LONG).show()
+                ToastUtil.showToast(context, status.message, Toast.LENGTH_LONG)
             }
             else -> isLoading = false
         }
     }
 
-    // --- Listen for Google Sign-In Events ---
     LaunchedEffect(googleSignInEvent) {
         when (val event = googleSignInEvent) {
-            is GoogleSignInUiEvent.Loading -> {
-                isLoading = true
-            }
-
+            is GoogleSignInUiEvent.Loading -> isLoading = true
             is GoogleSignInUiEvent.SignInSuccess -> {
                 isLoading = false
                 if (viewModel.isLoggedIn.value) {
-                    Toast.makeText(context, "Welcome ${event.user.name}", Toast.LENGTH_SHORT).show()
+                    ToastUtil.showToast(context, "Welcome ${event.user.name}")
                     onLoginSuccess(viewModel.isAdmin.value)
                 }
             }
-
             is GoogleSignInUiEvent.RegistrationRequired -> {
                 isLoading = false
                 emailToRegister = event.email
                 nameToRegister = event.name
-                showRegisterDialog = true   // ✅ trigger dialog declaratively
+                showRegisterDialog = true
             }
-
+            is GoogleSignInUiEvent.RegistrationPending -> {
+                isLoading = false
+                ToastUtil.showToast(context, "Registration for ${event.email} is pending approval.", Toast.LENGTH_LONG)
+            }
             is GoogleSignInUiEvent.Error -> {
                 isLoading = false
-                Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
+                ToastUtil.showToast(context, event.message, Toast.LENGTH_LONG)
             }
-
             else -> isLoading = false
         }
     }
 
-// --- Registration Required Dialog ---
     if (showRegisterDialog && emailToRegister != null) {
         AlertDialog(
             onDismissRequest = { showRegisterDialog = false },
             title = { Text("Account Not Registered") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "The Google account below isn’t registered. You can register it now or choose another account.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Text("The Google account below isn’t registered. You can register it now or choose another account.", style = MaterialTheme.typography.bodyMedium)
                     Surface(
                         tonalElevation = 1.dp,
                         shape = MaterialTheme.shapes.small,
                         color = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            text = emailToRegister ?: "",
-                            modifier = Modifier.padding(12.dp),
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
-                        )
+                        Text(text = emailToRegister ?: "", modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
                     }
                 }
             },
@@ -150,33 +143,19 @@ fun LoginScreen(
                 TextButton(onClick = {
                     showRegisterDialog = false
                     onRegisterNewUser(emailToRegister!!, nameToRegister)
-                }) {
-                    Text("Register")
-                }
+                }) { Text("Register") }
             },
             dismissButton = {
                 TextButton(onClick = {
                     showRegisterDialog = false
-                    Toast.makeText(
-                        context,
-                        "Please sign in with a registered account.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }) {
-                    Text("Use another account")
-                }
+                    onLogout()
+                    onGoogleSignInClicked()
+                }) { Text("Use another account") }
             }
         )
     }
 
-    // --- UI ---
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        // Background image
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Image(
             painter = painterResource(id = R.drawable.login_bg),
             contentDescription = null,
@@ -185,131 +164,75 @@ fun LoginScreen(
             alpha = 0.95f
         )
 
-        // Foreground content with padding
         if (isLoading || isAccountPickerLoading) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = Color.White)
                 if (isAccountPickerLoading) {
                     Spacer(Modifier.height(16.dp))
-                    Text(
-                        "Please wait...\nLoading Google accounts",
-                        textAlign = TextAlign.Center,
-                        color = androidx.compose.ui.graphics.Color.White,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Text("Loading Google accounts...", color = Color.White, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         } else {
-            // The main login form UI
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Logo
                 Image(
                     painter = painterResource(id = R.drawable.app_logo),
                     contentDescription = "App Logo",
-                    modifier = Modifier
-                        .size(120.dp)
-                        .clip(CircleShape),
+                    modifier = Modifier.size(110.dp).clip(CircleShape),
                     contentScale = ContentScale.Fit
                 )
                 Spacer(Modifier.height(16.dp))
-                // Police Mobile Directory title (larger, bright yellow, no box)
                 Text(
                     text = "Police Mobile Directory",
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 28.sp
-                    ),
-                    color = androidx.compose.ui.graphics.Color(0xFFF8D722)
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color(0xFFF8D722),
+                    textAlign = TextAlign.Center
                 )
                 
-                // Disclaimer text with zoom animation and red color
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(12.dp))
                 val infiniteTransition = rememberInfiniteTransition(label = "zoom")
                 val scale by infiniteTransition.animateFloat(
                     initialValue = 1f,
-                    targetValue = 1.05f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(2000, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse
-                    ),
+                    targetValue = 1.03f,
+                    animationSpec = infiniteRepeatable(animation = tween(2000), repeatMode = RepeatMode.Reverse),
                     label = "scale"
                 )
                 Text(
-                    text = "This app is exclusively for Karnataka State Police Department personnel.\nIf you are not a member of KSP, please uninstall the PMD app.",
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Medium
-                    ),
+                    text = "Exclusive for Karnataka State Police Department personnel.\nPlease uninstall if you are not a member of KSP.",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                     textAlign = TextAlign.Center,
-                    color = androidx.compose.ui.graphics.Color(0xFFFF0000), // Red color
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .graphicsLayer(scaleX = scale, scaleY = scale)
+                    color = Color.Red,
+                    modifier = Modifier.graphicsLayer(scaleX = scale, scaleY = scale)
                 )
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(32.dp))
 
-                // Expandable "Login with email and pin" button
                 var isEmailPinExpanded by remember { mutableStateOf(false) }
-                
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { isEmailPinExpanded = !isEmailPinExpanded },
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = androidx.compose.ui.graphics.Color(0xFFE3F2FD) // Light blue background
-                    )
+                    modifier = Modifier.fillMaxWidth().clickable { isEmailPinExpanded = !isEmailPinExpanded },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f))
                 ) {
                     Column {
-                        // Button header
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Login with email and pin",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium
-                            )
+                        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                            Text("Login with email and pin", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             Spacer(Modifier.width(8.dp))
-                            Icon(
-                                imageVector = if (isEmailPinExpanded) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                contentDescription = if (isEmailPinExpanded) "Collapse" else "Expand"
-                            )
+                            Icon(imageVector = if (isEmailPinExpanded) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, contentDescription = null)
                         }
                         
-                        // Expandable content
                         AnimatedVisibility(visible = isEmailPinExpanded) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                // Email Input
+                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 OutlinedTextField(
                                     value = email,
                                     onValueChange = { email = it.trim() },
                                     label = { Text("Email") },
                                     modifier = Modifier.fillMaxWidth(),
-                                    keyboardOptions = KeyboardOptions(
-                                        keyboardType = KeyboardType.Email,
-                                        imeAction = ImeAction.Next
-                                    ),
-                                    keyboardActions = KeyboardActions(
-                                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                                    )
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+                                    shape = RoundedCornerShape(12.dp)
                                 )
 
-                                // PIN Input
                                 OutlinedTextField(
                                     value = pin,
                                     onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) pin = it },
@@ -317,90 +240,63 @@ fun LoginScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     visualTransformation = if (pinVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                     trailingIcon = {
-                                        val icon = if (pinVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility
                                         IconButton(onClick = { pinVisible = !pinVisible }) {
-                                            Icon(icon, contentDescription = "Toggle PIN visibility")
+                                            Icon(if (pinVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility, null)
                                         }
                                     },
-                                    keyboardOptions = KeyboardOptions(
-                                        keyboardType = KeyboardType.NumberPassword,
-                                        imeAction = ImeAction.Done
-                                    ),
-                                    keyboardActions = KeyboardActions(onDone = {
-                                        focusManager.clearFocus()
-                                        if (android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                                            viewModel.loginWithPin(email, pin)
-                                        } else {
-                                            Toast.makeText(context, "Please enter a valid email", Toast.LENGTH_SHORT).show()
-                                        }
-                                    })
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
+                                    shape = RoundedCornerShape(12.dp)
                                 )
 
-                                // Login Button
                                 Button(
                                     onClick = {
-                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        if (android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                                            viewModel.loginWithPin(email, pin)
-                                        } else {
-                                            Toast.makeText(context, "Please enter a valid email", Toast.LENGTH_SHORT).show()
-                                        }
+                                        if (android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) viewModel.loginWithPin(email, pin)
+                                        else ToastUtil.showToast(context, "Enter a valid email")
                                     },
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                                    shape = RoundedCornerShape(12.dp),
                                     enabled = email.isNotBlank() && pin.length == 6
                                 ) { Text("Login") }
 
-                                // Forgot PIN Link
                                 Text(
                                     "Forgot PIN?",
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onForgotPinClicked() },
+                                    modifier = Modifier.fillMaxWidth().clickable { onForgotPinClicked() },
                                     color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Medium,
+                                    fontWeight = FontWeight.Bold,
                                     textAlign = TextAlign.Center
                                 )
                             }
                         }
                     }
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(20.dp))
 
-                // Divider
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Divider(modifier = Modifier.weight(1f))
-                    Text(" or ", modifier = Modifier.padding(horizontal = 8.dp))
-                    Divider(modifier = Modifier.weight(1f))
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.5f))
+                    Text(" or ", modifier = Modifier.padding(horizontal = 12.dp), color = Color.White)
+                    HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.5f))
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(20.dp))
 
-                // Google Sign-In/Register Button
                 Button(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onGoogleSignInClicked()
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                    onClick = { onGoogleSignInClicked() },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_google_logo),
-                        contentDescription = "Google Logo"
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Sign in with Google/ Register")
+                    Image(painter = painterResource(id = R.drawable.ic_google_logo), contentDescription = null, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text("Sign in with Google / Register", fontWeight = FontWeight.Medium)
                 }
-                Spacer(Modifier.height(32.dp))
                 
-                // Developer Information
+                Spacer(Modifier.height(48.dp))
                 Text(
-                    text = "Developed By Ravikumar J, Nandija Tech Group",
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.primary,
+                    text = "Developed By Ravikumar J\nAHC, DAR Chikkaballapura",
+                    fontSize = 15.sp,
+                    color = Color(0xFFF8D722),
                     textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 20.sp
                 )
             }
         }

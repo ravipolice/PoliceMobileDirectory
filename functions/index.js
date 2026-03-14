@@ -428,6 +428,9 @@ exports.verifyOtpEmail = onCall({ region: "asia-south1" }, async (req) => {
     photoUrlFromGoogle: emp.photoUrlFromGoogle || "",
     fcmToken: emp.fcmToken || "",
     firebaseUid: emp.firebaseUid || "",
+    gender: emp.gender || "",
+    dateOfBirth: emp.dateOfBirth || "",
+    serviceStartDate: emp.serviceStartDate || "",
     isAdmin: !!emp.isAdmin,
     isApproved: emp.isApproved !== false,
   };

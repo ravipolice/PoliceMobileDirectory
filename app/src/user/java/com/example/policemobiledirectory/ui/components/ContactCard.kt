@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Message
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Edit // ✅ Added Edit icon
 import androidx.compose.material3.*
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -49,311 +51,113 @@ fun ContactCard(
 ) {
     val context = LocalContext.current
     
-    // Use employee if available, otherwise officer
     val name = employee?.name ?: officer?.name ?: ""
-    // Use displayRank for employees (includes metal number when applicable), regular rank for officers
     val rank = employee?.displayRank ?: officer?.rank
-    val station = employee?.station ?: officer?.station
+    val unit = employee?.unit ?: officer?.unit
     val district = employee?.district ?: officer?.district
-    val mobileNumber = employee?.mobile1 ?: officer?.mobile
-    val landlineNumber = officer?.landline
     val photoUrl = employee?.photoUrl ?: employee?.photoUrlFromGoogle ?: officer?.photoUrl
     val placeholderRes = if (employee != null) R.drawable.officer else R.drawable.ic_officer_building
 
-    // Determine background color based on unit or station
-    val backgroundColor = remember(station, employee?.unit, officer?.unit) {
-        val unit = employee?.unit ?: officer?.unit ?: ""
-        val effectiveStation = station ?: ""
-        
-        when {
-            // Traffic - Light Green
-            unit.contains("Traffic", ignoreCase = true) || 
-            effectiveStation.contains("Traffic", ignoreCase = true) || 
-            effectiveStation.contains("TR.", ignoreCase = true) -> Color(0xFFDCEDC8)
-            
-            // Control Room - Light Red/Orange
-            unit.contains("Control", ignoreCase = true) || 
-            effectiveStation.contains("Control", ignoreCase = true) -> Color(0xFFFFCCBC)
-            
-            // CEN / Cyber - Light Blue
-            unit.contains("CEN", ignoreCase = true) || 
-            unit.contains("Cyber", ignoreCase = true) ||
-            effectiveStation.contains("CEN", ignoreCase = true) ||
-            effectiveStation.contains("Cyber", ignoreCase = true) -> Color(0xFFB3E5FC)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // ... (Avatar code remains same)
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)), // Themed lavender-like background
+            contentAlignment = Alignment.Center
+        ) {
+            if (!photoUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = photoUrl,
+                    contentDescription = "Contact Photo",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(placeholderRes),
+                    error = painterResource(placeholderRes)
+                )
+            } else {
+                // Initial Letter Avatar (Kerala Police Style)
+                val initial = name.takeIf { it.isNotBlank() }?.first()?.uppercase() ?: "?"
+                Text(
+                    text = initial.toString(),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
 
-            // Women Police - Light Pink
-            unit.contains("Women", ignoreCase = true) || 
-            effectiveStation.contains("Women", ignoreCase = true) -> Color(0xFFF8BBD0)
+        Spacer(Modifier.width(14.dp))
 
-            // DPO / Admin / Office - Light Purple/Lavender
-            unit.contains("DPO", ignoreCase = true) || 
-            unit.contains("Admin", ignoreCase = true) ||
-            unit.contains("Office", ignoreCase = true) ||
-            effectiveStation.contains("DPO", ignoreCase = true) ||
-            effectiveStation.contains("Admin", ignoreCase = true) ||
-            effectiveStation.contains("Office", ignoreCase = true) -> Color(0xFFE1BEE7) // Lavender
-            
-            // DAR - Light Teal/Cyan
-            unit.contains("DAR", ignoreCase = true) || 
-            effectiveStation.contains("DAR", ignoreCase = true) -> Color(0xFFB2DFDB)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Name + Rank (Bold & Clean)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = (15 * fontScale).sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                
+                if (!rank.isNullOrBlank()) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = rank,
+                        fontSize = (11 * fontScale).sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                    )
+                }
+            }
 
-            // Special Units (DSB, FPB, etc.) - Light Yellow/Amber
-            listOf("DSB", "Intelligence", "INT", "FPB", "MCU").any { 
-                unit.contains(it, ignoreCase = true) || effectiveStation.contains(it, ignoreCase = true) 
-            } -> Color(0xFFFFF9C4)
+            // Unit / Section + District (Subtitle)
+            val subTitleParts = listOfNotNull(unit, district).filter { it.isNotBlank() }
+            if (subTitleParts.isNotEmpty()) {
+                Text(
+                    text = subTitleParts.joinToString(" • "),
+                    fontSize = (13 * fontScale).sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(top = 1.dp)
+                )
+            }
+        }
 
-            // Default - Glass effect
-            else -> com.example.policemobiledirectory.ui.theme.EmployeeCardBackground.copy(
-                alpha = com.example.policemobiledirectory.ui.theme.GlassOpacity
+        // 🔹 Actions (Edit or Chevron)
+        if (isAdmin && onEdit != null) {
+            IconButton(
+                onClick = onEdit,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit Officer",
+                    tint = PrimaryTeal.copy(alpha = 0.6f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        } else {
+            // Subtle up-arrow or indicator (Kerala Style)
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = "View Details",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                modifier = Modifier.size(20.dp)
             )
         }
     }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-            .clickable { onClick() }
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(16.dp),
-                spotColor = com.example.policemobiledirectory.ui.theme.CardShadow,
-                ambientColor = com.example.policemobiledirectory.ui.theme.CardShadow.copy(alpha = 0.5f)
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // Using custom shadow instead
-        shape = RoundedCornerShape(16.dp), // More rounded corners
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
-    ) {
-        Box(
-            modifier = Modifier.background(color = backgroundColor)
-        ) {
-            // 🔹 Blood Group badge in red circle at top right corner of card
-            val bloodGroup = employee?.bloodGroup ?: officer?.bloodGroup
-            bloodGroup?.takeIf { it.isNotBlank() }?.let { bg ->
-                val formattedBg = getFormattedBloodGroup(bg)
-                val badgeColor = getBloodGroupColor(bg)
-                Surface(
-                    color = badgeColor,
-                    shape = CircleShape,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .align(Alignment.TopEnd)
-                        .offset(x = (-8).dp, y = 8.dp)
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Text(
-                            text = formattedBg,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            fontSize = 9.sp
-                        )
-                    }
-                }
-            }
-            
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 🔹 Profile image with white border and shadow
-                Box {
-                    AsyncImage(
-                        model = photoUrl,
-                        contentDescription = "Contact Photo",
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .shadow(
-                                elevation = 4.dp,
-                                shape = CircleShape,
-                                spotColor = com.example.policemobiledirectory.ui.theme.CardShadow,
-                                ambientColor = com.example.policemobiledirectory.ui.theme.CardShadow.copy(alpha = 0.5f)
-                            ),
-                        placeholder = painterResource(placeholderRes),
-                        error = painterResource(placeholderRes)
-                    )
-                    // White border around avatar
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(Color.Transparent)
-                            .border(2.dp, Color.White, CircleShape)
-                    )
-                }
-
-
-
-                Spacer(Modifier.width(10.dp))
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 2.dp),
-                    verticalArrangement = Arrangement.spacedBy(1.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween, // Changed to SpaceBetween to push Edit icon to right
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.weight(1f, fill = false) // Allow text to take space but not push icon off
-                        ) {
-                            Text(
-                                text = name,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = (16 * fontScale).sp,
-                                color = Color.Black
-                            )
-
-                            val rankText = rank ?: ""
-                            if (rankText.isNotBlank()) {
-                                Text(
-                                    text = rankText,
-                                    fontSize = (13 * fontScale).sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color.Black.copy(alpha = 0.9f)
-                                )
-                            }
-                        }
-
-                        // ✅ Edit Icon (Only for Admins and if onEdit is provided)
-                        if (isAdmin && onEdit != null) {
-                            IconButton(
-                                onClick = onEdit,
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Edit Officer",
-                                    tint = PrimaryTeal,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    if (!station.isNullOrBlank() || !district.isNullOrBlank()) {
-                        Text(
-                            text = listOfNotNull(station, district)
-                                .filter { it.isNotBlank() }
-                                .joinToString(", "),
-                            fontSize = (13 * fontScale).sp,
-                            color = Color.Black.copy(alpha = 0.9f)
-                        )
-                    }
-
-                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                        if (!mobileNumber.isNullOrBlank() && mobileNumber.uppercase() != "NM") {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = mobileNumber,
-                                    color = Color.Black.copy(alpha = 0.9f),
-                                    fontSize = (12 * fontScale).sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    IconButton(
-                                        onClick = { IntentUtils.dial(context, mobileNumber) },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Call,
-                                            contentDescription = "Call mobile",
-                                            tint = Color.Black,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { IntentUtils.sendSms(context, mobileNumber) },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.Message,
-                                            contentDescription = "SMS",
-                                            tint = Color.Black,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { IntentUtils.openWhatsApp(context, mobileNumber) },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.ic_whatsapp),
-                                            contentDescription = "WhatsApp",
-                                            tint = Color(0xFF25D366),
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        } else if (!mobileNumber.isNullOrBlank() && mobileNumber.uppercase() == "NM") {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "NM (Not Mentioned)",
-                                    color = Color.Black.copy(alpha = 0.7f),
-                                    fontSize = (12 * fontScale).sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        } else {
-                            Text(
-                                text = "No mobile number",
-                                color = Color.Black.copy(alpha = 0.7f),
-                                fontSize = (12 * fontScale).sp
-                            )
-                        }
-
-                        if (!landlineNumber.isNullOrBlank()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = landlineNumber,
-                                    color = Color.Black.copy(alpha = 0.9f),
-                                    fontSize = (12 * fontScale).sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-
-                                IconButton(
-                                    onClick = { IntentUtils.dial(context, landlineNumber) },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Call,
-                                        contentDescription = "Call landline",
-                                        tint = Color.Black,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
-

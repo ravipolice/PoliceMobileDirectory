@@ -1,0 +1,225 @@
+﻿Configuration on demand is an incubating feature.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preAdminDebugBuild UP-TO-DATE
+> Task :app:mergeAdminDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateAdminDebugBuildConfig FROM-CACHE
+> Task :app:processAdminDebugNavigationResources FROM-CACHE
+> Task :app:compileAdminDebugNavigationResources FROM-CACHE
+> Task :app:generateAdminDebugResValues FROM-CACHE
+> Task :app:processAdminDebugGoogleServices FROM-CACHE
+> Task :app:mapAdminDebugSourceSetPaths
+> Task :app:generateAdminDebugResources FROM-CACHE
+> Task :app:checkAdminDebugAarMetadata
+> Task :app:mergeAdminDebugResources FROM-CACHE
+> Task :app:packageAdminDebugResources FROM-CACHE
+> Task :app:parseAdminDebugLocalResources FROM-CACHE
+> Task :app:createAdminDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksAdminDebug FROM-CACHE
+> Task :app:processAdminDebugMainManifest FROM-CACHE
+> Task :app:processAdminDebugManifest FROM-CACHE
+> Task :app:processAdminDebugManifestForPackage FROM-CACHE
+> Task :app:processAdminDebugResources FROM-CACHE
+> Task :app:javaPreCompileAdminDebug FROM-CACHE
+> Task :app:mergeAdminDebugShaders
+> Task :app:compileAdminDebugShaders NO-SOURCE
+> Task :app:generateAdminDebugAssets UP-TO-DATE
+> Task :app:mergeAdminDebugAssets
+> Task :app:compressAdminDebugAssets FROM-CACHE
+> Task :app:l8DexDesugarLibAdminDebug FROM-CACHE
+> Task :app:desugarAdminDebugFileDependencies FROM-CACHE
+> Task :app:mergeAdminDebugJniLibFolders
+> Task :app:validateSigningAdminDebug
+> Task :app:writeAdminDebugAppMetadata
+> Task :app:writeAdminDebugSigningConfigVersions
+> Task :app:preUserDebugBuild UP-TO-DATE
+> Task :app:mergeUserDebugNativeDebugMetadata NO-SOURCE
+> Task :app:generateUserDebugBuildConfig UP-TO-DATE
+> Task :app:mergeAdminDebugNativeLibs
+> Task :app:checkUserDebugAarMetadata UP-TO-DATE
+> Task :app:processUserDebugNavigationResources UP-TO-DATE
+> Task :app:compileUserDebugNavigationResources UP-TO-DATE
+> Task :app:generateUserDebugResValues UP-TO-DATE
+> Task :app:processUserDebugGoogleServices UP-TO-DATE
+
+> Task :app:stripAdminDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so. Run with --info option to learn more.
+
+> Task :app:mapUserDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateUserDebugResources UP-TO-DATE
+> Task :app:mergeUserDebugResources UP-TO-DATE
+> Task :app:packageUserDebugResources UP-TO-DATE
+> Task :app:parseUserDebugLocalResources UP-TO-DATE
+> Task :app:createUserDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksUserDebug UP-TO-DATE
+> Task :app:processUserDebugMainManifest UP-TO-DATE
+> Task :app:processUserDebugManifest UP-TO-DATE
+> Task :app:processUserDebugManifestForPackage UP-TO-DATE
+> Task :app:processUserDebugResources UP-TO-DATE
+> Task :app:checkAdminDebugDuplicateClasses
+> Task :app:mergeExtDexAdminDebug FROM-CACHE
+> Task :app:mergeLibDexAdminDebug FROM-CACHE
+> Task :app:javaPreCompileUserDebug UP-TO-DATE
+> Task :app:mergeUserDebugShaders UP-TO-DATE
+> Task :app:compileUserDebugShaders NO-SOURCE
+> Task :app:generateUserDebugAssets UP-TO-DATE
+> Task :app:mergeUserDebugAssets UP-TO-DATE
+> Task :app:compressUserDebugAssets UP-TO-DATE
+> Task :app:l8DexDesugarLibUserDebug UP-TO-DATE
+> Task :app:checkUserDebugDuplicateClasses UP-TO-DATE
+> Task :app:desugarUserDebugFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexUserDebug UP-TO-DATE
+> Task :app:mergeLibDexUserDebug UP-TO-DATE
+> Task :app:mergeUserDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeUserDebugNativeLibs UP-TO-DATE
+> Task :app:stripUserDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningUserDebug UP-TO-DATE
+> Task :app:writeUserDebugAppMetadata UP-TO-DATE
+> Task :app:writeUserDebugSigningConfigVersions UP-TO-DATE
+> Task :app:kspAdminDebugKotlin
+> Task :app:kspUserDebugKotlin
+> Task :app:compileUserDebugKotlin
+> Task :app:compileAdminDebugKotlin
+> Task :app:compileUserDebugJavaWithJavac UP-TO-DATE
+> Task :app:hiltAggregateDepsUserDebug UP-TO-DATE
+> Task :app:hiltJavaCompileUserDebug UP-TO-DATE
+> Task :app:processUserDebugJavaRes UP-TO-DATE
+> Task :app:mergeUserDebugJavaResource UP-TO-DATE
+> Task :app:transformUserDebugClassesWithAsm
+> Task :app:dexBuilderUserDebug
+> Task :app:mergeUserDebugGlobalSynthetics UP-TO-DATE
+> Task :app:mergeProjectDexUserDebug
+> Task :app:packageUserDebug
+> Task :app:createUserDebugApkListingFileRedirect UP-TO-DATE
+> Task :app:assembleUserDebug
+
+> Task :app:compileAdminDebugKotlin
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/MainActivity.kt:27:8 'class GoogleSignInOptions : AbstractSafeParcelable, Api.ApiOptions.Optional, ReflectedParcelable' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/MainActivity.kt:35:8 'class GoogleSignIn : Any' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/MainActivity.kt:36:8 'class GoogleSignInAccount : AbstractSafeParcelable, ReflectedParcelable' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/MainActivity.kt:37:8 'class GoogleSignInClient : GoogleApi<GoogleSignInOptions!>' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/MainActivity.kt:57:46 'class GoogleSignInClient : GoogleApi<GoogleSignInOptions!>' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/MainActivity.kt:62:24 'class GoogleSignIn : Any' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/MainActivity.kt:92:19 'class GoogleSignInOptions : AbstractSafeParcelable, Api.ApiOptions.Optional, ReflectedParcelable' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/MainActivity.kt:92:47 'class GoogleSignInOptions : AbstractSafeParcelable, Api.ApiOptions.Optional, ReflectedParcelable' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/MainActivity.kt:96:30 'class GoogleSignIn : Any' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/MainActivity.kt:174:62 'class GoogleSignInAccount : AbstractSafeParcelable, ReflectedParcelable' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/di/AppModule.kt:14:8 'class GoogleSignIn : Any' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/di/AppModule.kt:15:8 'class GoogleSignInClient : GoogleApi<GoogleSignInOptions!>' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/di/AppModule.kt:16:8 'class GoogleSignInOptions : AbstractSafeParcelable, Api.ApiOptions.Optional, ReflectedParcelable' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/di/AppModule.kt:47:8 'class GoogleSignInClient : GoogleApi<GoogleSignInOptions!>' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/di/AppModule.kt:48:19 'class GoogleSignInOptions : AbstractSafeParcelable, Api.ApiOptions.Optional, ReflectedParcelable' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/di/AppModule.kt:48:47 'class GoogleSignInOptions : AbstractSafeParcelable, Api.ApiOptions.Optional, ReflectedParcelable' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/di/AppModule.kt:52:16 'class GoogleSignIn : Any' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/di/FirebaseModule.kt:32:14 'fun setPersistenceEnabled(p0: Boolean): FirebaseFirestoreSettings.Builder' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/repository/ConstantsRepository.kt:453:61 Unchecked cast of 'kotlin.Any?' to 'kotlin.collections.List<kotlin.String>'.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/repository/ConstantsRepository.kt:1062:60 Unchecked cast of 'kotlin.Any?' to 'kotlin.collections.List<kotlin.String>'.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/repository/ConstantsRepository.kt:1120:68 Unchecked cast of 'kotlin.Any?' to 'kotlin.collections.List<kotlin.String>'.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/repository/ConstantsRepository.kt:1143:68 Unchecked cast of 'kotlin.Any?' to 'kotlin.collections.List<kotlin.String>'.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:495:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:546:60 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:626:64 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:687:64 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:761:64 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:792:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:991:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:1036:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:1069:60 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:1117:197 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/CommonEmployeeForm.kt:1141:60 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/SearchFilterBar.kt:197:38 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/SearchFilterBar.kt:244:38 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/SearchFilterBar.kt:299:42 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/components/SearchFilterBar.kt:347:38 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/AboutScreen.kt:54:44 'val Icons.Filled.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ArrowBack.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/AddEmployeeScreen.kt:254:48 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/AddUsefulLinkScreen.kt:85:47 'fun get(p0: String!): Any?' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/AddUsefulLinkScreen.kt:395:40 'static fun insertImage(p0: ContentResolver!, p1: Bitmap!, p2: String!, p3: String!): String!' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/CommonUi.kt:42:39 'val Icons.Filled.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ArrowBack.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/DocumentsScreen.kt:121:44 'val Icons.Filled.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ArrowBack.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/DocumentsScreen.kt:416:48 'val Icons.Filled.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ArrowBack.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/EmployeeDetailScreen.kt:274:21 Condition is always 'true'.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/EmployeeStatsScreen.kt:200:18 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/LeaveDashboardScreen.kt:316:38 'val Icons.Filled.TrendingUp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.TrendingUp.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/LeaveEditScreen.kt:118:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/LeaveEntryScreen.kt:122:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/ManageConstantsScreen.kt:101:44 'val Icons.Filled.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ArrowBack.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/ManageConstantsScreen.kt:432:53 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/NavigationDrawer.kt:231:13 'fun Divider(modifier: Modifier = ..., thickness: Dp = ..., color: Color = ...): Unit' is deprecated. Renamed to HorizontalDivider.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/NavigationDrawer.kt:318:17 'fun Divider(modifier: Modifier = ..., thickness: Dp = ..., color: Color = ...): Unit' is deprecated. Renamed to HorizontalDivider.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/NavigationDrawer.kt:387:17 'fun Divider(modifier: Modifier = ..., thickness: Dp = ..., color: Color = ...): Unit' is deprecated. Renamed to HorizontalDivider.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/NavigationDrawer.kt:441:17 'fun Divider(modifier: Modifier = ..., thickness: Dp = ..., color: Color = ...): Unit' is deprecated. Renamed to HorizontalDivider.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/NavigationDrawer.kt:472:13 'fun Divider(modifier: Modifier = ..., thickness: Dp = ..., color: Color = ...): Unit' is deprecated. Renamed to HorizontalDivider.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/NavigationDrawer.kt:515:53 'val Icons.Filled.ExitToApp: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ExitToApp.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/OfficerListScreen.kt:174:60 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/OfficerListScreen.kt:205:60 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/OfficerListScreen.kt:256:64 'fun String.capitalize(): String' is deprecated. Use replaceFirstChar instead.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/OfficerStatsScreen.kt:155:18 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/PendingApprovalsScreen.kt:349:17 'fun Divider(modifier: Modifier = ..., thickness: Dp = ..., color: Color = ...): Unit' is deprecated. Renamed to HorizontalDivider.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/SendNotificationScreen.kt:131:112 'val Icons.Filled.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ArrowBack.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/SendNotificationScreen.kt:163:56 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/SendNotificationScreen.kt:200:60 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/SendNotificationScreen.kt:219:60 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/SendNotificationScreen.kt:241:60 'fun Modifier.menuAnchor(): Modifier' is deprecated. Use overload that takes MenuAnchorType and enabled parameters.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/TermsAndConditionsScreen.kt:27:44 'val Icons.Filled.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ArrowBack.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/screens/UploadCsvScreen.kt:59:112 'val Icons.Filled.ArrowBack: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ArrowBack.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/theme/PMDTheme.kt:84:30 'fun rememberSystemUiController(window: Window? = ...): SystemUiController' is deprecated. accompanist/systemuicontroller is deprecated and the API is no longer maintained. 
+We recommend going edge to edge using EdgeToEdge.enableEdgeToEdge in androidx.activity. 
+For more information please visit https://google.github.io/accompanist/systemuicontroller.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/ui/theme/components/CommonImagePicker.kt:252:29 'fun CircularProgressIndicator(progress: Float, modifier: Modifier = ..., color: Color = ..., strokeWidth: Dp = ..., trackColor: Color = ..., strokeCap: StrokeCap = ...): Unit' is deprecated. Use the overload that takes `progress` as a lambda.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/AppSignatureVerifier.kt:35:32 'static field GET_SIGNATURES: Int' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/AppSignatureVerifier.kt:38:42 'field signatures: (Array<Signature!>?..Array<out Signature!>?)' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/AppSignatureVerifier.kt:100:32 'static field GET_SIGNATURES: Int' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/AppSignatureVerifier.kt:103:42 'field signatures: (Array<Signature!>?..Array<out Signature!>?)' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/ConnectivityManager.kt:73:26 'val type: Int' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/ConnectivityManager.kt:73:54 'static field TYPE_WIFI: Int' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/ConnectivityManager.kt:73:79 'val isConnected: Boolean' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/ConnectivityManager.kt:88:26 'val type: Int' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/ConnectivityManager.kt:88:54 'static field TYPE_MOBILE: Int' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/ConnectivityManager.kt:88:81 'val isConnected: Boolean' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/SecurityConfig.kt:66:32 'static field GET_SIGNATURES: Int' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/utils/SecurityConfig.kt:69:42 'field signatures: (Array<Signature!>?..Array<out Signature!>?)' is deprecated. Deprecated in Java.
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/viewmodel/EmployeeListViewModel.kt:197:18 This declaration is in a preview state and can be changed in a backwards-incompatible manner with a best-effort migration. Its usage should be marked with '@kotlinx.coroutines.FlowPreview' or '@OptIn(kotlinx.coroutines.FlowPreview::class)' if you accept the drawback of relying on preview API
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/viewmodel/EmployeeViewModel.kt:237:10 This declaration is in a preview state and can be changed in a backwards-incompatible manner with a best-effort migration. Its usage should be marked with '@kotlinx.coroutines.FlowPreview' or '@OptIn(kotlinx.coroutines.FlowPreview::class)' if you accept the drawback of relying on preview API
+w: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/admin/java/com/example/policemobiledirectory/viewmodel/EmployeeViewModel.kt:780:13 Duplicate branch condition in 'when'.
+
+> Task :app:compileAdminDebugJavaWithJavac
+./gradlew : Note: C:\Users\ravip\Androi
+dStudioProjects\PoliceMobileDirectory\a
+pp\build\generated\ksp\adminDebug\java\
+com\example\policemobiledirectory\di\Ap
+pModule_ProvideGoogleSignInClientFactor
+y.java uses or overrides a deprecated 
+API.
+At line:1 char:1
++ ./gradlew assembleAdminDebug 
+assembleUserDebug > 
+build_output_ui_refi ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : Not    
+Specified: (Note: C:\Users\..    
+.deprecated API.:String) [],     
+RemoteException
+    + FullyQualifiedErrorId : Nat    
+iveCommandError
+ 
+Note: Recompile with 
+-Xlint:deprecation for details.
+
+> Task :app:hiltAggregateDepsAdminDebug FROM-CACHE
+> Task :app:hiltJavaCompileAdminDebug
+> Task :app:processAdminDebugJavaRes
+> Task :app:mergeAdminDebugJavaResource
+> Task :app:transformAdminDebugClassesWithAsm
+> Task :app:dexBuilderAdminDebug
+> Task :app:mergeAdminDebugGlobalSynthetics FROM-CACHE
+> Task :app:mergeProjectDexAdminDebug
+> Task :app:packageAdminDebug
+> Task :app:createAdminDebugApkListingFileRedirect
+> Task :app:assembleAdminDebug
+
+[Incubating] Problems report is available at: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 6m 58s
+90 actionable tasks: 29 executed, 22 from cache, 39 up-to-date

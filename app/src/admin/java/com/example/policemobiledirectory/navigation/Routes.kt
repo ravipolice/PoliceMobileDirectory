@@ -11,6 +11,8 @@ object Routes {
     const val EDIT_EMPLOYEE = "edit_employee"
     const val ADD_OFFICER = "add_officer"
     const val ABOUT = "about"
+    const val EMPLOYEE_DETAIL = "employee_detail/{id}/{isOfficer}"
+    fun employeeDetailRoute(id: String, isOfficer: Boolean) = "employee_detail/$id/$isOfficer"
 
     // --- Admin Screens ---
     const val ADMIN_PANEL = "admin_panel"

@@ -1,19 +1,22 @@
 package com.example.policemobiledirectory.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.policemobiledirectory.data.local.SearchFilter
 import com.example.policemobiledirectory.ui.theme.ChipSelectedStart
@@ -44,15 +47,13 @@ fun SearchFilterBar(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     
-    // Search Filter Type
-    searchFilter: SearchFilter,
-    onSearchFilterChange: (SearchFilter) -> Unit,
     
     // Config
     isDistrictLevelUnit: Boolean,
     isAdmin: Boolean,
     districtLabel: String = "District / HQ",
     stationLabel: String = "Station / Section",
+    totalContactsCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     // UI State for Dropdowns (Internal)
@@ -60,15 +61,91 @@ fun SearchFilterBar(
     var districtExpanded by remember { mutableStateOf(false) }
     var stationExpanded by remember { mutableStateOf(false) }
     var rankExpanded by remember { mutableStateOf(false) }
+    
+    // 🔹 COLLAPSIBLE STATE
+    var filtersVisible by remember { mutableStateOf(false) }
 
-    val searchFields = SearchFilter.values().toList()
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
+        // 🔹 SEARCH BAR & TOGGLE ROW
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                placeholder = { 
+                    Text(
+                        if (totalContactsCount > 0) "Searching from $totalContactsCount contacts..." else "Search by name, mobile...", 
+                        maxLines = 1, 
+                        fontSize = 12.sp
+                    ) 
+                },
+                leadingIcon = { Icon(Icons.Default.Search, null, tint = PrimaryTeal, modifier = Modifier.size(20.dp)) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { onSearchQueryChange("") }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = PrimaryTeal, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = 4.dp),
+                shape = RoundedCornerShape(20.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                singleLine = true,
+                maxLines = 1,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PrimaryTeal,
+                    unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White
+                )
+            )
+            
+            Spacer(Modifier.width(8.dp))
+            
+            // 🔹 FILTER TOGGLE BUTTON
+            IconButton(
+                onClick = { filtersVisible = !filtersVisible },
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        color = if (filtersVisible) PrimaryTeal else Color.White,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = if (filtersVisible) PrimaryTeal else Color.LightGray.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+            ) {
+                Icon(
+                    imageVector = if (filtersVisible) Icons.Default.FilterAltOff else Icons.Default.FilterList,
+                    contentDescription = "Toggle Filters",
+                    tint = if (filtersVisible) Color.White else PrimaryTeal,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
 
-        // 🔹 ROW 1: UNIT & DISTRICT (Primary Filters)
+        // 🔹 COLLAPSIBLE FILTERS SECTION
+        androidx.compose.animation.AnimatedVisibility(
+            visible = filtersVisible,
+            enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -87,7 +164,8 @@ fun SearchFilterBar(
                         value = selectedUnit,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Unit") },
+                        label = { Text("Unit", fontSize = 12.sp) },
+                        leadingIcon = { Icon(Icons.Default.Business, null, tint = PrimaryTeal, modifier = Modifier.size(18.dp)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -97,9 +175,9 @@ fun SearchFilterBar(
                         shape = RoundedCornerShape(15.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = PrimaryTeal,
-                            unfocusedBorderColor = Color.LightGray,
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
                             focusedLabelColor = PrimaryTeal,
-                            unfocusedLabelColor = PrimaryTeal
+                            unfocusedLabelColor = Color.Gray
                         )
                     )
                     ExposedDropdownMenu(
@@ -133,7 +211,8 @@ fun SearchFilterBar(
                         value = selectedDistrict,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text(districtLabel) },
+                        label = { Text(districtLabel, fontSize = 12.sp) },
+                        leadingIcon = { Icon(Icons.Default.Map, null, tint = PrimaryTeal, modifier = Modifier.size(18.dp)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -143,9 +222,9 @@ fun SearchFilterBar(
                         shape = RoundedCornerShape(15.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = PrimaryTeal,
-                            unfocusedBorderColor = Color.LightGray,
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
                             focusedLabelColor = PrimaryTeal,
-                            unfocusedLabelColor = PrimaryTeal
+                            unfocusedLabelColor = Color.Gray
                         )
                     )
                     ExposedDropdownMenu(
@@ -188,7 +267,8 @@ fun SearchFilterBar(
                             value = selectedStation,
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text(stationLabel) },
+                            label = { Text(stationLabel, fontSize = 12.sp) },
+                            leadingIcon = { Icon(Icons.Default.Security, null, tint = PrimaryTeal, modifier = Modifier.size(18.dp)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -199,9 +279,9 @@ fun SearchFilterBar(
                             shape = RoundedCornerShape(15.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = PrimaryTeal,
-                                unfocusedBorderColor = Color.LightGray,
+                                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
                                 focusedLabelColor = PrimaryTeal,
-                                unfocusedLabelColor = PrimaryTeal
+                                unfocusedLabelColor = Color.Gray
                             )
                         )
                         ExposedDropdownMenu(
@@ -240,7 +320,8 @@ fun SearchFilterBar(
                         value = selectedRank,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Rank") },
+                        label = { Text("Rank", fontSize = 12.sp) },
+                        leadingIcon = { Icon(Icons.Default.MilitaryTech, null, tint = PrimaryTeal, modifier = Modifier.size(18.dp)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -250,9 +331,9 @@ fun SearchFilterBar(
                         shape = RoundedCornerShape(15.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = PrimaryTeal,
-                            unfocusedBorderColor = Color.LightGray,
+                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
                             focusedLabelColor = PrimaryTeal,
-                            unfocusedLabelColor = PrimaryTeal
+                            unfocusedLabelColor = Color.Gray
                         )
                     )
                     ExposedDropdownMenu(
@@ -273,83 +354,7 @@ fun SearchFilterBar(
             }
         }
 
-        // 🔹 ROW 3: SEARCH BAR
-        val searchLabel = when (searchFilter) {
-            SearchFilter.ALL -> "Power Search"
-            SearchFilter.RANK -> "Rank"
-            SearchFilter.NAME -> "Name"
-            SearchFilter.BLOOD_GROUP -> "Blood"
-            else -> searchFilter.name.lowercase().replaceFirstChar { it.uppercase() }
-        }
-
-        val placeholderText = if (searchFilter == SearchFilter.ALL) {
-            "Name, Mobile, Rank, Station, Blood..."
-        } else {
-            "Search by $searchLabel"
-        }
-
-        val keyboardType = when (searchFilter) {
-            SearchFilter.MOBILE, SearchFilter.METAL_NUMBER -> KeyboardType.Number
-            else -> KeyboardType.Text
-        }
-
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = onSearchQueryChange,
-            placeholder = { Text(placeholderText, maxLines = 1) },
-            leadingIcon = { Icon(Icons.Default.Search, null, tint = PrimaryTeal) },
-            trailingIcon = {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(onClick = { onSearchQueryChange("") }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear", tint = PrimaryTeal)
-                    }
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            shape = RoundedCornerShape(15.dp),
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            singleLine = true,
-            maxLines = 1,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = PrimaryTeal,
-                unfocusedBorderColor = Color.LightGray,
-                focusedLabelColor = PrimaryTeal,
-                unfocusedLabelColor = PrimaryTeal
-            )
-        )
-
-        // 🔹 FILTER CHIPS
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 2.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-        ) {
-            items(searchFields) { filter ->
-                if (filter == SearchFilter.KGID && !isAdmin) return@items
-                if (filter == SearchFilter.RANK) return@items
-
-                FilterChip(
-                    selected = searchFilter == filter,
-                    onClick = { onSearchFilterChange(filter) },
-                    label = {
-                        Text(
-                            when (filter) {
-                                SearchFilter.METAL_NUMBER -> "Metal"
-                                SearchFilter.KGID -> "KGID"
-                                SearchFilter.BLOOD_GROUP -> "Blood"
-                                else -> filter.name.lowercase().replaceFirstChar { it.uppercase() }
-                            }
-                        )
-                    },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = ChipSelectedStart,
-                        selectedLabelColor = Color.White
-                    )
-                )
-            }
         }
     }
+}
 }

@@ -53,6 +53,7 @@ fun DocumentsScreen(
     val documentsStatus by viewModel.documentsStatus.collectAsState()
 
     // 🔍 Preview state
+    var previewTitle by remember { mutableStateOf<String?>(null) }
     var previewUrl by remember { mutableStateOf<String?>(null) }
     var previewMimeType by remember { mutableStateOf<String?>(null) }
 
@@ -170,6 +171,7 @@ fun DocumentsScreen(
                                     DocumentItem(
                                         doc = doc,
                                         onViewClick = {
+                                            previewTitle = doc.resolvedTitle
                                             val url = doc.resolvedUrl
                                             previewUrl = url
 
@@ -217,13 +219,18 @@ fun DocumentsScreen(
 
 
             // 👀 Fullscreen preview dialog
-            if (previewUrl != null && previewMimeType != null) {
+            if (previewUrl != null && previewMimeType != null && previewTitle != null) {
                 FullscreenPreviewDialog(
+                    title = previewTitle!!,
                     url = previewUrl!!,
                     mimeType = previewMimeType!!,
                     onDismiss = {
+                        previewTitle = null
                         previewUrl = null
                         previewMimeType = null
+                    },
+                    onDocumentBroken = { title ->
+                        viewModel.markDocumentAsBroken(title)
                     }
                 )
             }
@@ -318,9 +325,11 @@ fun DocumentItem(
 
 @Composable
 fun FullscreenPreviewDialog(
+    title: String,
     url: String,
     mimeType: String,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onDocumentBroken: (String) -> Unit
 ) {
     val context = LocalContext.current
     var isLoading by remember { mutableStateOf(true) }
@@ -340,7 +349,7 @@ fun FullscreenPreviewDialog(
             Column {
                 // ✅ Top Bar
                 CenterAlignedTopAppBar(
-                    title = { Text("Preview") },
+                    title = { Text(title, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Close")
@@ -350,7 +359,7 @@ fun FullscreenPreviewDialog(
                         containerColor = MaterialTheme.colorScheme.primary
                     ),
                     actions = {
-                        IconButton(onClick = { downloadFile(context, url, "Document") }) {
+                        IconButton(onClick = { downloadFile(context, url, title) }) {
                             Icon(Icons.Default.FileDownload, contentDescription = "Download")
                         }
                     }
@@ -364,11 +373,24 @@ fun FullscreenPreviewDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     when {
-                        hasError -> Text(
-                            text = "⚠️ Unable to preview this file.",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        hasError -> {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "⚠️ Unable to preview this file.",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = "It may have been moved or deleted.",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                // Try to let the user know we're removing it
+                                SideEffect {
+                                    onDocumentBroken(title)
+                                }
+                            }
+                        }
 
                         // ✅ PDF, Drive & Office Docs
                         mimeType.contains("pdf", ignoreCase = true) ||

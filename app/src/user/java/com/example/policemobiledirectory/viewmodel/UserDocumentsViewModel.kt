@@ -35,7 +35,10 @@ class UserDocumentsViewModel @Inject constructor(
     // In-memory cache with timestamp
     private var cachedDocuments: List<Document>? = null
     private var cacheTimestamp: Long = 0
-    private val CACHE_DURATION_MS = 5 * 60 * 1000L // 5 minutes
+    private val CACHE_DURATION_MS = 30 * 1000L // Reduced to 30 seconds for faster sync
+
+    // 🚫 Track broken documents that failed to load
+    private val brokenDocTitles = mutableSetOf<String>()
 
     // Computed properties for convenience
     val isLoading: Boolean get() = _documentsStatus.value is OperationStatus.Loading
@@ -53,8 +56,8 @@ class UserDocumentsViewModel @Inject constructor(
             // Return cached data if available and not expired
             if (!forceRefresh && cachedDocuments != null && 
                 (System.currentTimeMillis() - cacheTimestamp) < CACHE_DURATION_MS) {
-                // Apply local delete filter to cached data too
-                val filteredCache = cachedDocuments!!
+                // Apply broken doc filter to cached data
+                val filteredCache = cachedDocuments!!.filter { !brokenDocTitles.contains(it.resolvedTitle) }
                 _documents.value = filteredCache
                 _documentsStatus.value = OperationStatus.Success(filteredCache)
                 return@launch
@@ -73,8 +76,8 @@ class UserDocumentsViewModel @Inject constructor(
                 cachedDocuments = docList
                 cacheTimestamp = System.currentTimeMillis()
                 
-                // ✅ Filter out locally deleted docs
-                val filteredList = docList
+                // ✅ Filter out broken docs
+                val filteredList = docList.filter { !brokenDocTitles.contains(it.resolvedTitle) }
                 
                 _documents.value = filteredList
                 _documentsStatus.value = OperationStatus.Success(filteredList)
@@ -84,7 +87,7 @@ class UserDocumentsViewModel @Inject constructor(
                 
                 // Return cached data if available, even if expired
                 if (cachedDocuments != null) {
-                    val filteredCache = cachedDocuments!!
+                    val filteredCache = cachedDocuments!!.filter { !brokenDocTitles.contains(it.resolvedTitle) }
                     _documents.value = filteredCache
                     _documentsStatus.value = OperationStatus.Error(
                         "Using cached data. ${errorInfo.userFriendlyMessage}"
@@ -102,5 +105,18 @@ class UserDocumentsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Mark a document as broken (failed to load). This will hide it from the UI.
+     */
+    fun markDocumentAsBroken(title: String) {
+        if (title.isBlank()) return
+        
+        if (brokenDocTitles.add(title)) {
+            android.util.Log.d("UserDocumentsViewModel", "🚫 Document marked as broken: $title")
+            // Re-filter the current list
+            val currentList = _documents.value
+            _documents.value = currentList.filter { it.resolvedTitle != title }
+        }
+    }
 
 }

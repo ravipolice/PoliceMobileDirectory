@@ -119,7 +119,6 @@ fun AdminPanelScreen(
         contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
-                windowInsets = WindowInsets(0.dp),
                 title = { 
                     val staffType by viewModel.selectedStaffType.collectAsState(EmployeeViewModel.StaffType.ALL)
                     val dynamicTitle = when (staffType) {
@@ -136,7 +135,7 @@ fun AdminPanelScreen(
                             Text(
                                 text = "Welcome back! Here's your overview.",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                color = Color.White.copy(alpha = 0.7f)
                             )
                         }
                     }
@@ -163,7 +162,9 @@ fun AdminPanelScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 )
             )
         },
@@ -196,6 +197,7 @@ fun AdminPanelScreen(
                 StaffListContent(
                     viewModel = viewModel,
                     constantsViewModel = constantsViewModel,
+                    navController = navController,
                     onAddOfficer = { navController.navigate(Routes.ADD_OFFICER) },
                     onEditOfficer = { id -> navController.navigate("${Routes.ADD_OFFICER}?officerId=$id") },
                     onDeleteOfficer = { id -> viewModel.deleteOfficer(id) },
@@ -411,7 +413,7 @@ fun AdminUnifiedDashboard(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 32.dp)
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 16.dp)
             )
         }
     }

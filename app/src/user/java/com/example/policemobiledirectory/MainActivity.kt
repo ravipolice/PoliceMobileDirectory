@@ -8,6 +8,7 @@ import android.widget.Toast
 
 import com.example.policemobiledirectory.utils.ToastUtil
 import androidx.activity.ComponentActivity
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -73,6 +74,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        // ✅ Status bar & top bar: same primary color
+        window.statusBarColor = android.graphics.Color.parseColor("#00BCD4")
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
 
         // ✅ TEST LOG - This should ALWAYS appear when app starts
         Log.e("TEST_LOG", "═══════════════════════════════════════")
@@ -80,10 +86,6 @@ class MainActivity : ComponentActivity() {
         Log.e("TEST_LOG", "═══════════════════════════════════════")
         android.util.Log.e("TEST_LOG2", "Android Log test - MainActivity started")
         System.out.println("SYSOUT: MainActivity onCreate called")
-
-        // ✅ Force status bar to match app primary teal (same as PMD Home top bar)
-        window.statusBarColor = android.graphics.Color.parseColor("#00BCD4")
-        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
 
         // ✅ Initialize Legacy Google Sign-In
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)

@@ -439,7 +439,9 @@ fun NavigationDrawer(
                 
                 // App Version Display
                 Box(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(

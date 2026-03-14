@@ -53,15 +53,7 @@ class AddEditEmployeeViewModel @Inject constructor(
      *  - MyProfileEdit (self-edit)  <-- new requirement
      */
     fun saveEmployee(employee: Employee, newPhotoUri: Uri?) {
-        android.util.Log.e("AddEditViewModel", "═══════════════════════════════════════")
-        android.util.Log.e("AddEditViewModel", "🎯🎯🎯 saveEmployee() FUNCTION CALLED 🎯🎯🎯")
-        android.util.Log.e("AddEditViewModel", "Employee KGID: ${employee.kgid}")
-        android.util.Log.e("AddEditViewModel", "Has new photo: ${newPhotoUri != null}")
-        android.util.Log.e("AddEditViewModel", "Photo URI: $newPhotoUri")
-        android.util.Log.e("AddEditViewModel", "About to launch viewModelScope...")
-        
         viewModelScope.launch {
-            android.util.Log.e("AddEditViewModel", "✅ Inside viewModelScope.launch block")
             try {
                 _saveStatus.value = RepoResult.Loading
                 
@@ -69,7 +61,6 @@ class AddEditEmployeeViewModel @Inject constructor(
                 val originalKgid = savedStateHandle.get<String>("employeeId")
                 val isNewUser = originalKgid.isNullOrEmpty()
                 
-                // If editing, we check email collision. If adding, we check both.
                 val duplicateError = employeeRepository.checkDuplicates(
                     kgid = employee.kgid,
                     email = employee.email ?: "",
@@ -85,62 +76,39 @@ class AddEditEmployeeViewModel @Inject constructor(
 
                 // Upload new photo if provided
                 if (newPhotoUri != null) {
-                    android.util.Log.d("AddEditViewModel", "📸 Photo provided, starting upload...")
-                    android.util.Log.d("AddEditViewModel", "📤 Starting photo upload for: ${employee.kgid}")
                     var uploadFailed = false
-
                     try {
                         imageRepository.uploadOfficerImage(newPhotoUri, employee.kgid).collect { status ->
-                            android.util.Log.d("AddEditViewModel", "📥 Photo upload status: $status")
                             _photoUploadStatus.value = status
 
                             when (status) {
                                 is OperationStatus.Success -> {
                                     status.data?.let { url ->
-                                        android.util.Log.d("AddEditViewModel", "✅ Upload successful, URL: $url")
                                         updatedEmployee = updatedEmployee.copy(photoUrl = url)
                                     }
                                 }
                                 is OperationStatus.Error -> {
-                                    android.util.Log.e("AddEditViewModel", "❌ Upload failed: ${status.message}")
                                     _saveStatus.value = RepoResult.Error(message = status.message)
                                     uploadFailed = true
                                 }
-                                is OperationStatus.Loading -> {
-                                    android.util.Log.d("AddEditViewModel", "⏳ Upload in progress...")
-                                }
-                                else -> {
-                                    android.util.Log.d("AddEditViewModel", "📊 Status: $status")
-                                }
+                                else -> Unit
                             }
                         }
                     } catch (e: Exception) {
-                        android.util.Log.e("AddEditViewModel", "❌ Exception in upload flow: ${e.message}", e)
                         _saveStatus.value = RepoResult.Error(message = "Upload failed: ${e.message}")
                         uploadFailed = true
                     }
 
                     _photoUploadStatus.value = OperationStatus.Idle
-                    if (uploadFailed) {
-                        android.util.Log.e("AddEditViewModel", "❌ Upload failed, returning early")
-                        return@launch
-                    }
-                    android.util.Log.d("AddEditViewModel", "✅ Photo upload completed successfully")
-                } else {
-                    android.util.Log.d("AddEditViewModel", "ℹ️ No photo to upload, proceeding to save employee")
+                    if (uploadFailed) return@launch
                 }
 
                 // Save to DB + Google Sheet
-                android.util.Log.d("AddEditViewModel", "💾 Starting to save employee to repository...")
                 _saveStatus.value = RepoResult.Loading
-
                 employeeRepository.addOrUpdateEmployee(updatedEmployee).collect { result ->
-                    android.util.Log.d("AddEditViewModel", "📥 Repository result: $result")
                     _saveStatus.value = result
                 }
-                android.util.Log.d("AddEditViewModel", "✅ saveEmployee() completed")
             } catch (e: Exception) {
-                android.util.Log.e("AddEditViewModel", "❌❌❌ EXCEPTION in saveEmployee: ${e.message}", e)
                 e.printStackTrace()
                 _saveStatus.value = RepoResult.Error(message = "Unexpected error: ${e.message}")
             }

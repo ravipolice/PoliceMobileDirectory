@@ -19,7 +19,10 @@ class DocumentsRepository @Inject constructor(
     private val gson = Gson()
 
     suspend fun fetchDocuments(): List<Document> {
-        val response: Response<ResponseBody> = api.getDocumentsRaw(token = token())
+        val response: Response<ResponseBody> = api.getDocumentsRaw(
+            token = token(),
+            nocache = System.currentTimeMillis().toString()
+        )
         
         if (!response.isSuccessful) {
             val errorBody = response.errorBody()?.string() ?: "Unknown error"

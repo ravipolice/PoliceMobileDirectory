@@ -7,7 +7,8 @@ interface DocumentsApiService {
 
     @GET("exec?action=getDocuments")
     suspend fun getDocumentsRaw(
-        @Query("token") token: String? = null
+        @Query("token") token: String? = null,
+        @Query("nocache") nocache: String? = null
     ): retrofit2.Response<okhttp3.ResponseBody>
 
     @POST("exec?action=uploadDocument")

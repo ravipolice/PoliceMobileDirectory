@@ -1,0 +1,1022 @@
+﻿To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon JVM discovery is an incubating feature.
+Daemon will be stopped at the end of the build 
+Configuration on demand is an incubating feature.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preAdminDebugBuild UP-TO-DATE
+> Task :app:mergeAdminDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateAdminDebugBuildConfig UP-TO-DATE
+> Task :app:checkAdminDebugAarMetadata UP-TO-DATE
+> Task :app:processAdminDebugNavigationResources UP-TO-DATE
+> Task :app:compileAdminDebugNavigationResources UP-TO-DATE
+> Task :app:generateAdminDebugResValues UP-TO-DATE
+> Task :app:processAdminDebugGoogleServices UP-TO-DATE
+> Task :app:mapAdminDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateAdminDebugResources UP-TO-DATE
+> Task :app:mergeAdminDebugResources UP-TO-DATE
+> Task :app:packageAdminDebugResources UP-TO-DATE
+> Task :app:parseAdminDebugLocalResources UP-TO-DATE
+> Task :app:createAdminDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksAdminDebug UP-TO-DATE
+> Task :app:processAdminDebugMainManifest UP-TO-DATE
+> Task :app:processAdminDebugManifest UP-TO-DATE
+> Task :app:processAdminDebugManifestForPackage UP-TO-DATE
+> Task :app:processAdminDebugResources UP-TO-DATE
+> Task :app:javaPreCompileAdminDebug UP-TO-DATE
+> Task :app:mergeAdminDebugShaders UP-TO-DATE
+> Task :app:compileAdminDebugShaders NO-SOURCE
+> Task :app:generateAdminDebugAssets UP-TO-DATE
+> Task :app:mergeAdminDebugAssets UP-TO-DATE
+> Task :app:compressAdminDebugAssets UP-TO-DATE
+> Task :app:l8DexDesugarLibAdminDebug UP-TO-DATE
+> Task :app:desugarAdminDebugFileDependencies UP-TO-DATE
+> Task :app:checkAdminDebugDuplicateClasses UP-TO-DATE
+> Task :app:mergeExtDexAdminDebug UP-TO-DATE
+> Task :app:mergeLibDexAdminDebug UP-TO-DATE
+> Task :app:mergeAdminDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeAdminDebugNativeLibs UP-TO-DATE
+> Task :app:stripAdminDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningAdminDebug UP-TO-DATE
+> Task :app:writeAdminDebugAppMetadata UP-TO-DATE
+> Task :app:writeAdminDebugSigningConfigVersions UP-TO-DATE
+> Task :app:kspAdminDebugKotlin
+
+> Task :app:compileAdminDebugKotlin FAILED
+./gradlew : e: file:///
+C:/Users/ravip/AndroidS
+tudioProjects/PoliceMob
+ileDirectory/app/src/ad
+min/java/com/example/po
+licemobiledirectory/ui/
+components/SearchFilter
+Bar.kt:60:15 
+Unresolved reference 
+'Modifier'.
+At line:1 char:1
++ ./gradlew :app:assemb
+leAdminDebug 
+--console=plain 
+--no-daemon > build ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (e: file:///C:   
+ /U...nce 'Modifier    
+'.:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:60:26
+ Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:75:54
+ Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:79:24
+ Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:97:67
+ Unresolved reference 
+'KeyboardType'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:98:25
+ Unresolved reference 
+'KeyboardType'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:104:8
+3 Unresolved reference 
+'sp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:105:9
+7 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:105:1
+14 Unresolved 
+reference 'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:109:1
+16 Unresolved 
+reference 'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:109:1
+33 Unresolved 
+reference 'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:113:2
+8 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:115:4
+3 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:116:4
+7 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:122:4
+4 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:123:4
+5 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:124:4
+7 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:128:2
+0 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:128:3
+7 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:133:2
+8 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:134:3
+0 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:136:7
+0 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:137:5
+5 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:140:3
+5 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:141:7
+0 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:142:5
+5 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:148:4
+8 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:149:3
+2 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:149:4
+9 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:161:2
+8 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:163:4
+1 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:164:6
+2 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:168:3
+2 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:169:6
+8 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:173:3
+6 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:185:7
+0 Unresolved reference 
+'sp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:186:1
+15 Unresolved 
+reference 'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:186:1
+32 Unresolved 
+reference 'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:188:4
+4 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:193:6
+3 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:196:6
+0 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:198:5
+9 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:220:3
+6 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:232:7
+7 Unresolved reference 
+'sp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:233:1
+10 Unresolved 
+reference 'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:233:1
+27 Unresolved 
+reference 'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:235:4
+4 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:240:6
+3 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:243:6
+0 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:245:5
+9 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:268:3
+2 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:269:6
+8 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:273:4
+0 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:287:8
+0 Unresolved reference 
+'sp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:288:1
+19 Unresolved 
+reference 'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:288:1
+36 Unresolved 
+reference 'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:290:4
+8 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:296:6
+7 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:299:6
+4 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:301:6
+3 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:323:3
+6 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:335:7
+0 Unresolved reference 
+'sp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:336:1
+19 Unresolved 
+reference 'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:336:1
+36 Unresolved 
+reference 'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:338:4
+4 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:343:6
+3 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:346:6
+0 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:348:5
+9 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:373:6
+0 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:374:5
+9 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:375:2
+4 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:375:6
+4 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:375:7
+9 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:389:3
+2 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:389:7
+6 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:389:8
+6 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:389:1
+20 Unresolved 
+reference 'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:394:6
+5 Unresolved reference 
+'sp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:394:9
+6 Unresolved reference 
+'FontWeight'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:394:1
+17 Unresolved 
+reference 'FontWeight'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:395:5
+5 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:397:6
+8 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:398:5
+0 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:400:5
+6 Unresolved reference 
+'Color'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:403:2
+9 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:404:4
+1 Unresolved 
+reference. None of the 
+following candidates 
+is applicable because 
+of a receiver type 
+mismatch:
+val 
+Icons.Filled.Brush: 
+ImageVector
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:404:4
+7 Unresolved reference 
+'linearGradient'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:407:6
+3 Unresolved reference 
+'dp'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:410:2
+9 Unresolved reference 
+'Modifier'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:70:
+30 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:84:
+30 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:96:
+30 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:219
+:40 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:234
+:40 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:246
+:40 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:259
+:36 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:267
+:36 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:306
+:71 Unresolved 
+reference 'Routes'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:308
+:71 Unresolved 
+reference 'Routes'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:316
+:42 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:330
+:42 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:477
+:39 Unresolved 
+reference 'Icons'.
+
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Execution failed for 
+task ':app:compileAdmin
+DebugKotlin'.
+> A failure occurred 
+while executing org.jet
+brains.kotlin.compilerR
+unner.GradleCompilerRun
+nerWithWorkers$GradleKo
+tlinCompilerWorkAction
+   > Compilation 
+error. See log for 
+more details
+
+* Try:
+> Run with 
+--stacktrace option to 
+get the stack trace.
+> Run with --info or 
+--debug option to get 
+more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at http
+s://help.gradle.org.
+
+BUILD FAILED in 30s
+34 actionable tasks: 2 executed, 32 up-to-date

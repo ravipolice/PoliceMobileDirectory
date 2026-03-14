@@ -8,6 +8,7 @@ sealed class GoogleSignInUiEvent {
     data class SignInSuccess(val user: Employee) : GoogleSignInUiEvent()
     data class RegistrationRequired(val email: String, val name: String?) : GoogleSignInUiEvent()
     data class UserNotFoundInFirebase(val email: String) : GoogleSignInUiEvent()
+    data class RegistrationPending(val email: String) : GoogleSignInUiEvent()
     data class LoginSuccess(val isAdmin: Boolean) : GoogleSignInUiEvent()
     data class Error(val message: String) : GoogleSignInUiEvent()
 }

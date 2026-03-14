@@ -76,7 +76,7 @@ fun AppNavGraph(
                     navController = navController,
                     employeeViewModel = employeeViewModel,
                     onThemeToggle = onThemeToggle,
-                    // ✅ 2. Pass the callback down to the content host
+                    onLogout = onLogout,
                     onGoogleSignInClicked = onGoogleSignInClicked,
                     startDestination = startDestination,
                     scope = scope,
@@ -89,7 +89,7 @@ fun AppNavGraph(
             navController = navController,
             employeeViewModel = employeeViewModel,
             onThemeToggle = onThemeToggle,
-            // ✅ 3. Also pass it here for the initial composition
+            onLogout = onLogout,
             onGoogleSignInClicked = onGoogleSignInClicked,
             startDestination = startDestination,
             scope = scope
@@ -101,6 +101,7 @@ private fun AppNavHostContent(
     navController: NavHostController,
     employeeViewModel: EmployeeViewModel,
     onThemeToggle: () -> Unit,
+    onLogout: () -> Unit,
     onGoogleSignInClicked: () -> Unit,
     startDestination: String,
     scope: kotlinx.coroutines.CoroutineScope,
@@ -149,7 +150,8 @@ private fun AppNavHostContent(
                     navController.navigate(Routes.FORGOT_PIN)
                 },
                 onGoogleSignInClicked = onGoogleSignInClicked,
-                onThemeToggle = onThemeToggle
+                onThemeToggle = onThemeToggle,
+                onLogout = onLogout
             )
         }
 
@@ -290,6 +292,24 @@ private fun AppNavHostContent(
                 navController = navController,
                 viewModel = addEditOfficerViewModel,
                 employeeViewModel = employeeViewModelForRefresh
+            )
+        }
+
+        // --- EMPLOYEE DETAIL ---
+        composable(
+            route = Routes.EMPLOYEE_DETAIL,
+            arguments = listOf(
+                navArgument("id") { type = NavType.StringType },
+                navArgument("isOfficer") { type = NavType.BoolType }
+            )
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id") ?: ""
+            val isOfficer = backStackEntry.arguments?.getBoolean("isOfficer") ?: false
+            EmployeeDetailScreen(
+                id = id,
+                isOfficer = isOfficer,
+                navController = navController,
+                viewModel = employeeViewModel
             )
         }
 

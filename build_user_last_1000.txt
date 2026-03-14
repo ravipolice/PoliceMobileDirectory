@@ -1,0 +1,93 @@
+﻿To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon JVM discovery is an incubating feature.
+Daemon will be stopped at the end of the build 
+Configuration on demand is an incubating feature.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preUserDebugBuild UP-TO-DATE
+> Task :app:mergeUserDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateUserDebugBuildConfig FROM-CACHE
+> Task :app:processUserDebugNavigationResources FROM-CACHE
+> Task :app:compileUserDebugNavigationResources FROM-CACHE
+> Task :app:checkUserDebugAarMetadata
+> Task :app:generateUserDebugResValues FROM-CACHE
+> Task :app:processUserDebugGoogleServices FROM-CACHE
+> Task :app:mapUserDebugSourceSetPaths
+> Task :app:generateUserDebugResources FROM-CACHE
+> Task :app:mergeUserDebugResources FROM-CACHE
+> Task :app:packageUserDebugResources FROM-CACHE
+> Task :app:parseUserDebugLocalResources FROM-CACHE
+> Task :app:createUserDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksUserDebug FROM-CACHE
+> Task :app:processUserDebugMainManifest FROM-CACHE
+> Task :app:processUserDebugManifest FROM-CACHE
+> Task :app:processUserDebugManifestForPackage FROM-CACHE
+> Task :app:processUserDebugResources FROM-CACHE
+> Task :app:javaPreCompileUserDebug FROM-CACHE
+> Task :app:mergeUserDebugShaders
+> Task :app:compileUserDebugShaders NO-SOURCE
+> Task :app:generateUserDebugAssets UP-TO-DATE
+> Task :app:mergeUserDebugAssets
+> Task :app:compressUserDebugAssets FROM-CACHE
+> Task :app:l8DexDesugarLibUserDebug FROM-CACHE
+> Task :app:desugarUserDebugFileDependencies FROM-CACHE
+> Task :app:mergeUserDebugJniLibFolders
+> Task :app:validateSigningUserDebug
+> Task :app:writeUserDebugAppMetadata
+> Task :app:mergeUserDebugNativeLibs
+> Task :app:writeUserDebugSigningConfigVersions
+
+> Task :app:stripUserDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so. Run with --info option to learn more.
+
+> Task :app:checkUserDebugDuplicateClasses
+> Task :app:mergeExtDexUserDebug FROM-CACHE
+> Task :app:mergeLibDexUserDebug FROM-CACHE
+
+> Task :app:kspUserDebugKotlin
+./gradlew : e: file:///C:/Users/ravip/A
+ndroidStudioProjects/PoliceMobileDirect
+ory/app/src/user/java/com/example/polic
+emobiledirectory/ui/components/CommonEm
+ployeeForm.kt:985:11 Unexpected tokens 
+(use ';' to separate expressions on 
+the same line)
+At line:1 char:1
++ ./gradlew :app:assembleUserDebug 
+--no-daemon > build_user_clean_log.t 
+...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpeci 
+   fied: (e: file:///C:/U... the same  
+   line):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCo 
+   mmandError
+ 
+
+> Task :app:kspUserDebugKotlin FAILED
+
+FAILURE: Build failed with an 
+exception.
+
+* What went wrong:
+Execution failed for task 
+':app:kspUserDebugKotlin'.
+> A failure occurred while executing or
+g.jetbrains.kotlin.compilerRunner.Gradl
+eCompilerRunnerWithWorkers$GradleKotlin
+CompilerWorkAction
+   > Compilation error. See log for 
+more details
+
+* Try:
+> Run with --stacktrace option to get 
+the stack trace.
+> Run with --info or --debug option to 
+get more log output.
+> Run with --scan to get full insights.
+> Get more help at 
+https://help.gradle.org.
+
+BUILD FAILED in 30s
+33 actionable tasks: 13 executed, 20 from cache

@@ -1,30 +1,22 @@
 package com.example.policemobiledirectory.ui.components
 
 import android.content.Context
-import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Message
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Delete 
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -35,16 +27,11 @@ import com.example.policemobiledirectory.R
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.model.Officer
 import com.example.policemobiledirectory.ui.theme.*
-import com.example.policemobiledirectory.utils.IntentUtils
-import com.example.policemobiledirectory.utils.getBloodGroupColor
-import com.example.policemobiledirectory.utils.getFormattedBloodGroup
 import com.example.policemobiledirectory.ui.theme.components.DeleteEmployeeDialog
 
-import com.example.policemobiledirectory.ui.theme.CardStyle
-
 /**
- * Unified contact card that works for both Employee and Officer
- * Admin Version: Supports onDelete
+ * Unified contact card that works for both Employee and Officer (Admin Version)
+ * Modernized with minimalist row-based design.
  */
 @Composable
 fun ContactCard(
@@ -53,348 +40,147 @@ fun ContactCard(
     fontScale: Float = 1.0f,
     isAdmin: Boolean = false,
     onEdit: (() -> Unit)? = null,
-    onDelete: (() -> Unit)? = null, // ✅ Added onDelete callback
-    onClick: () -> Unit = {},
-    cardStyle: CardStyle = CardStyle.Vibrant
+    onDelete: (() -> Unit)? = null,
+    onClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     
-    // Use employee if available, otherwise officer
     val name = employee?.name ?: officer?.name ?: ""
-    // Use displayRank for employees (includes metal number when applicable), regular rank for officers
     val rank = employee?.displayRank ?: officer?.rank
-    val station = employee?.station ?: officer?.station
+    val unit = employee?.unit ?: officer?.unit
     val district = employee?.district ?: officer?.district
-    val mobileNumber = employee?.mobile1 ?: officer?.mobile
-    val landlineNumber = officer?.landline
     val photoUrl = employee?.photoUrl ?: employee?.photoUrlFromGoogle ?: officer?.photoUrl
     val placeholderRes = if (employee != null) R.drawable.officer else R.drawable.ic_officer_building
 
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Determine background color based on unit or station
-    val backgroundColor = remember(station, employee?.unit, officer?.unit) {
-        val unit = employee?.unit ?: officer?.unit ?: ""
-        val effectiveStation = station ?: ""
-        
-        when {
-            // Traffic - Light Green
-            unit.contains("Traffic", ignoreCase = true) || 
-            effectiveStation.contains("Traffic", ignoreCase = true) || 
-            effectiveStation.contains("TR.", ignoreCase = true) -> Color(0xFFDCEDC8)
-            
-            // Control Room - Light Red/Orange
-            unit.contains("Control", ignoreCase = true) || 
-            effectiveStation.contains("Control", ignoreCase = true) -> Color(0xFFFFCCBC)
-            
-            // CEN / Cyber - Light Blue
-            unit.contains("CEN", ignoreCase = true) || 
-            unit.contains("Cyber", ignoreCase = true) ||
-            effectiveStation.contains("CEN", ignoreCase = true) ||
-            effectiveStation.contains("Cyber", ignoreCase = true) -> Color(0xFFB3E5FC)
-
-            // Women Police - Light Pink
-            unit.contains("Women", ignoreCase = true) || 
-            effectiveStation.contains("Women", ignoreCase = true) -> Color(0xFFF8BBD0)
-
-            // DPO / Admin / Office - Light Purple/Lavender
-            unit.contains("DPO", ignoreCase = true) || 
-            unit.contains("Admin", ignoreCase = true) ||
-            unit.contains("Office", ignoreCase = true) ||
-            effectiveStation.contains("DPO", ignoreCase = true) ||
-            effectiveStation.contains("Admin", ignoreCase = true) ||
-            effectiveStation.contains("Office", ignoreCase = true) -> Color(0xFFE1BEE7) // Lavender
-            
-            // DAR - Light Teal/Cyan
-            unit.contains("DAR", ignoreCase = true) || 
-            effectiveStation.contains("DAR", ignoreCase = true) -> Color(0xFFB2DFDB)
-
-            // Special Units (DSB, FPB, etc.) - Light Yellow/Amber
-            listOf("DSB", "Intelligence", "INT", "FPB", "MCU").any { 
-                unit.contains(it, ignoreCase = true) || effectiveStation.contains(it, ignoreCase = true) 
-            } -> Color(0xFFFFF9C4)
-
-            // Default - Glass effect
-            else -> com.example.policemobiledirectory.ui.theme.EmployeeCardBackground.copy(
-                alpha = com.example.policemobiledirectory.ui.theme.GlassOpacity
-            )
-        }
-    }
-
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
             .clickable { onClick() }
-            .shadow(
-                elevation = 8.dp,
-                shape = RoundedCornerShape(16.dp),
-                spotColor = com.example.policemobiledirectory.ui.theme.CardShadow,
-                ambientColor = com.example.policemobiledirectory.ui.theme.CardShadow.copy(alpha = 0.5f)
-            ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), // Using custom shadow instead
-        shape = RoundedCornerShape(16.dp), // More rounded corners
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        // 🔹 Circular Avatar or Initial Letter
         Box(
-            modifier = Modifier.background(color = backgroundColor)
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)),
+            contentAlignment = Alignment.Center
         ) {
-            // 🔹 Blood Group badge in red circle at top right corner of card
-            val bloodGroup = employee?.bloodGroup ?: officer?.bloodGroup
-            bloodGroup?.takeIf { it.isNotBlank() }?.let { bg ->
-                val formattedBg = getFormattedBloodGroup(bg)
-                val badgeColor = getBloodGroupColor(bg)
-                Surface(
-                    color = badgeColor,
-                    shape = CircleShape,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .align(Alignment.TopEnd)
-                        .offset(x = (-8).dp, y = 8.dp)
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize()
+            if (!photoUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = photoUrl,
+                    contentDescription = "Contact Photo",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(placeholderRes),
+                    error = painterResource(placeholderRes)
+                )
+            } else {
+                val initial = name.takeIf { it.isNotBlank() }?.first()?.uppercase() ?: "?"
+                Text(
+                    text = initial.toString(),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
+
+        Spacer(Modifier.width(14.dp))
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Name + Rank (Bold & Clean)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = (15 * fontScale).sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                
+                if (!rank.isNullOrBlank()) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = rank,
+                        fontSize = (11 * fontScale).sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                    )
+                }
+            }
+
+            // Unit / Section + District (Subtitle)
+            val subTitleParts = listOfNotNull(unit, district).filter { it.isNotBlank() }
+            if (subTitleParts.isNotEmpty()) {
+                Text(
+                    text = subTitleParts.joinToString(" • "),
+                    fontSize = (13 * fontScale).sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(top = 1.dp)
+                )
+            }
+        }
+
+        // 🔹 Actions (Admin Edit/Delete or Chevron)
+        if (isAdmin && (onEdit != null || onDelete != null)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (onEdit != null) {
+                    IconButton(
+                        onClick = onEdit,
+                        modifier = Modifier.size(32.dp)
                     ) {
-                        Text(
-                            text = formattedBg,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            fontSize = 9.sp
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            tint = PrimaryTeal.copy(alpha = 0.6f),
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
-            }
-            
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 🔹 Profile image with white border and shadow
-                Box {
-                    AsyncImage(
-                        model = photoUrl,
-                        contentDescription = "Contact Photo",
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .shadow(
-                                elevation = 4.dp,
-                                shape = CircleShape,
-                                spotColor = com.example.policemobiledirectory.ui.theme.CardShadow,
-                                ambientColor = com.example.policemobiledirectory.ui.theme.CardShadow.copy(alpha = 0.5f)
-                            ),
-                        placeholder = painterResource(placeholderRes),
-                        error = painterResource(placeholderRes)
-                    )
-                    // White border around avatar
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(Color.Transparent)
-                            .border(2.dp, Color.White, CircleShape)
-                    )
-                }
-
-                Spacer(Modifier.width(10.dp))
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 2.dp),
-                    verticalArrangement = Arrangement.spacedBy(1.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween, // Changed to SpaceBetween to push Edit icon to right
-                        modifier = Modifier.fillMaxWidth()
+                
+                if (onDelete != null) {
+                    IconButton(
+                        onClick = { showDeleteDialog = true },
+                        modifier = Modifier.size(32.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.weight(1f, fill = false) // Allow text to take space but not push icon off
-                        ) {
-                            Text(
-                                text = name,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = (16 * fontScale).sp,
-                                color = Color.Black
-                            )
-
-                            val rankText = rank ?: ""
-                            if (rankText.isNotBlank()) {
-                                Text(
-                                    text = rankText,
-                                    fontSize = (13 * fontScale).sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color.Black.copy(alpha = 0.9f)
-                                )
-                            }
-                        }
-
-                        // Use a Row for icons
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // ✅ Edit Icon (Only for Admins and if onEdit is provided)
-                            if (isAdmin && onEdit != null) {
-                                IconButton(
-                                    onClick = onEdit,
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = "Edit Officer",
-                                        tint = PrimaryTeal,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                            
-                            // ✅ Delete Icon (Only for Admins and if onDelete is provided)
-                            if (isAdmin && onDelete != null) {
-                                IconButton(
-                                    onClick = { showDeleteDialog = true },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete Officer",
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                                
-                                DeleteEmployeeDialog(
-                                    showDialog = showDeleteDialog,
-                                    onDismiss = { showDeleteDialog = false },
-                                    onConfirm = {
-                                        showDeleteDialog = false
-                                        onDelete()
-                                    },
-                                    title = if (officer != null) "Delete Officer/Unit" else "Delete Contact",
-                                    text = "Are you sure you want to delete this Officer/Unit? This action cannot be undone."
-                                )
-                            }
-                        }
-                    }
-
-                    if (!station.isNullOrBlank() || !district.isNullOrBlank()) {
-                        Text(
-                            text = listOfNotNull(station, district)
-                                .filter { it.isNotBlank() }
-                                .joinToString(", "),
-                            fontSize = (13 * fontScale).sp,
-                            color = Color.Black.copy(alpha = 0.9f)
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
+                            modifier = Modifier.size(18.dp)
                         )
                     }
-
-                    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                        if (!mobileNumber.isNullOrBlank() && mobileNumber.uppercase() != "NM") {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = mobileNumber,
-                                    color = Color.Black.copy(alpha = 0.9f),
-                                    fontSize = (12 * fontScale).sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    IconButton(
-                                        onClick = { IntentUtils.dial(context, mobileNumber) },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Call,
-                                            contentDescription = "Call mobile",
-                                            tint = Color.Black,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { IntentUtils.sendSms(context, mobileNumber) },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.Message,
-                                            contentDescription = "SMS",
-                                            tint = Color.Black,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { IntentUtils.openWhatsApp(context, mobileNumber) },
-                                        modifier = Modifier.size(32.dp)
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.ic_whatsapp),
-                                            contentDescription = "WhatsApp",
-                                            tint = Color(0xFF25D366),
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        } else if (!mobileNumber.isNullOrBlank() && mobileNumber.uppercase() == "NM") {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "NM (Not Mentioned)",
-                                    color = Color.Black.copy(alpha = 0.7f),
-                                    fontSize = (12 * fontScale).sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        } else {
-                            Text(
-                                text = "No mobile number",
-                                color = Color.Black.copy(alpha = 0.7f),
-                                fontSize = (12 * fontScale).sp
-                            )
-                        }
-
-                        if (!landlineNumber.isNullOrBlank()) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = landlineNumber,
-                                    color = Color.Black.copy(alpha = 0.9f),
-                                    fontSize = (12 * fontScale).sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-
-                                IconButton(
-                                    onClick = { IntentUtils.dial(context, landlineNumber) },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Call,
-                                        contentDescription = "Call landline",
-                                        tint = Color.Black,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    
+                    DeleteEmployeeDialog(
+                        showDialog = showDeleteDialog,
+                        onDismiss = { showDeleteDialog = false },
+                        onConfirm = {
+                            showDeleteDialog = false
+                            onDelete()
+                        },
+                        title = if (officer != null) "Delete Officer/Unit" else "Delete Contact",
+                        text = "Are you sure you want to delete this Officer/Unit? This action cannot be undone."
+                    )
                 }
             }
+        } else {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = "View Details",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }

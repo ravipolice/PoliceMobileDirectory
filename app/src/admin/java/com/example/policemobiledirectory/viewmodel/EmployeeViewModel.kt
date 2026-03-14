@@ -267,9 +267,20 @@ open class EmployeeViewModel @Inject constructor(
                 .filterByUnit(effectiveParams.unit)
         }
 
-        // Always apply text query filter
-        filteredByDropdowns.filterByQuery(effectiveParams.query, effectiveParams.filter)
-            
+        // 3. Sorting Process
+        if (effectiveParams.query.isNotBlank()) {
+            val queryLower = effectiveParams.query.trim().lowercase()
+            filteredByDropdowns.filterByQuery(effectiveParams.query, effectiveParams.filter)
+                .sortedByDescending { contact ->
+                    when {
+                        contact.employee != null -> contact.employee.matches(queryLower, "name") // Simple relevance check
+                        contact.officer != null -> contact.officer.matches(queryLower, "name")
+                        else -> false
+                    }
+                }
+        } else {
+            filteredByDropdowns.sortedBy { it.name }
+        }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
     private fun normalizeDistrict(district: String?): String {
@@ -1900,6 +1911,54 @@ open class EmployeeViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.e("AdminCheck", "❌ Error checking admin status: ${e.message}")
+            }
+        }
+    }
+
+    private val _saveStatus = MutableStateFlow<RepoResult<Boolean>?>(null)
+    val saveStatus: StateFlow<RepoResult<Boolean>?> = _saveStatus.asStateFlow()
+
+    val photoUploadStatus: StateFlow<OperationStatus<String>> = _uploadStatus.asStateFlow()
+
+    fun resetSaveStatus() {
+        _saveStatus.value = null
+    }
+
+    fun saveEmployee(employee: Employee, photoUri: Uri?) {
+        viewModelScope.launch {
+            _saveStatus.value = RepoResult.Loading
+            try {
+                var finalEmployee = employee
+
+                // 1. Upload photo if exists
+                if (photoUri != null) {
+                    _uploadStatus.value = OperationStatus.Loading
+                    val uploadResult = imageRepo.uploadOfficerImage(photoUri, employee.kgid)
+                        .onEach { status -> _uploadStatus.value = status }
+                        .filter { it is OperationStatus.Success || it is OperationStatus.Error }
+                        .first()
+                    
+                    if (uploadResult is OperationStatus.Error) {
+                        _saveStatus.value = RepoResult.Error(Exception(uploadResult.message))
+                        return@launch
+                    } else if (uploadResult is OperationStatus.Success) {
+                         finalEmployee = finalEmployee.copy(photoUrl = uploadResult.data)
+                    }
+                }
+                
+                // 2. Save Employee
+                employeeRepo.addOrUpdateEmployee(finalEmployee).collect { result ->
+                    _saveStatus.value = result
+                    if (result is RepoResult.Success) {
+                        refreshEmployees()
+                        refreshCurrentUser()
+                    }
+                }
+
+            } catch (e: Exception) {
+                _saveStatus.value = RepoResult.Error(e)
+            } finally {
+                _uploadStatus.value = OperationStatus.Idle
             }
         }
     }

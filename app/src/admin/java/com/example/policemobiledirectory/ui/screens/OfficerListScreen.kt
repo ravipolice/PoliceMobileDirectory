@@ -57,6 +57,7 @@ fun StaffListScreen(
     StaffListContent(
         viewModel = viewModel,
         constantsViewModel = constantsViewModel,
+        navController = navController,
         onAddOfficer = { navController.navigate(Routes.ADD_OFFICER) },
         onEditOfficer = { officerId -> navController.navigate("${Routes.ADD_OFFICER}?officerId=$officerId") },
         onDeleteOfficer = { officerId -> viewModel.deleteOfficer(officerId) },
@@ -69,6 +70,7 @@ fun StaffListScreen(
 fun StaffListContent(
     viewModel: EmployeeViewModel,
     constantsViewModel: ConstantsViewModel,
+    navController: NavController,
     onAddOfficer: () -> Unit,
     onEditOfficer: (String) -> Unit,
     onDeleteOfficer: (String) -> Unit,
@@ -268,7 +270,7 @@ fun StaffListContent(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
+                    contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
                     items(filteredContacts, key = { it.id }) { contact ->
                         if (contact.employee != null) {
@@ -276,8 +278,7 @@ fun StaffListContent(
                                 employee = contact.employee,
                                 isAdmin = isAdmin,
                                 fontScale = fontScale,
-                                navController = NavController(context), // Dummy for now or pass actual
-                                onDelete = { /* Handle delete */ },
+                                navController = navController,
                                 context = context,
                                 cardStyle = cardStyle
                             )

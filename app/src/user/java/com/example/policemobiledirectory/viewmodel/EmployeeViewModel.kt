@@ -287,10 +287,7 @@ open class EmployeeViewModel @Inject constructor(
                 }
             }
         } else {
-            filtered.sortedWith(
-                compareBy<Contact> { getRankPriority(it.rank) }
-                    .thenBy { it.name }
-            )
+            filtered.sortedBy { it.name }
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
@@ -867,8 +864,10 @@ open class EmployeeViewModel @Inject constructor(
         refreshCurrentUserInternal()
 
         // ✅ SECURITY GUARD (User App): Only fetch if approved
+        // Whitelist demo reviewer who signs in anonymously to Firebase
         val user = _currentUser.value
-        if (auth.currentUser == null || (user?.isApproved != true && user?.isAdmin != true)) {
+        val isDemoUser = user?.email == "noreply.pmdapp@gmail.com"
+        if (auth.currentUser == null || (!isDemoUser && user?.isApproved != true && user?.isAdmin != true)) {
             Log.w("EmployeeVM", "🔒 Skip refreshEmployees: Auth not ready or user not approved")
             _employeeStatus.value = OperationStatus.Error("Security constraint: Approval required")
             return@launch
@@ -962,8 +961,10 @@ open class EmployeeViewModel @Inject constructor(
         refreshCurrentUserInternal()
 
         // ✅ SECURITY GUARD (User App): Only fetch if approved
+        // Whitelist demo reviewer who signs in anonymously to Firebase
         val user = _currentUser.value
-        if (auth.currentUser == null || (user?.isApproved != true && user?.isAdmin != true)) {
+        val isDemoUser = user?.email == "noreply.pmdapp@gmail.com"
+        if (auth.currentUser == null || (!isDemoUser && user?.isApproved != true && user?.isAdmin != true)) {
             Log.w("EmployeeVM", "🔒 Skip refreshOfficers: Auth not ready or user not approved")
             _officerStatus.value = OperationStatus.Error("Security constraint: Approval required")
             return@launch
@@ -1037,6 +1038,12 @@ open class EmployeeViewModel @Inject constructor(
         }
 
         if (user.isAnonymous || user.email.isNullOrBlank()) {
+            // Check if this is the active Demo session first
+            val currentEmail = sessionManager.userEmail.first()
+            if (currentEmail == "noreply.pmdapp@gmail.com") {
+                Log.d("AuthCheck", "✅ Valid Demo user (Anonymous Firebase Auth permitted)")
+                return
+            }
             Log.w("AuthCheck", "⚠️ Anonymous Firebase session detected — signing out.")
             try {
                 auth.signOut()

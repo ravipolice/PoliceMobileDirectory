@@ -16,15 +16,10 @@ import com.example.policemobiledirectory.repository.GalleryRepository
 import com.example.policemobiledirectory.utils.ErrorHandler
 import com.example.policemobiledirectory.utils.OperationStatus
 import com.example.policemobiledirectory.utils.PerformanceLogger
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ktx.toObject
-import kotlinx.coroutines.tasks.await
-
 @HiltViewModel
 class GalleryViewModel @Inject constructor(
     private val repository: GalleryRepository,
-    private val sessionManager: SessionManager,
-    private val firestore: FirebaseFirestore
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     // State management with OperationStatus
@@ -62,13 +57,16 @@ class GalleryViewModel @Inject constructor(
             _galleryStatus.value = OperationStatus.Loading
             
             try {
+                // 1. Fetch from Apps Script
                 val images = PerformanceLogger.measureNetworkOperation("gallery", "GET") {
                     repository.fetchGalleryImages()
                 }
                 
+                // 2. Filter out broken images
                 val imageList = (images ?: emptyList()).filter { image ->
                     val url = image.resolvedUrl ?: image.displayUrl
-                    url == null || !brokenImageUrls.contains(url)
+                    val isNotBroken = url == null || !brokenImageUrls.contains(url)
+                    isNotBroken
                 }
                 
                 // Update cache

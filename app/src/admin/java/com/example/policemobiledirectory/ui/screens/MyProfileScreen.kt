@@ -14,30 +14,30 @@ import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.navigation.Routes
 import com.example.policemobiledirectory.repository.RepoResult
 import com.example.policemobiledirectory.ui.components.CommonEmployeeForm
-import com.example.policemobiledirectory.viewmodel.AddEditEmployeeViewModel
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import com.example.policemobiledirectory.utils.OperationStatus
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 
 @Composable
 fun MyProfileEditScreen(
     navController: NavController? = null,
-    employeeViewModel: EmployeeViewModel = hiltViewModel(),
-    addEditViewModel: AddEditEmployeeViewModel = hiltViewModel()
+    viewModel: EmployeeViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val currentEmployee by employeeViewModel.currentUser.collectAsState()
-    val saveStatus by addEditViewModel.saveStatus.collectAsState()
-    val photoUploadStatus by addEditViewModel.photoUploadStatus.collectAsState()
-    val isLoading = saveStatus is com.example.policemobiledirectory.repository.RepoResult.Loading || 
-                    photoUploadStatus is com.example.policemobiledirectory.utils.OperationStatus.Loading
+    val currentEmployee by viewModel.currentUser.collectAsState()
+    val saveStatus by viewModel.saveStatus.collectAsState()
+    val photoUploadStatus by viewModel.photoUploadStatus.collectAsState()
+    val isLoading = saveStatus is RepoResult.Loading || 
+                    photoUploadStatus is OperationStatus.Loading
 
     // Handle back button to navigate to home screen
     BackHandler(enabled = navController != null) {
-        // Navigate to home screen, clearing back stack up to (but not including) EMPLOYEE_LIST
         navController?.navigate(Routes.EMPLOYEE_LIST) {
             popUpTo(Routes.EMPLOYEE_LIST) { inclusive = false }
             launchSingleTop = true
@@ -46,56 +46,24 @@ fun MyProfileEditScreen(
 
     // Show feedback messages
     LaunchedEffect(saveStatus) {
-        android.util.Log.e("MyProfileScreen", "═══════════════════════════════════════")
-        android.util.Log.e("MyProfileScreen", "📊📊📊 saveStatus CHANGED: $saveStatus")
-        android.util.Log.e("MyProfileScreen", "saveStatus type: ${saveStatus?.javaClass?.simpleName}")
         when (val status = saveStatus) {
             is RepoResult.Success -> {
-                android.util.Log.e("MyProfileScreen", "✅✅✅ SUCCESS! Showing toast")
-                Toast.makeText(
-                    context,
-                    "Profile updated successfully",
-                    Toast.LENGTH_SHORT
-                ).show()
-                addEditViewModel.resetSaveStatus()
-                // ✅ Refresh current user to show updated data (including metal number)
-                employeeViewModel.refreshCurrentUser()
-                employeeViewModel.refreshEmployees()
-                // ✅ Navigate back after successful save
+                Toast.makeText(context, "Profile updated successfully", Toast.LENGTH_SHORT).show()
+                viewModel.resetSaveStatus()
                 navController?.popBackStack()
             }
             is RepoResult.Error -> {
-                android.util.Log.e("MyProfileScreen", "❌❌❌ ERROR RECEIVED!")
-                android.util.Log.e("MyProfileScreen", "Error message: ${status.message}")
-                android.util.Log.e("MyProfileScreen", "Error exception: ${status.exception?.message}")
-                android.util.Log.e("MyProfileScreen", "Full error: $status")
-                Toast.makeText(
-                    context,
-                    status.message ?: "Failed to update profile",
-                    Toast.LENGTH_LONG
-                ).show()
-                addEditViewModel.resetSaveStatus()
+                Toast.makeText(context, status.message ?: "Failed to update profile", Toast.LENGTH_LONG).show()
+                viewModel.resetSaveStatus()
             }
-            is RepoResult.Loading -> {
-                android.util.Log.e("MyProfileScreen", "⏳⏳⏳ LOADING...")
-            }
-            else -> {
-                android.util.Log.e("MyProfileScreen", "📊 Other status: $status")
-            }
+            else -> Unit
         }
-    }
-    
-    // Also log photo upload status changes
-    LaunchedEffect(photoUploadStatus) {
-        android.util.Log.e("MyProfileScreen", "📸📸📸 photoUploadStatus CHANGED: $photoUploadStatus")
-        android.util.Log.e("MyProfileScreen", "photoUploadStatus type: ${photoUploadStatus.javaClass.simpleName}")
     }
 
     // Check if profile is outdated (older than 90 days)
     val isProfileOutdated = androidx.compose.runtime.remember(currentEmployee) {
         val lastUpdate = currentEmployee?.updatedAt
         if (lastUpdate == null) {
-            // If never updated (or new schema), prompt to update
             true
         } else {
             val ninetyDaysInMillis = 90L * 24 * 60 * 60 * 1000
@@ -104,39 +72,9 @@ fun MyProfileEditScreen(
         }
     }
 
-    androidx.compose.foundation.layout.Column(
-        modifier = androidx.compose.ui.Modifier.fillMaxSize()
-    ) {
+    Column(modifier = Modifier.fillMaxSize()) {
         if (isProfileOutdated && currentEmployee != null) {
-            androidx.compose.material3.Card(
-                colors = androidx.compose.material3.CardDefaults.cardColors(
-                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.errorContainer
-                ),
-                modifier = androidx.compose.ui.Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                androidx.compose.foundation.layout.Row(
-                    modifier = androidx.compose.ui.Modifier
-                        .padding(16.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                ) {
-                    androidx.compose.material.icons.Icons.Default.Warning.let { icon ->
-                        androidx.compose.material3.Icon(
-                            imageVector = icon,
-                            contentDescription = "Warning",
-                            tint = androidx.compose.material3.MaterialTheme.colorScheme.error
-                        )
-                    }
-                    androidx.compose.foundation.layout.Spacer(modifier = androidx.compose.ui.Modifier.width(16.dp))
-                    androidx.compose.material3.Text(
-                        text = "Please verify your profile details. It has been over 3 months since the last update.",
-                        style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                        color = androidx.compose.material3.MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
-            }
+            OutdatedProfileNotice()
         }
     
         CommonEmployeeForm(
@@ -146,16 +84,39 @@ fun MyProfileEditScreen(
             initialEmployee = currentEmployee,
             onNavigateToTerms = null,
             onSubmit = { emp: Employee, photo: Uri? ->
-                android.util.Log.e("MyProfileScreen", "═══════════════════════════════════════")
-                android.util.Log.e("MyProfileScreen", "📤📤📤 onSubmit CALLBACK INVOKED! 📤📤📤")
-                try {
-                    addEditViewModel.saveEmployee(emp, photo)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
+                viewModel.saveEmployee(emp, photo)
             },
             onRegisterSubmit = null,
             isLoading = isLoading
         )
+    }
+}
+
+@Composable
+fun OutdatedProfileNotice() {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Warning,
+                contentDescription = "Warning",
+                tint = MaterialTheme.colorScheme.error
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = "Please verify your profile details. It has been over 3 months since the last update.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+        }
     }
 }

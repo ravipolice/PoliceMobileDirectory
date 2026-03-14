@@ -1,0 +1,286 @@
+﻿To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon JVM discovery is an incubating feature.
+Daemon will be stopped at the end of the build 
+Configuration on demand is an incubating feature.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preAdminDebugBuild UP-TO-DATE
+> Task :app:mergeAdminDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateAdminDebugBuildConfig UP-TO-DATE
+> Task :app:checkAdminDebugAarMetadata UP-TO-DATE
+> Task :app:processAdminDebugNavigationResources UP-TO-DATE
+> Task :app:compileAdminDebugNavigationResources UP-TO-DATE
+> Task :app:generateAdminDebugResValues UP-TO-DATE
+> Task :app:processAdminDebugGoogleServices UP-TO-DATE
+> Task :app:mapAdminDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateAdminDebugResources UP-TO-DATE
+> Task :app:mergeAdminDebugResources UP-TO-DATE
+> Task :app:packageAdminDebugResources UP-TO-DATE
+> Task :app:parseAdminDebugLocalResources UP-TO-DATE
+> Task :app:createAdminDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksAdminDebug UP-TO-DATE
+> Task :app:processAdminDebugMainManifest UP-TO-DATE
+> Task :app:processAdminDebugManifest UP-TO-DATE
+> Task :app:processAdminDebugManifestForPackage UP-TO-DATE
+> Task :app:processAdminDebugResources UP-TO-DATE
+> Task :app:kspAdminDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileAdminDebug UP-TO-DATE
+> Task :app:mergeAdminDebugShaders UP-TO-DATE
+> Task :app:compileAdminDebugShaders NO-SOURCE
+> Task :app:generateAdminDebugAssets UP-TO-DATE
+> Task :app:mergeAdminDebugAssets UP-TO-DATE
+> Task :app:compressAdminDebugAssets UP-TO-DATE
+> Task :app:l8DexDesugarLibAdminDebug UP-TO-DATE
+> Task :app:desugarAdminDebugFileDependencies UP-TO-DATE
+> Task :app:checkAdminDebugDuplicateClasses UP-TO-DATE
+> Task :app:mergeExtDexAdminDebug UP-TO-DATE
+> Task :app:mergeLibDexAdminDebug UP-TO-DATE
+> Task :app:mergeAdminDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeAdminDebugNativeLibs UP-TO-DATE
+> Task :app:stripAdminDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningAdminDebug UP-TO-DATE
+> Task :app:writeAdminDebugAppMetadata UP-TO-DATE
+> Task :app:writeAdminDebugSigningConfigVersions UP-TO-DATE
+
+> Task :app:compileAdminDebugKotlin FAILED
+./gradlew : e: file:///
+C:/Users/ravip/AndroidS
+tudioProjects/PoliceMob
+ileDirectory/app/src/ad
+min/java/com/example/po
+licemobiledirectory/ui/
+components/SearchFilter
+Bar.kt:83:33 
+Unresolved reference 
+'Alignment'.
+At line:1 char:1
++ ./gradlew :app:assemb
+leAdminDebug 
+--console=plain 
+--no-daemon > build ...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (e: file:///C:   
+ /U...ce 'Alignment    
+'.:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:142:2
+2 Unresolved reference 
+'border'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:149:6
+9 Unresolved reference 
+'FilterAltOff'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:149:1
+01 Unresolved 
+reference 'FilterList'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:189:6
+8 Unresolved reference 
+'Business'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:236:6
+8 Unresolved reference 
+'Map'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:291:7
+2 Unresolved reference 
+'Security'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/components/S
+earchFilterBar.kt:339:6
+8 Unresolved reference 
+'MilitaryTech'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:70:
+30 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:84:
+30 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:96:
+30 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:219
+:40 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:234
+:40 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:246
+:40 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:259
+:36 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:267
+:36 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:306
+:71 Unresolved 
+reference 'Routes'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:308
+:71 Unresolved 
+reference 'Routes'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:316
+:42 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:330
+:42 Unresolved 
+reference 'Icons'.
+e: file:///C:/Users/rav
+ip/AndroidStudioProject
+s/PoliceMobileDirectory
+/app/src/admin/java/com
+/example/policemobiledi
+rectory/ui/screens/Empl
+oyeeDetailScreen.kt:477
+:39 Unresolved 
+reference 'Icons'.
+
+FAILURE: Build failed 
+with an exception.
+
+* What went wrong:
+Execution failed for 
+task ':app:compileAdmin
+DebugKotlin'.
+> A failure occurred 
+while executing org.jet
+brains.kotlin.compilerR
+unner.GradleCompilerRun
+nerWithWorkers$GradleKo
+tlinCompilerWorkAction
+   > Compilation 
+error. See log for 
+more details
+
+* Try:
+> Run with 
+--stacktrace option to 
+get the stack trace.
+> Run with --info or 
+--debug option to get 
+more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at http
+s://help.gradle.org.
+
+BUILD FAILED in 32s
+34 actionable tasks: 1 executed, 33 up-to-date

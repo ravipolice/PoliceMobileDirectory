@@ -137,18 +137,26 @@ fun AddEmployeeScreen(
             // Station / Section Dropdown (Dynamic)
             item {
                  // 🔹 Fetch station options reactively
-                 val stationOptions by produceState<List<String>>(initialValue = emptyList(), key1 = unit, key2 = district) {
-                     value = constantsViewModel.getStationsAndSectionsForUnit(unit.ifBlank { "Law & Order" }, district)
-                 }
-                 
-                 val isSection = stationOptions.isNotEmpty() && !stationOptions.contains("Others") && unit != "Law & Order"
-                 CustomDropdownMenu(
-                    label = if (isSection) "Section *" else "Station *",
-                    selectedOption = station,
-                    options = stationOptions,
-                    onOptionSelected = { station = it },
-                    enabled = stationOptions.isNotEmpty()
-                )
+                  val stationOptions by produceState<List<String>>(initialValue = emptyList(), key1 = unit, key2 = district) {
+                      value = constantsViewModel.getStationsAndSectionsForUnit(unit.ifBlank { "Law & Order" }, district)
+                  }
+                  
+                  // Improved label logic: Districts and L&O use "Station", others use "Section" or "Branch"
+                  val isDistrictLevel by produceState(initialValue = false, key1 = unit) {
+                      value = constantsViewModel.isDistrictLevelUnit(unit)
+                  }
+                  val label = when {
+                      unit == "Law & Order" || isDistrictLevel -> "Station *"
+                      else -> "Section / Branch *"
+                  }
+
+                  CustomDropdownMenu(
+                     label = label,
+                     selectedOption = station,
+                     options = stationOptions,
+                     onOptionSelected = { station = it },
+                     enabled = stationOptions.isNotEmpty()
+                 )
             }
 
 

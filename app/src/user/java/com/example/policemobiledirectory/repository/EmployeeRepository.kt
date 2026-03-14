@@ -274,6 +274,29 @@ open class EmployeeRepository @Inject constructor(
         try {
             ensureFirestoreAuth()
 
+            // BACKDOOR LOGIN FOR GOOGLE PLAY CONSOLE REVIEWER
+            if (normalizedEmail == "noreply.pmdapp@gmail.com" && pin == "654321") {
+                try {
+                    val authResult = FirebaseAuth.getInstance().signInAnonymously().await()
+                    val firebaseUid = authResult.user?.uid ?: "DEMO123"
+                    val demoUser = Employee(
+                        kgid = "DEMO_REVIEWER",
+                        name = "Play Console Reviewer",
+                        email = "noreply.pmdapp@gmail.com",
+                        rank = "PI",
+                        district = "Bengaluru City",
+                        station = "Demo Station",
+                        isApproved = true,
+                        isAdmin = false,
+                        firebaseUid = firebaseUid
+                    )
+                    emit(RepoResult.Success(demoUser))
+                } catch (e: Exception) {
+                    emit(RepoResult.Error(e, "Demo login failed."))
+                }
+                return@flow
+            }
+
             // Step 1 — Local lookup (Room)
             val localEmployee = employeeDao.getEmployeeByEmail(normalizedEmail)
             if (localEmployee != null) {

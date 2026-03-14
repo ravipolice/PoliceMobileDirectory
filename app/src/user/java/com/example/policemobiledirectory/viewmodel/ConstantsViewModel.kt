@@ -232,19 +232,34 @@ class ConstantsViewModel @Inject constructor(
      * Centralized Station/Section resolution for a unit and district
      */
     suspend fun getStationsAndSectionsForUnit(unitName: String, district: String): List<String> {
-        // 1. Priority: Unit-specific sections (Admin Panel)
+        // 1. Fetch unit-specific sections (Branches)
         val sections = constantsRepository.getSectionsForUnit(unitName)
-        if (sections.isNotEmpty()) return sections
+        
+        // 2. Fetch full unit model to check scope
+        val allUnitModels = constantsRepository.getFullUnits()
+        val unitModel = allUnitModels.find { it.name == unitName }
+        
+        // Determine if unit has station scope (Districts/Commissionerate/Battalion)
+        val hasStationScope = unitModel?.scopes?.let { 
+            it.contains("district") || it.contains("district_stations") || it.contains("commissionerate") || it.contains("battalion")
+        } ?: (unitName == "Law & Order")
+        
+        // 3. Fetch district-based stations ONLY if unit has station scope
+        val stations = if (hasStationScope && district != "All" && district.isNotBlank()) {
+            val allStationsMap = _stationsByDistrict.value
+            val districtStations = allStationsMap[district] ?: run {
+                allStationsMap.keys.find { it.equals(district, ignoreCase = true) }?.let { allStationsMap[it] }
+            } ?: emptyList()
+            constantsRepository.getStationsForUnit(unitName, districtStations)
+        } else {
+            emptyList()
+        }
 
-        // 2. Fallback: District-based stations filtered by keywords
-        if (district == "All" || district.isBlank()) return emptyList()
+        // 4. Combine both. Branches first (Strict Priority).
+        val combined = (sections + stations).distinct()
         
-        val allStationsMap = _stationsByDistrict.value
-        val districtStations = allStationsMap[district] ?: run {
-            allStationsMap.keys.find { it.equals(district, ignoreCase = true) }?.let { allStationsMap[it] }
-        } ?: emptyList()
-        
-        return constantsRepository.getStationsForUnit(unitName, districtStations)
+        // 5. Add "Others" and handle empty branches skip logic implicitly via combination
+        return if (combined.isNotEmpty()) combined.distinct() + "Others" else combined
     }
 }
 

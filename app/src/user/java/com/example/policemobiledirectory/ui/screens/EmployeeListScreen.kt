@@ -60,7 +60,6 @@ import com.example.policemobiledirectory.utils.OperationStatus
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import kotlinx.coroutines.launch
 
-import com.example.policemobiledirectory.ui.components.EmployeeCardUser
 import com.example.policemobiledirectory.ui.components.ContactCard
 import com.example.policemobiledirectory.ui.components.SearchFilterBar
 import kotlinx.coroutines.CoroutineScope
@@ -218,7 +217,7 @@ fun EmployeeListScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            color = BackgroundLight // Light off-white background
+            color = MaterialTheme.colorScheme.background // Themed background
         ) {
             EmployeeListContent(
                 navController = navController,
@@ -360,9 +359,7 @@ private fun EmployeeListContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+            .background(Color.White) // Clean white background for the whole screen
     ) {
 
         // 🔹 DYNAMIC LABELS
@@ -370,44 +367,46 @@ private fun EmployeeListContent(
         val districtLabel = if (unitObj?.mappedAreaType == "BATTALION") "Battalion" else "District / HQ"
         val stationLabel = if (stationsForDistrict.size > 1 && !stationsForDistrict.contains("Others") && selectedUnit != "All" && selectedUnit != "Law & Order") "Section" else "Station / Section"
 
-        // 🔹 SEARCH & FILTER BAR
-        SearchFilterBar(
-            units = filteredUnitNames,
-            districts = districtsList,
-            stations = stationsForDistrict,
-            ranks = allRanks,
-            selectedUnit = selectedUnit,
-            selectedDistrict = selectedDistrict,
-            selectedStation = selectedStation,
-            selectedRank = selectedRank,
-            onUnitChange = { unit ->
-                selectedUnit = unit
-                viewModel.updateSelectedUnit(unit)
-            },
-            onDistrictChange = { district ->
-                selectedDistrict = district
-                selectedStation = "All"
-                viewModel.updateSelectedDistrict(district)
-                viewModel.updateSelectedStation("All")
-            },
-            onStationChange = { station ->
-                selectedStation = station
-                viewModel.updateSelectedStation(station)
-            },
-            onRankChange = { rank ->
-                selectedRank = rank
-                viewModel.updateSelectedRank(rank)
-            },
-            searchQuery = searchQuery,
-            onSearchQueryChange = { viewModel.updateSearchQuery(it) },
-            searchFilter = searchFilter,
-            onSearchFilterChange = { viewModel.updateSearchFilter(it) },
-            isDistrictLevelUnit = isDistrictLevelUnit,
-            isAdmin = isAdmin,
-            districtLabel = districtLabel,
-            stationLabel = stationLabel,
-            modifier = Modifier
-        )
+        // 🔹 3. Search Bar (Integrated below categories)
+        Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)) {
+            SearchFilterBar(
+                units = filteredUnitNames,
+                districts = districtsList,
+                stations = stationsForDistrict,
+                ranks = allRanks,
+                selectedUnit = selectedUnit,
+                selectedDistrict = selectedDistrict,
+                selectedStation = selectedStation,
+                selectedRank = selectedRank,
+                onUnitChange = { unit ->
+                    selectedUnit = unit
+                    viewModel.updateSelectedUnit(unit)
+                },
+                onDistrictChange = { district ->
+                    selectedDistrict = district
+                    selectedStation = "All"
+                    viewModel.updateSelectedDistrict(district)
+                    viewModel.updateSelectedStation("All")
+                },
+                onStationChange = { station ->
+                    selectedStation = station
+                    viewModel.updateSelectedStation(station)
+                },
+                onRankChange = { rank ->
+                    selectedRank = rank
+                    viewModel.updateSelectedRank(rank)
+                },
+                searchQuery = searchQuery,
+                onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+                isDistrictLevelUnit = isDistrictLevelUnit,
+                isAdmin = isAdmin,
+                districtLabel = districtLabel,
+                stationLabel = stationLabel,
+                totalContactsCount = allContacts.size,
+                modifier = Modifier
+            )
+        }
+
 
 
         // 🔹 UNIFIED CONTACTS LIST (Employees + Officers)
@@ -423,16 +422,42 @@ private fun EmployeeListContent(
                 employeeStatus is OperationStatus.Error || officerStatus is OperationStatus.Error -> {
                     val errorMessage = (employeeStatus as? OperationStatus.Error)?.message 
                         ?: (officerStatus as? OperationStatus.Error)?.message 
-                        ?: "Unknown Error"
-                        
+                        ?: "Something went wrong"
                     Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        modifier = Modifier.fillMaxSize().padding(24.dp),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("Error: $errorMessage", color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+                        Icon(
+                            imageVector = Icons.Default.CloudOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(56.dp),
+                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Could not load contacts",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { viewModel.refreshEmployees(); viewModel.refreshOfficers() }) {
+                        Text(
+                            text = errorMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = {
+                                viewModel.refreshEmployees()
+                                viewModel.refreshOfficers()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal)
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text("Retry")
                         }
                     }
@@ -529,20 +554,35 @@ private fun EmployeeListContent(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 0.dp)
+                        contentPadding = PaddingValues(bottom = 80.dp)
                     ) {
-                        items(filteredContacts, key = { it.id }) { contact ->
-                            ContactCard(
-                                employee = contact.employee,
-                                officer = contact.officer,
-                                fontScale = fontScale,
-                                isAdmin = false,
-                                onEdit = null,
-                                onClick = {
-                                    /* No detailed view action yet */ 
-                                }
-                            )
+                        items(
+                            items = filteredContacts,
+                            key = { it.id },
+                            contentType = { "contact" }
+                        ) { contact ->
+                            Column {
+                                ContactCard(
+                                    employee = contact.employee,
+                                    officer = contact.officer,
+                                    fontScale = fontScale,
+                                    isAdmin = false,
+                                    onEdit = null,
+                                    onClick = {
+                                        val id = contact.employee?.kgid ?: contact.officer?.agid ?: ""
+                                        val isOfficer = contact.officer != null
+                                        if (id.isNotEmpty()) {
+                                            navController.navigate(Routes.employeeDetailRoute(id, isOfficer))
+                                        }
+                                    }
+                                )
+                                // Kerala Style Divider
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(start = 74.dp, end = 16.dp),
+                                    thickness = 0.5.dp,
+                                    color = Color.LightGray.copy(alpha = 0.4f)
+                                )
+                            }
                         }
                     }
                 }

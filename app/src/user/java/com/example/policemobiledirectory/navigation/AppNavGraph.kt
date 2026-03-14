@@ -216,6 +216,24 @@ private fun AppNavHostContent(
                 onThemeToggle = onThemeToggle
             )
         }
+        
+        // --- EMPLOYEE DETAIL ---
+        composable(
+            route = Routes.EMPLOYEE_DETAIL,
+            arguments = listOf(
+                navArgument("id") { type = NavType.StringType },
+                navArgument("isOfficer") { type = NavType.BoolType }
+            )
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id") ?: ""
+            val isOfficer = backStackEntry.arguments?.getBoolean("isOfficer") ?: false
+            EmployeeDetailScreen(
+                id = id,
+                isOfficer = isOfficer,
+                navController = navController,
+                viewModel = employeeViewModel
+            )
+        }
 
         // --- ABOUT ---
         composable(Routes.ABOUT) {
@@ -354,6 +372,7 @@ private fun AppNavHostContent(
             )
         }
 
+        // --- LEAVE OTHER ---
         composable(Routes.LEAVE_OTHER) {
             val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
             OtherLeaveScreen(

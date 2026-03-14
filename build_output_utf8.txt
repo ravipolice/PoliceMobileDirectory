@@ -1,0 +1,271 @@
+﻿Configuration on demand is an incubating feature.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preAdminDebugBuild UP-TO-DATE
+> Task :app:mergeAdminDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateAdminDebugBuildConfig UP-TO-DATE
+> Task :app:checkAdminDebugAarMetadata UP-TO-DATE
+> Task :app:processAdminDebugNavigationResources UP-TO-DATE
+> Task :app:compileAdminDebugNavigationResources UP-TO-DATE
+> Task :app:generateAdminDebugResValues UP-TO-DATE
+> Task :app:processAdminDebugGoogleServices UP-TO-DATE
+> Task :app:mapAdminDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateAdminDebugResources UP-TO-DATE
+> Task :app:mergeAdminDebugResources UP-TO-DATE
+> Task :app:packageAdminDebugResources UP-TO-DATE
+> Task :app:parseAdminDebugLocalResources UP-TO-DATE
+> Task :app:createAdminDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksAdminDebug UP-TO-DATE
+> Task :app:processAdminDebugMainManifest UP-TO-DATE
+> Task :app:processAdminDebugManifest UP-TO-DATE
+> Task :app:processAdminDebugManifestForPackage UP-TO-DATE
+> Task :app:processAdminDebugResources UP-TO-DATE
+> Task :app:kspAdminDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileAdminDebug UP-TO-DATE
+> Task :app:mergeAdminDebugShaders UP-TO-DATE
+> Task :app:compileAdminDebugShaders NO-SOURCE
+> Task :app:generateAdminDebugAssets UP-TO-DATE
+> Task :app:mergeAdminDebugAssets UP-TO-DATE
+> Task :app:compressAdminDebugAssets UP-TO-DATE
+> Task :app:l8DexDesugarLibAdminDebug UP-TO-DATE
+> Task :app:desugarAdminDebugFileDependencies UP-TO-DATE
+> Task :app:checkAdminDebugDuplicateClasses UP-TO-DATE
+> Task :app:mergeExtDexAdminDebug UP-TO-DATE
+> Task :app:mergeLibDexAdminDebug UP-TO-DATE
+> Task :app:mergeAdminDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeAdminDebugNativeLibs UP-TO-DATE
+> Task :app:stripAdminDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningAdminDebug UP-TO-DATE
+> Task :app:writeAdminDebugAppMetadata UP-TO-DATE
+> Task :app:writeAdminDebugSigningConfigVersions UP-TO-DATE
+> Task :app:preUserDebugBuild UP-TO-DATE
+> Task :app:mergeUserDebugNativeDebugMetadata NO-SOURCE
+> Task :app:generateUserDebugBuildConfig UP-TO-DATE
+> Task :app:checkUserDebugAarMetadata UP-TO-DATE
+> Task :app:processUserDebugNavigationResources UP-TO-DATE
+> Task :app:compileUserDebugNavigationResources UP-TO-DATE
+> Task :app:generateUserDebugResValues UP-TO-DATE
+> Task :app:processUserDebugGoogleServices UP-TO-DATE
+> Task :app:mapUserDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateUserDebugResources UP-TO-DATE
+> Task :app:mergeUserDebugResources UP-TO-DATE
+> Task :app:packageUserDebugResources UP-TO-DATE
+> Task :app:parseUserDebugLocalResources UP-TO-DATE
+> Task :app:createUserDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksUserDebug UP-TO-DATE
+> Task :app:processUserDebugMainManifest UP-TO-DATE
+> Task :app:processUserDebugManifest UP-TO-DATE
+> Task :app:processUserDebugManifestForPackage UP-TO-DATE
+> Task :app:processUserDebugResources UP-TO-DATE
+> Task :app:kspUserDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileUserDebug UP-TO-DATE
+> Task :app:mergeUserDebugShaders UP-TO-DATE
+> Task :app:compileUserDebugShaders NO-SOURCE
+> Task :app:generateUserDebugAssets UP-TO-DATE
+> Task :app:mergeUserDebugAssets UP-TO-DATE
+> Task :app:compressUserDebugAssets UP-TO-DATE
+> Task :app:l8DexDesugarLibUserDebug UP-TO-DATE
+> Task :app:checkUserDebugDuplicateClasses UP-TO-DATE
+> Task :app:desugarUserDebugFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexUserDebug UP-TO-DATE
+> Task :app:mergeLibDexUserDebug UP-TO-DATE
+> Task :app:mergeUserDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeUserDebugNativeLibs UP-TO-DATE
+> Task :app:stripUserDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningUserDebug UP-TO-DATE
+> Task :app:writeUserDebugAppMetadata UP-TO-DATE
+> Task :app:writeUserDebugSigningConfigVersions UP-TO-DATE
+
+> Task :app:compileAdminDebugKotlin FAILED
+.\gradlew : e: file:///C:/Users/ra
+vip/AndroidStudioProjects/PoliceMo
+bileDirectory/app/src/admin/java/c
+om/example/policemobiledirectory/u
+i/components/CommonEmployeeForm.kt
+:675:59 Unresolved reference 
+'hasSections'.
+At line:1 char:1
++ .\gradlew assembleAdminDebug 
+assembleUserDebug > 
+build_output.txt 2>& ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~
+    + CategoryInfo          : 
+NotSpeci    fied: (e: 
+file:///C:/U... 'hasSect    
+ions'.:String) [], RemoteException
+    + FullyQualifiedErrorId : 
+NativeCo    mmandError
+ 
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:774:67 
+Unresolved reference 
+'isDistrictLevelUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1095:40 
+Unresolved reference 
+'unitSections'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1096:17 
+Unresolved reference 
+'unitSections'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1099:44 
+Unresolved reference 
+'isDistrictLevelUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1100:110 
+Unresolved reference 
+'unitSections'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1101:25 
+Unresolved reference 
+'unitSections'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1102:25 
+Unresolved reference 
+'unitSections'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1123:84 
+Unresolved reference 'isNotEmpty'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1136:94 
+Unresolved reference 'isNotEmpty'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1140:42 
+Unresolved reference 'forEach'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1140:52 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1141:29 
+@Composable invocations can only 
+happen from the context of a 
+@Composable function
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1325:90 
+Unresolved reference 
+'isDistrictLevelUnit'.
+
+> Task :app:compileUserDebugKotlin FAILED
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:724:59 
+Unresolved reference 
+'hasSections'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:764:75 
+Unresolved reference 
+'hasSections'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:766:37 
+Unresolved reference 
+'hasSections'.
+
+FAILURE: Build completed with 2 
+failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task 
+':app:compileAdminDebugKotlin'.
+> A failure occurred while 
+executing org.jetbrains.kotlin.com
+pilerRunner.GradleCompilerRunnerWi
+thWorkers$GradleKotlinCompilerWork
+Action
+   > Compilation error. See log 
+for more details
+
+* Try:
+> Run with --stacktrace option to 
+get the stack trace.
+68 actionable tasks: 2 executed, 66 up-to-date
+> Run with --info or --debug 
+option to get more log output.
+> Run with --scan to get full 
+insights.
+> Get more help at 
+https://help.gradle.org.
+==================================
+==================================
+==========
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task 
+':app:compileUserDebugKotlin'.
+> A failure occurred while 
+executing org.jetbrains.kotlin.com
+pilerRunner.GradleCompilerRunnerWi
+thWorkers$GradleKotlinCompilerWork
+Action
+   > Compilation error. See log 
+for more details
+
+* Try:
+> Run with --stacktrace option to 
+get the stack trace.
+> Run with --info or --debug 
+option to get more log output.
+> Run with --scan to get full 
+insights.
+> Get more help at 
+https://help.gradle.org.
+==================================
+==================================
+==========
+
+BUILD FAILED in 11s

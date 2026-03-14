@@ -84,19 +84,19 @@ fun CommonEmployeeForm(
     isRegistration: Boolean,
     initialEmployee: Employee? = null,
     initialKgid: String? = null,
-    initialEmail: String = "", // ✅ Add initialEmail parameter for prefilling
+    initialEmail: String = "", // âœ… Add initialEmail parameter for prefilling
     initialName: String = "",
     onSubmit: (Employee, Uri?) -> Unit,
     onRegisterSubmit: ((PendingRegistrationEntity, Uri?) -> Unit)? = null,
-    isLoading: Boolean = false, // ✅ Add loading state parameter
-    onNavigateToTerms: (() -> Unit)? = null, // ✅ Callback to navigate to terms
+    isLoading: Boolean = false, // âœ… Add loading state parameter
+    onNavigateToTerms: (() -> Unit)? = null, // âœ… Callback to navigate to terms
     constantsViewModel: ConstantsViewModel = hiltViewModel(),
-    isOfficer: Boolean = false, // ✅ New parameter for Officer mode
+    isOfficer: Boolean = false, // âœ… New parameter for Officer mode
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    var isSubmitting by remember { mutableStateOf(false) } // ✅ Track submission state
+    var isSubmitting by remember { mutableStateOf(false) } // âœ… Track submission state
 
     // Get constants from ViewModel
     val ranks by constantsViewModel.ranks.collectAsStateWithLifecycle()
@@ -109,9 +109,9 @@ fun CommonEmployeeForm(
     val policeStationRanks by constantsViewModel.policeStationRanks.collectAsStateWithLifecycle()
     val highRankingOfficers by constantsViewModel.highRankingOfficers.collectAsStateWithLifecycle()
     val units by constantsViewModel.units.collectAsStateWithLifecycle()
-    val fullUnits by constantsViewModel.fullUnits.collectAsStateWithLifecycle() // ✅ Need full objects for hidden flag
-    val globalHiddenFields by constantsViewModel.globalHiddenFields.collectAsStateWithLifecycle() // ✅ Global Hidden Fields
-    val ranksWithAutoAgid by constantsViewModel.ranksWithAutoAgid.collectAsStateWithLifecycle() // ✅ Ranks that auto-generate AGID
+    val fullUnits by constantsViewModel.fullUnits.collectAsStateWithLifecycle() // âœ… Need full objects for hidden flag
+    val globalHiddenFields by constantsViewModel.globalHiddenFields.collectAsStateWithLifecycle() // âœ… Global Hidden Fields
+    val ranksWithAutoAgid by constantsViewModel.ranksWithAutoAgid.collectAsStateWithLifecycle() // âœ… Ranks that auto-generate AGID
 
     val ksrpBattalions by constantsViewModel.ksrpBattalions.collectAsStateWithLifecycle()
 
@@ -128,7 +128,7 @@ fun CommonEmployeeForm(
     // fields
     var kgid by remember(initialEmployee, initialKgid) { mutableStateOf(initialEmployee?.kgid ?: initialKgid.orEmpty()) }
     var name by remember(initialEmployee) { mutableStateOf(initialEmployee?.name ?: "") }
-    // ✅ Use initialEmail if provided, otherwise use initialEmployee.email
+    // âœ… Use initialEmail if provided, otherwise use initialEmployee.email
     var email by remember(initialEmployee, initialEmail) { 
         mutableStateOf(initialEmployee?.email ?: initialEmail) 
     }
@@ -148,7 +148,7 @@ fun CommonEmployeeForm(
     // KCSR specific extras
     var gender by remember(initialEmployee) { mutableStateOf(initialEmployee?.gender ?: "Male") }
     var serviceStartDate by remember(initialEmployee) { mutableStateOf<Date?>(initialEmployee?.serviceStartDate) }
-    var dateOfBirth by remember(initialEmployee) { mutableStateOf<Date?>(initialEmployee?.dateOfBirth) } // ✅ New DOB field
+    var dateOfBirth by remember(initialEmployee) { mutableStateOf<Date?>(initialEmployee?.dateOfBirth) } // âœ… New DOB field
     var genderExpanded by remember { mutableStateOf(false) }
 
     // registration extras
@@ -298,36 +298,17 @@ fun CommonEmployeeForm(
         }
     }
 
-    // Refactored for readability as per review
-    val stationsForSelectedDistrict = remember(district, unit, normalizedStationsMap, selectedUnitModel) {
-        if (district.isBlank()) {
-            emptyList()
-        } else {
-            // Fast O(1) lookup
-            val stations = normalizedStationsMap[district.trim().lowercase()] ?: emptyList()
+    // ðŸ”¹ CENTRALIZED STATIONS & SECTIONS LOGIC
+    val stationsForSelectedDistrict by produceState<List<String>>(initialValue = emptyList(), key1 = unit, key2 = district) {
+        value = constantsViewModel.getStationsAndSectionsForUnit(unit, district)
+    }
 
-            // 2. Apply unit-specific dynamic filtering
-            // CRITICAL FIX: Only filter by stationKeyword if unit does NOT have district scope
-            // Units with district scope (like L&O) should show ALL stations for the selected district
-            val currentUnitModel = selectedUnitModel
-            val hasDistrictScope = currentUnitModel?.scopes?.contains("district") == true || 
-                                   currentUnitModel?.scopes?.contains("district_stations") == true ||
-                                   currentUnitModel?.isDistrictLevel == true
-            
-            val filtered = if (currentUnitModel?.stationKeyword?.isNotBlank() == true && !hasDistrictScope) {
-                // Only apply keyword filter if unit does NOT have district scope
-                stations.filter { it.contains(currentUnitModel.stationKeyword, ignoreCase = true) }
-            } else {
-                stations
-            }
-
-            // 3. Add "Others" option if unit has sections or if it's a generic district
-            if (filtered.isNotEmpty() || unitSections.isNotEmpty()) {
-                filtered + "Others"
-            } else {
-                filtered
-            }
-        }
+    // Identify if label should be "Station" or "Section"
+    val isDistrictLevelByModel by produceState(initialValue = false, key1 = unit) {
+        value = constantsViewModel.isDistrictLevelUnit(unit)
+    }
+    val useStationLabel = remember(unit, isDistrictLevelByModel) {
+        unit == "Law & Order" || isDistrictLevelByModel
     }
 
     // Validate Station Selection when options change (e.g. Unit change filters stations)
@@ -520,6 +501,18 @@ fun CommonEmployeeForm(
                 Spacer(Modifier.height(fieldSpacing))
             }
 
+            // Row 6: Landline
+            if (isFieldVisible("landline")) {
+                OutlinedTextField(
+                    value = landline,
+                    onValueChange = { landline = it.filter { ch -> ch.isDigit() || ch == '-' } },
+                    label = { Text("Landline (Optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                )
+                Spacer(Modifier.height(fieldSpacing))
+            }
+
 
 
 
@@ -705,31 +698,31 @@ fun CommonEmployeeForm(
             Spacer(Modifier.height(fieldSpacing))
 
             // Row 8: Station/Section (Full Width)
-            val hasSections = remember(unitSections, unit, district) {
-                unitSections.isNotEmpty() || unit == "State INT" || district == "HQ"
-            }
-            if (!isHighRankingOfficer && (!isDistrictLevelUnit || hasSections) && !isSpecialUnit && !isMinisterial) {
-                val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks, unit, unitSections) {
-                    if (unitSections.isNotEmpty()) {
-                        unitSections + listOf("Others")
-                    } else if (unit == "State INT") {
-                         Constants.stateIntSections + listOf("Others")
+            if (!isHighRankingOfficer && !isSpecialUnit && !isMinisterial) {
+                val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks) {
+                    val isPoliceStationRank = policeStationRanks.any { it.equals(rank, ignoreCase = true) }
+                    if (isPoliceStationRank) {
+                        // Police Station Ranks see ONLY PS stations and Sections to reduce noise
+                        // but they should also see specialized sections/branches
+                        stationsForSelectedDistrict.filter { it.contains(" PS", ignoreCase = true) || !it.contains(" PS", ignoreCase = true) } 
+                        // Actually, if it's a PS rank, they usually only look for their PS.
+                        // But if sections are combined, we should show them too.
+                        // Simplified: only filter if they are DEFINITELY stations.
+                        stationsForSelectedDistrict.filter { 
+                            !it.contains("PS", ignoreCase = true) || it.contains(" PS", ignoreCase = true) 
+                        }
+                        // Actually, let's stick to the previous logic but ensure it doesn't break combined results
+                        stationsForSelectedDistrict.filter { s ->
+                            val isPS = s.contains(" PS", ignoreCase = true)
+                            // If it's a PS rank, they see the PS. If it's a branch, they see it too?
+                            // Usually, PS ranks don't work in branches like "Accounts".
+                            // But for L&O, they might.
+                            if (isPoliceStationRank && s.contains(" PS", ignoreCase = true)) true
+                            else if (!s.contains(" PS", ignoreCase = true)) true // Show regular sections/branches
+                            else false
+                        }
                     } else {
-                        val isPoliceStationRank = policeStationRanks.any { it.equals(rank, ignoreCase = true) }
-                        val baseStations = if (isPoliceStationRank) {
-                            // Police Station Ranks see ONLY PS stations to reduce noise
-                            stationsForSelectedDistrict.filter { it.contains(" PS", ignoreCase = true) }
-                        } else {
-                            // Other ranks see ALL stations (including PS ones)
-                            stationsForSelectedDistrict
-                        }
-                        
-                        // Also add "Others" if it's an HQ-level unit (where we might need manual names)
-                        if (hasSections || district == "HQ") {
-                            baseStations + listOf("Others")
-                        } else {
-                            baseStations
-                        }
+                        stationsForSelectedDistrict
                     }
                 }
 
@@ -740,18 +733,21 @@ fun CommonEmployeeForm(
                     ExposedDropdownMenuBox(
                         expanded = stationExpanded,
                         onExpandedChange = {
-                            if ((district.isNotBlank() || hasSections) && filteredStations.isNotEmpty()) stationExpanded = !stationExpanded
+                            if (district.isNotBlank() && filteredStations.isNotEmpty()) stationExpanded = !stationExpanded
                         },
                         modifier = Modifier.weight(1f)
                     ) {
                         OutlinedTextField(
-                            value = station.ifEmpty { if (district.isNotBlank() || hasSections) "Select ${if(hasSections) "Section" else "Station"}" else "Select District First" },
+                            value = station.ifEmpty { 
+                                if (district.isNotBlank() || stationsForSelectedDistrict.isNotEmpty()) "Select ${if(useStationLabel) "Station" else "Section"}" 
+                                else "Select District First" 
+                            },
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text(if (hasSections) "Section *" else "Station *") },
+                            label = { Text(if (useStationLabel) "Station *" else "Section / Branch *") },
                             modifier = Modifier.fillMaxWidth().menuAnchor(),
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
-                            enabled = (district.isNotBlank() || hasSections) && filteredStations.isNotEmpty(),
+                            enabled = district.isNotBlank() && filteredStations.isNotEmpty(),
                             isError = showValidationErrors && station.isBlank()
                         )
                         ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
@@ -780,9 +776,9 @@ fun CommonEmployeeForm(
                 
                 if (showValidationErrors) {
                     Row(modifier = Modifier.fillMaxWidth()) {
-                        if (station.isBlank() && (!isDistrictLevelUnit || hasSections)) {
+                        if (station.isBlank()) {
                             Text(
-                                if (hasSections) "Section required" else "Station required", 
+                                if (!useStationLabel) "Section required" else "Station required", 
                                 color = MaterialTheme.colorScheme.error, 
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.weight(1f)
@@ -810,8 +806,8 @@ fun CommonEmployeeForm(
 
             Spacer(Modifier.height(fieldSpacing))
 
-            // Blood Group row (Hide for Officer)
-            if (!isOfficer) {
+            // Blood Group row (Hide for Officer, Hide if configured hidden)
+            if (!isOfficer && isFieldVisible("bloodGroup")) {
                 Row(
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -843,8 +839,10 @@ fun CommonEmployeeForm(
                     Text("Blood Group is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 Spacer(Modifier.height(fieldSpacing))
+            }
 
-                // KCSR Fields: Gender (Date of Appointment hidden)
+            // KCSR Fields: Gender
+            if (isFieldVisible("gender")) {
                 ExposedDropdownMenuBox(
                     expanded = genderExpanded,
                     onExpandedChange = { genderExpanded = !genderExpanded },
@@ -867,19 +865,11 @@ fun CommonEmployeeForm(
                         }
                     }
                 }
-
-                if (showValidationErrors && station.isBlank() && !isHighRankingOfficer && !isDistrictLevelUnit && !isMinisterial) {
-                    Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
-                } else {
-                     if (showValidationErrors && station.isBlank() && !isMinisterial && !isDistrictLevelUnit) {
-                        Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                        Spacer(Modifier.height(fieldSpacing))
-                    }
-                }
+                Spacer(Modifier.height(fieldSpacing))
+            }
 
             // Date of Birth
-             if (isFieldVisible("dateOfBirth")) {
+             if (isFieldVisible("dob")) {
                  val dobCalendar = Calendar.getInstance()
                  dateOfBirth?.let { dobCalendar.time = it }
                  
@@ -916,7 +906,7 @@ fun CommonEmployeeForm(
              }
 
              // Date of Appointment
-             if (isFieldVisible("dateOfAppointment")) {
+             if (isFieldVisible("doa")) {
                  val apptCalendar = Calendar.getInstance()
                  serviceStartDate?.let { apptCalendar.time = it }
                  
@@ -980,8 +970,6 @@ fun CommonEmployeeForm(
                 }
                 Spacer(Modifier.height(fieldSpacing))
             }
-
-
         } else {
             // Non-registration form (admin/self-edit) - keep original order
             // KGID (admin & registration only)
@@ -1013,16 +1001,18 @@ fun CommonEmployeeForm(
             Spacer(Modifier.height(fieldSpacing))
 
             // Email (Optional/Hidden for Officers if needed, but let's keep it optional)
-            OutlinedTextField(
-                value = email ?: "",
-                onValueChange = { email = it },
-                label = { Text(if(isOfficer) "Email (Optional)" else "Email*") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                isError = showValidationErrors && !isOfficer && !isValidEmail(email ?: "")
-            )
-            if (showValidationErrors && !isOfficer && !isValidEmail(email ?: "")) Text("Enter valid email", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(fieldSpacing))
+            if (isFieldVisible("email")) {
+                OutlinedTextField(
+                    value = email ?: "",
+                    onValueChange = { email = it },
+                    label = { Text(if (isOfficer) "Email (Optional)" else "Email*") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    isError = showValidationErrors && !isOfficer && !isValidEmail(email ?: "")
+                )
+                if (showValidationErrors && !isOfficer && !isValidEmail(email ?: "")) Text("Enter valid email", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(fieldSpacing))
+            }
 
             // Mobile1
             OutlinedTextField(
@@ -1037,16 +1027,22 @@ fun CommonEmployeeForm(
             Spacer(Modifier.height(fieldSpacing))
 
             // Mobile2
-            OutlinedTextField(value = mobile2, onValueChange = { mobile2 = it.filter { ch -> ch.isDigit() } }, label = { Text("Mobile 2 (Optional)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
-            Spacer(Modifier.height(fieldSpacing))
+            if (isFieldVisible("mobile2")) {
+                OutlinedTextField(value = mobile2, onValueChange = { mobile2 = it.filter { ch -> ch.isDigit() } }, label = { Text("Mobile 2 (Optional)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+                Spacer(Modifier.height(fieldSpacing))
+            }
 
             // Landline
-            OutlinedTextField(value = landline, onValueChange = { landline = it.filter { ch -> ch.isDigit() || ch == '-' } }, label = { Text("Landline (Optional)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
-            Spacer(Modifier.height(fieldSpacing))
+            if (isFieldVisible("landline")) {
+                OutlinedTextField(value = landline, onValueChange = { landline = it.filter { ch -> ch.isDigit() || ch == '-' } }, label = { Text("Landline (Optional)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+                Spacer(Modifier.height(fieldSpacing))
+            }
 
             // Landline 2
-            OutlinedTextField(value = landline2, onValueChange = { landline2 = it.filter { ch -> ch.isDigit() || ch == '-' } }, label = { Text("Landline 2 (Optional)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
-            Spacer(Modifier.height(fieldSpacing))
+            if (isFieldVisible("landline2")) {
+                OutlinedTextField(value = landline2, onValueChange = { landline2 = it.filter { ch -> ch.isDigit() || ch == '-' } }, label = { Text("Landline 2 (Optional)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+                Spacer(Modifier.height(fieldSpacing))
+            }
 
                 // Rank
                 ExposedDropdownMenuBox(expanded = rankExpanded, onExpandedChange = { rankExpanded = !rankExpanded }) {
@@ -1289,7 +1285,7 @@ fun CommonEmployeeForm(
             }
 
              // Date of Birth
-             if (isFieldVisible("dateOfBirth")) {
+             if (isFieldVisible("dob")) {
                  val dobCalendar = Calendar.getInstance()
                  dateOfBirth?.let { dobCalendar.time = it }
                  
@@ -1326,7 +1322,7 @@ fun CommonEmployeeForm(
              }
 
              // Date of Appointment
-             if (isFieldVisible("dateOfAppointment")) {
+             if (isFieldVisible("doa")) {
                  val apptCalendar = Calendar.getInstance()
                  serviceStartDate?.let { apptCalendar.time = it }
                  
@@ -1388,12 +1384,12 @@ fun CommonEmployeeForm(
         // Submit
         Button(
             onClick = {
-                // ✅ Prevent duplicate submissions (Immediate check)
+                // âœ… Prevent duplicate submissions (Immediate check)
                 if (isSubmitting || isLoading) {
                     return@Button
                 }
                 
-                // ✅ Set submitting state IMMEDIATELY
+                // âœ… Set submitting state IMMEDIATELY
                 isSubmitting = true
                 
                 showValidationErrors = true
@@ -1485,15 +1481,15 @@ fun CommonEmployeeForm(
                     isManualStation = isManual,
                     gender = gender,
                     serviceStartDate = serviceStartDate,
-                    dateOfBirth = dateOfBirth, // ✅ Pass DOB
+                    dateOfBirth = dateOfBirth, // âœ… Pass DOB
                     isHidden = false // defaults
                 )
 
-                // ✅ Submit in coroutine scope
-                android.util.Log.d("CommonEmployeeForm", "🚀 Launching coroutine for submission...")
+                // âœ… Submit in coroutine scope
+                android.util.Log.d("CommonEmployeeForm", "ðŸš€ Launching coroutine for submission...")
                 coroutineScope.launch {
                     try {
-                        android.util.Log.d("CommonEmployeeForm", "📋 Inside coroutine, isRegistration: $isRegistration")
+                        android.util.Log.d("CommonEmployeeForm", "ðŸ“‹ Inside coroutine, isRegistration: $isRegistration")
                         if (isRegistration) {
                             // Build PendingRegistrationEntity and call callback
                             val firebaseUid = "" // wrapper will add actual uid
@@ -1517,27 +1513,27 @@ fun CommonEmployeeForm(
                                 isManualStation = emp.isManualStation,
                                 gender = emp.gender,
                                 serviceStartDate = emp.serviceStartDate,
-                                dateOfBirth = emp.dateOfBirth // ✅ Include DOB in pending
+                                dateOfBirth = emp.dateOfBirth // âœ… Include DOB in pending
                             )
                             onRegisterSubmit?.invoke(pending, croppedPhotoUri)
                         } else {
-                            android.util.Log.d("CommonEmployeeForm", "═══════════════════════════════════════")
-                            android.util.Log.d("CommonEmployeeForm", "📤 Calling onSubmit with photo: ${croppedPhotoUri != null}")
-                            android.util.Log.d("CommonEmployeeForm", "📤 Employee KGID: ${emp.kgid}")
+                            android.util.Log.d("CommonEmployeeForm", "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•")
+                            android.util.Log.d("CommonEmployeeForm", "ðŸ“¤ Calling onSubmit with photo: ${croppedPhotoUri != null}")
+                            android.util.Log.d("CommonEmployeeForm", "ðŸ“¤ Employee KGID: ${emp.kgid}")
                             onSubmit(emp, croppedPhotoUri)
-                            android.util.Log.d("CommonEmployeeForm", "✅ onSubmit call completed")
+                            android.util.Log.d("CommonEmployeeForm", "âœ… onSubmit call completed")
                         }
                         // Reset after 3 seconds (allowing time for operation)
                         delay(3000)
                         isSubmitting = false
                     } catch (e: Exception) {
-                        android.util.Log.e("CommonEmployeeForm", "❌ Submission error: ${e.message}", e)
+                        android.util.Log.e("CommonEmployeeForm", "âŒ Submission error: ${e.message}", e)
                         e.printStackTrace()
                         isSubmitting = false
                     }
                 }
             },
-            enabled = !isSubmitting && !isLoading, // ✅ Disable button during submission
+            enabled = !isSubmitting && !isLoading, // âœ… Disable button during submission
             modifier = Modifier.fillMaxWidth()
         ) {
             if (isSubmitting || isLoading) {
@@ -1638,7 +1634,7 @@ fun CommonEmployeeForm(
             })
         }
         
-        Spacer(Modifier.height(120.dp)) // ✅ Ensure button is not hidden by anything
+        Spacer(Modifier.height(120.dp)) // âœ… Ensure button is not hidden by anything
     }
 }
 
@@ -1702,3 +1698,4 @@ private fun saveBitmapToCacheAndGetUri(context: Context, bitmap: Bitmap): Uri? {
         null
     }
 }
+

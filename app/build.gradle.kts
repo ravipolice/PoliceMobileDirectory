@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,9 +11,6 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.google.services)
 }
-
-import java.util.Properties
-import java.io.FileInputStream
 
 kotlin {
     jvmToolchain(17)
@@ -37,14 +37,13 @@ android {
     defaultConfig {
         minSdk = 26
         targetSdk = 35
-        versionCode = 34
-        versionName = "1.34"
+        versionCode = 35
+        versionName = "1.35"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         multiDexEnabled = true
         
-        // ⚠️ SECURITY: Add secret token via gradle.properties or CI/CD secrets
-        // In gradle.properties: APPS_SCRIPT_SECRET_TOKEN=your_secret_here
+        // SECURITY: Add APPS_SCRIPT_SECRET_TOKEN in gradle.properties or local.properties
         val secretToken = project.findProperty("APPS_SCRIPT_SECRET_TOKEN") as? String ?: ""
         buildConfigField("String", "APPS_SCRIPT_SECRET_TOKEN", "\"$secretToken\"")
         
@@ -180,6 +179,10 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
+
+    // Paging (for large lists - employees, officers, approvals)
+    implementation("androidx.paging:paging-runtime-ktx:3.3.5")
+    implementation("androidx.paging:paging-compose:3.3.5")
 
     // Retrofit
     implementation(libs.retrofit)

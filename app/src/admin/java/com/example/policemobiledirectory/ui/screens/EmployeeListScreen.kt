@@ -69,7 +69,6 @@ fun EmployeeListScreen(
     val fontScale by viewModel.fontScale.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    
     // Notification counts
     val userNotifications by viewModel.userNotifications.collectAsState()
     val adminNotifications by viewModel.adminNotifications.collectAsState()
@@ -88,10 +87,8 @@ fun EmployeeListScreen(
     val currentRoute = navBackStackEntry?.destination?.route
     
     LaunchedEffect(currentRoute) { 
-        // Only refresh if we're on the employee list screen
         if (currentRoute == Routes.EMPLOYEE_LIST) {
             viewModel.checkIfAdmin()
-            // Refresh data when screen comes back into focus
             viewModel.refreshEmployees()
             viewModel.refreshOfficers()
             constantsViewModel.forceRefresh()
@@ -99,48 +96,32 @@ fun EmployeeListScreen(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp), // ✅ Fix: Avoid double status bar padding
+        contentWindowInsets = WindowInsets(0.dp),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                windowInsets = WindowInsets(0.dp),
                 title = {
-                    Row(
-                        
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("PMD Home")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("PMD Home", fontWeight = FontWeight.Bold)
                         Spacer(Modifier.width(6.dp))
                         Box {
                             IconButton(onClick = { navController.navigate(Routes.NOTIFICATIONS) }) {
-                                Icon(
-                                    imageVector = Icons.Default.Notifications,
-                                    contentDescription = "Notifications"
-                                )
+                                Icon(Icons.Default.Notifications, contentDescription = "Notifications")
                             }
-                            // Notification badge
                             if (notificationCount > 0) {
                                 Box(
                                     modifier = Modifier
-                                        .size(20.dp)
-                                        .offset(x = 12.dp, y = (-12).dp)
-                                        .background(
-                                            color = SecondaryYellow,
-                                            shape = CircleShape
-                                        )
-                                        .border(
-                                            width = 2.dp,
-                                            color = Color.White,
-                                            shape = CircleShape
-                                        ),
+                                        .size(18.dp)
+                                        .offset(x = 12.dp, y = (-10).dp)
+                                        .background(SecondaryYellow, CircleShape)
+                                        .border(2.dp, Color.White, CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = if (notificationCount > 99) "99+" else notificationCount.toString(),
                                         color = Color.White,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold
                                     )
                                 }
                             }
@@ -148,130 +129,64 @@ fun EmployeeListScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PrimaryTeal,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White
                 ),
                 actions = {
-                    Row(
-                        
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = { shareAppLink(context) }) {
-                            Icon(Icons.Default.Share, contentDescription = "Share App")
-                        }
-                        IconButton(onClick = {
-                            viewModel.refreshEmployees()
-                            viewModel.refreshOfficers()
-                            constantsViewModel.forceRefresh()
-                        }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                        }
+                    IconButton(onClick = { shareAppLink(context) }) {
+                        Icon(Icons.Default.Share, contentDescription = "Share App")
+                    }
+                    IconButton(onClick = {
+                        viewModel.refreshEmployees()
+                        viewModel.refreshOfficers()
+                        constantsViewModel.forceRefresh()
+                    }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
 
-                        // Font Size Selector
-                        FontSizeSelectorButton(
-                            currentFontScale = fontScale,
-                            onFontScaleSelected = { scale: Float -> viewModel.setFontScale(scale) },
-                            onFontScaleToggle = {
-                                val presets =
-                                    listOf(0.8f, 1.0f, 1.2f, 1.4f, 1.6f, 1.8f)
-                                val current = fontScale
-                                val currentIndex =
-                                    presets.indexOfFirst { kotlin.math.abs(it - current) < 0.05f }
-                                val nextIndex =
-                                    if (currentIndex >= 0 && currentIndex < presets.size - 1) currentIndex + 1 else 0
-                                viewModel.setFontScale(presets[nextIndex])
-                            },
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
+                    FontSizeSelectorButton(
+                        currentFontScale = fontScale,
+                        onFontScaleSelected = { scale -> viewModel.setFontScale(scale) },
+                        onFontScaleToggle = {
+                            val presets = listOf(0.8f, 1.0f, 1.2f, 1.4f, 1.6f, 1.8f)
+                            val current = fontScale
+                            val currentIndex = presets.indexOfFirst { kotlin.math.abs(it - current) < 0.05f }
+                            val nextIndex = if (currentIndex >= 0 && currentIndex < presets.size - 1) currentIndex + 1 else 0
+                            viewModel.setFontScale(presets[nextIndex])
+                        },
+                        contentColor = Color.White
+                    )
 
-                        // Style Selector
-                        CardStyleSelectorButton(
-                            currentStyle = viewModel.currentCardStyle.collectAsState().value,
-                            onStyleSelected = { viewModel.updateCardStyle(it) }
-                        )
-
-                        IconButton(onClick = onThemeToggle) {
-                            Icon(Icons.Default.Brightness6, contentDescription = "Toggle Theme")
-                        }
+                    IconButton(onClick = onThemeToggle) {
+                        Icon(Icons.Default.Brightness6, contentDescription = "Toggle Theme")
                     }
                 }
             )
         },
         floatingActionButton = {
             if (isAdmin) {
-                Box(
-                    modifier = Modifier.shadow(
-                        elevation = 12.dp,
-                        shape = CircleShape,
-                        spotColor = FABColor.copy(alpha = 0.5f),
-                        ambientColor = FABColor.copy(alpha = 0.3f)
-                    )
+                FloatingActionButton(
+                    onClick = { navController.navigate("${Routes.ADD_EMPLOYEE}?employeeId=") },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp)
                 ) {
-                    FloatingActionButton(
-                        onClick = { navController.navigate("${Routes.ADD_EMPLOYEE}?employeeId=") },
-                        containerColor = FABColor,
-                        modifier = Modifier.size(64.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Add Employee",
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
+                    Icon(Icons.Default.Add, contentDescription = "Add Employee")
                 }
             }
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        Surface(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            color = BackgroundLight
-        ) {
-            EmployeeListContent(
-                navController = navController,
-                viewModel = viewModel,
-                constantsViewModel = constantsViewModel,
-                context = context,
-                isAdmin = isAdmin,
-                fontScale = fontScale,
-                snackbarHostState = snackbarHostState
-            )
-        }
-    }
-}
-
-@Composable
-private fun CardStyleSelectorButton(
-    currentStyle: CardStyle,
-    onStyleSelected: (CardStyle) -> Unit
-) {
-    var showMenu by remember { mutableStateOf(false) }
-
-    IconButton(onClick = { showMenu = true }) {
-        Icon(Icons.Default.Palette, contentDescription = "Card Style")
-    }
-
-    DropdownMenu(
-        expanded = showMenu,
-        onDismissRequest = { showMenu = false }
-    ) {
-        DropdownMenuItem(
-            text = { Text("Vibrant (Default)") },
-            onClick = { onStyleSelected(CardStyle.Vibrant); showMenu = false },
-            leadingIcon = if (currentStyle is CardStyle.Vibrant) { { Icon(Icons.Default.Check, null) } } else null
-        )
-        DropdownMenuItem(
-            text = { Text("Classic (Navy)") },
-            onClick = { onStyleSelected(CardStyle.Classic); showMenu = false },
-            leadingIcon = if (currentStyle is CardStyle.Classic) { { Icon(Icons.Default.Check, null) } } else null
-        )
-        DropdownMenuItem(
-            text = { Text("Modern (Minimal)") },
-            onClick = { onStyleSelected(CardStyle.Modern); showMenu = false },
-            leadingIcon = if (currentStyle is CardStyle.Modern) { { Icon(Icons.Default.Check, null) } } else null
+        EmployeeListContent(
+            navController = navController,
+            viewModel = viewModel,
+            constantsViewModel = constantsViewModel,
+            context = context,
+            isAdmin = isAdmin,
+            fontScale = fontScale,
+            modifier = Modifier.padding(innerPadding)
         )
     }
 }
@@ -284,78 +199,46 @@ private fun EmployeeListContent(
     context: Context,
     isAdmin: Boolean,
     fontScale: Float,
-    snackbarHostState: SnackbarHostState
+    modifier: Modifier = Modifier
 ) {
-    val coroutineScope = rememberCoroutineScope()
     val filteredContacts by viewModel.filteredContacts.collectAsState()
     val employeeStatus by viewModel.employeeStatus.collectAsState()
     val officerStatus by viewModel.officerStatus.collectAsState()
     val searchParams by viewModel.searchParams.collectAsState()
-    val currentUser by viewModel.currentUser.collectAsState()
-    val cardStyle by viewModel.currentCardStyle.collectAsState()
-
-    // Get constants from ViewModel
+    val fullUnits by constantsViewModel.fullUnits.collectAsState()
     val districts by constantsViewModel.districts.collectAsState()
     val units by constantsViewModel.units.collectAsState()
-    val fullUnits by constantsViewModel.fullUnits.collectAsState()
     val ranks by constantsViewModel.ranks.collectAsState()
+    val allContacts by viewModel.allContacts.collectAsState()
 
-    
-    // State for dropdown expansion
-    // var unitExpanded/districtExpanded/stationExpanded/rankExpanded removed
-    
-    // 🔹 DYNAMIC SECTIONS STATE (ADMIN)
-    val unitSections by produceState<List<String>>(initialValue = emptyList(), key1 = searchParams.unit) {
-        if (searchParams.unit != "All" && searchParams.unit.isNotBlank()) {
-            value = constantsViewModel.getSectionsForUnit(searchParams.unit)
-        } else {
-            value = emptyList()
-        }
-    }
-    
-    // Check if selected unit is District Level (hides Station)
     val isDistrictLevelUnit by produceState(initialValue = false, key1 = searchParams.unit) {
         value = constantsViewModel.isDistrictLevelUnit(searchParams.unit)
     }
     
-    // Derived UI-specific lists
-    // UNIT-TO-DISTRICT MAPPING LOGIC (Consolidated)
-    // UNIT-TO-DISTRICT MAPPING LOGIC (Consolidated)
-    // 🔹 DYNAMIC DISTRICTS LIST (Sync with Admin Mapping)
     val districtsList = remember(districts, searchParams.unit) {
         val baseList = if (searchParams.unit == "All") districts else constantsViewModel.getDistrictsForUnit(searchParams.unit)
         listOf("All") + baseList
     }
 
-    // 🔹 DYNAMIC STATIONS / SECTIONS STATE
     val stationsForDistrict by produceState<List<String>>(initialValue = listOf("All"), key1 = searchParams.unit, key2 = searchParams.district) {
         val resolved = constantsViewModel.getStationsAndSectionsForUnit(searchParams.unit, searchParams.district)
         value = listOf("All") + resolved
     }
 
-    val allRanks = remember(ranks) { listOf("All") + ranks }
-
     val listState = rememberLazyListState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
+    Column(modifier = modifier.fillMaxSize()) {
 
-        // 🔹 DYNAMIC LABELS
+        // 🔹 SEARCH & FILTER BAR
         val unitObj = fullUnits.find { it.name == searchParams.unit }
         val districtLabel = if (unitObj?.mappedAreaType == "BATTALION") "Battalion" else "District / HQ"
         val stationLabel = if (stationsForDistrict.size > 1 && !stationsForDistrict.contains("Others") && searchParams.unit != "All") "Section" else "Station / Section"
 
-        // 🔹 SEARCH & FILTER BAR
         SearchFilterBar(
             units = units,
             districts = districtsList,
             stations = stationsForDistrict,
-            ranks = allRanks,
+            ranks = listOf("All") + ranks,
             selectedUnit = searchParams.unit,
             selectedDistrict = searchParams.district,
             selectedStation = searchParams.station,
@@ -375,46 +258,25 @@ private fun EmployeeListContent(
             isAdmin = isAdmin,
             districtLabel = districtLabel,
             stationLabel = stationLabel,
-            modifier = Modifier.padding(bottom = 8.dp)
+            totalContactsCount = allContacts.size,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
         )
 
-        // 🔹 UNIFIED CONTACTS LIST
+        // 🔹 Results List
         Box(modifier = Modifier.weight(1f)) {
             when {
                 employeeStatus is OperationStatus.Loading || officerStatus is OperationStatus.Loading -> {
                      Box(Modifier.fillMaxSize(), Alignment.Center) {
-                         CircularProgressIndicator(color = PrimaryTeal)
+                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                      }
-                }
-                employeeStatus is OperationStatus.Error || officerStatus is OperationStatus.Error -> {
-                    val errorMessage = (employeeStatus as? OperationStatus.Error)?.message 
-                        ?: (officerStatus as? OperationStatus.Error)?.message 
-                        ?: "Unknown Error"
-                        
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Error: $errorMessage", color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { viewModel.refreshEmployees(); viewModel.refreshOfficers() }) {
-                            Text("Retry")
-                        }
-                    }
                 }
                 filteredContacts.isEmpty() -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                         Column(
-                             horizontalAlignment = Alignment.CenterHorizontally, 
-                             verticalArrangement = Arrangement.spacedBy(8.dp)
-                         ) {
-                             Text("No contacts found", fontSize = 16.sp)
-                             if (searchParams.query.isNotEmpty() || searchParams.district != "All" || searchParams.unit != "All") {
-                                 TextButton(onClick = { 
-                                     viewModel.clearFilters()
-                                 }) {
-                                     Text("Reset All Filters")
+                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                             Text("No contacts found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                             if (searchParams.query.isNotEmpty() || searchParams.unit != "All") {
+                                 TextButton(onClick = { viewModel.clearFilters() }) {
+                                     Text("Clear All Filters")
                                  }
                              }
                          }
@@ -423,43 +285,35 @@ private fun EmployeeListContent(
                 else -> {
                     LazyColumn(
                         state = listState,
-                        contentPadding = PaddingValues(bottom = 80.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 80.dp)
                     ) {
                         items(filteredContacts, key = { it.id }) { contact ->
                             if (isAdmin && contact.employee != null) {
-                                // 🧑‍💼 Show admin version for employees only
                                 EmployeeCardAdmin(
                                     employee = contact.employee,
                                     isAdmin = true,
                                     fontScale = fontScale,
                                     navController = navController,
-                                    onDelete = { emp -> 
-                                        viewModel.deleteEmployee(emp.kgid, emp.photoUrl ?: emp.photoUrlFromGoogle) 
-                                    },
-                                    onStatusChange = { emp, isApproved ->
-                                        viewModel.updateEmployeeStatus(emp.kgid, isApproved)
-                                    },
-                                    onVisibilityChange = { emp, isHidden ->
-                                        viewModel.updateEmployeeVisibility(emp.kgid, isHidden)
-                                    },
-                                    context = context,
-                                    cardStyle = cardStyle
+                                    context = context
                                 )
                             } else {
-                                // 👮‍♂️ Show unified contact card (works for both Employee and Officer)
                                 ContactCard(
                                     officer = contact.officer,
                                     fontScale = fontScale,
                                     isAdmin = isAdmin,
-                                    onEdit = { 
-                                        navController.navigate("${Routes.ADD_OFFICER}?officerId=${contact.officer?.agid ?: ""}")
-                                    },
-                                    onDelete = {
-                                        contact.officer?.agid?.let { id -> viewModel.deleteOfficer(id) }
-                                    },
-                                    onClick = {},
-                                    cardStyle = cardStyle
+                                    onEdit = { navController.navigate("${Routes.ADD_OFFICER}?officerId=${contact.officer?.agid ?: ""}") },
+                                    onDelete = { contact.officer?.agid?.let { id -> viewModel.deleteOfficer(id) } },
+                                    onClick = {
+                                        val id = contact.employee?.kgid ?: contact.officer?.agid ?: ""
+                                        val isOff = contact.officer != null
+                                        if (id.isNotEmpty()) navController.navigate(Routes.employeeDetailRoute(id, isOff))
+                                    }
+                                )
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(start = 74.dp, end = 16.dp),
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
                                 )
                             }
                         }
@@ -470,80 +324,32 @@ private fun EmployeeListContent(
     }
 }
 
-/**
- * Single Font Size Selector Button
- * - Click to cycle through common preset sizes (0.8, 1.0, 1.2, 1.4, 1.6, 1.8)
- * - Long press opens menu with all size options for precise selection
- */
 @Composable
 private fun FontSizeSelectorButton(
     currentFontScale: Float,
     onFontScaleSelected: (Float) -> Unit,
     onFontScaleToggle: () -> Unit,
-    contentColor: Color = MaterialTheme.colorScheme.onSurface
+    contentColor: Color
 ) {
-    var showDropdownMenu by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     val presetSizes = listOf(0.8f, 0.9f, 1.0f, 1.1f, 1.2f, 1.3f, 1.4f, 1.5f, 1.6f, 1.7f, 1.8f)
     
     Box {
-        // Single button with combined clickable for click and long press
-        Box(
+        Row(
             modifier = Modifier
-                .combinedClickable(
-                    onClick = onFontScaleToggle,
-                    onLongClick = { showDropdownMenu = true }
-                )
-                .padding(8.dp)
+                .combinedClickable(onClick = onFontScaleToggle, onLongClick = { showMenu = true })
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = "${(currentFontScale * 100).toInt()}%",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = contentColor
-                )
-                Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = "Font Size (Click to cycle, Long press for menu)",
-                    modifier = Modifier.size(18.dp),
-                    tint = contentColor.copy(alpha = 0.7f)
-                )
-            }
+            Text(text = "${(currentFontScale * 100).toInt()}%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = contentColor)
+            Icon(Icons.Default.ArrowDropDown, null, modifier = Modifier.size(16.dp), tint = contentColor.copy(alpha = 0.7f))
         }
-        
-        // Dropdown Menu
-        DropdownMenu(
-            expanded = showDropdownMenu,
-            onDismissRequest = { showDropdownMenu = false }
-        ) {
+        DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
             presetSizes.forEach { size ->
                 DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = "${(size * 100).toInt()}%",
-                            fontWeight = if (kotlin.math.abs(size - currentFontScale) < 0.05f) {
-                                FontWeight.Bold
-                            } else {
-                                FontWeight.Normal
-                            }
-                        )
-                    },
-                    onClick = {
-                        onFontScaleSelected(size)
-                        showDropdownMenu = false
-                    },
-                    leadingIcon = if (kotlin.math.abs(size - currentFontScale) < 0.05f) {
-                        {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Current size",
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    } else null
+                    text = { Text("${(size * 100).toInt()}%", fontWeight = if (kotlin.math.abs(size - currentFontScale) < 0.05f) FontWeight.Bold else FontWeight.Normal) },
+                    onClick = { onFontScaleSelected(size); showMenu = false },
+                    leadingIcon = if (kotlin.math.abs(size - currentFontScale) < 0.05f) { { Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp)) } } else null
                 )
             }
         }
