@@ -7,7 +7,8 @@ interface GalleryApiService {
 
     @GET("exec?action=getGallery")
     suspend fun getGalleryImagesRaw(
-        @Query("token") token: String? = null
+        @Query("token") token: String? = null,
+        @Query("nocache") nocache: String? = null
     ): retrofit2.Response<okhttp3.ResponseBody>
 
     @POST("exec?action=uploadGallery")

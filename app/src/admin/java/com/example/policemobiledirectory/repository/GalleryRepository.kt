@@ -39,7 +39,10 @@ class GalleryRepository @Inject constructor(
 
     suspend fun fetchGalleryImages(): List<GalleryImage> {
         android.util.Log.d("GalleryRepository", "🔄 fetchGalleryImages() called")
-        val response: Response<ResponseBody> = api.getGalleryImagesRaw(token = token())
+        val response: Response<ResponseBody> = api.getGalleryImagesRaw(
+            token = token(),
+            nocache = System.currentTimeMillis().toString()
+        )
         
         if (!response.isSuccessful) {
             val errorBody = response.errorBody()?.string() ?: "Unknown error"
