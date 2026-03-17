@@ -102,6 +102,12 @@ data class GalleryImage(
      */
     val isValid: Boolean
         get() = !resolvedUrl.isNullOrBlank()
+
+    /**
+     * Check if this image has been marked for deletion
+     */
+    val isDeleted: Boolean
+        get() = (delete ?: deleteLower)?.trim()?.equals("deleted", ignoreCase = true) == true
 }
 
 

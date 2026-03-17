@@ -53,7 +53,7 @@ class GalleryRepository @Inject constructor(
             }
             
             // ✅ Filter out invalid images (those without valid URLs)
-            val validImages = images.filter { it.isValid }
+            val validImages = images.filter { it.isValid && !it.isDeleted }
             android.util.Log.d("GalleryRepository", "✅ Returning ${validImages.size} valid images (filtered from ${images.size} total)")
             
             if (validImages.isEmpty() && images.isNotEmpty()) {

@@ -66,16 +66,17 @@ class GalleryRepository @Inject constructor(
             // ✅ Filter out: 
             // 1. Invalid images (no URL)
             // 2. Images marked for deletion (Singleton tracking)
+            // 3. Images deleted on backend (isDeleted)
             val filteredImages = images.filter { 
                 val url = it.resolvedUrl ?: it.displayUrl
-                it.isValid && (url == null || !pendingDeletions.contains(url))
+                it.isValid && !it.isDeleted && (url == null || !pendingDeletions.contains(url))
             }
             
             android.util.Log.d("GalleryRepository", "✅ Returning ${filteredImages.size} images (Filtered from ${images.size} total, ${pendingDeletions.size} pending deletions)")
             
-            // Cleanup pending deletions: if an image is no longer in the raw response, 
+            // Cleanup pending deletions: if an image is no longer in the raw response or is now marked deleted in backend, 
             // it's safely deleted from the backend.
-            val rawUrls = images.mapNotNull { it.resolvedUrl ?: it.displayUrl }.toSet()
+            val rawUrls = images.filter { !it.isDeleted }.mapNotNull { it.resolvedUrl ?: it.displayUrl }.toSet()
             pendingDeletions.removeAll { url -> !rawUrls.contains(url) }
             
             return filteredImages
@@ -115,8 +116,14 @@ class GalleryRepository @Inject constructor(
                 android.util.Log.d("GalleryRepository", "📋 First image: isValid=${first.isValid}, displayUrl='${first.displayUrl}'")
             }
             
-            // ✅ Filter out invalid images (those without valid URLs)
-            val validImages = images.filter { it.isValid }
+            // ✅ Filter out: 
+            // 1. Invalid images (no URL)
+            // 2. Images marked for deletion (Singleton tracking)
+            // 3. Images deleted on backend (isDeleted)
+            val validImages = images.filter { 
+                val url = it.resolvedUrl ?: it.displayUrl
+                it.isValid && !it.isDeleted && (url == null || !pendingDeletions.contains(url))
+            }
             android.util.Log.d("GalleryRepository", "✅ Returning ${validImages.size} valid images (filtered from ${images.size} total)")
             
             if (validImages.isEmpty() && images.isNotEmpty()) {
