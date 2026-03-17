@@ -36,8 +36,8 @@ class DocumentsRepository @Inject constructor(
         try {
             val listType = object : TypeToken<List<Document>>() {}.type
             val documents = gson.fromJson<List<Document>>(bodyStr, listType)
-            // ✅ Filter out invalid documents (those without valid URLs)
-            return documents.filter { it.isValid }
+            // ✅ Filter out invalid documents or those marked as deleted
+            return documents.filter { it.isValid && !it.isDeleted }
         } catch (e: Exception) {
             android.util.Log.w("DocumentsRepository", "Failed to parse as array: ${e.message}")
             // try object with data/error
@@ -63,8 +63,8 @@ class DocumentsRepository @Inject constructor(
         }
 
         obj.data?.let { 
-            // ✅ Filter out invalid documents (those without valid URLs)
-            return it.filter { it.isValid }
+            // ✅ Filter out invalid documents or those marked as deleted
+            return it.filter { it.isValid && !it.isDeleted }
         }
 
         val err = obj.error ?: obj.message ?: "Documents load failed"

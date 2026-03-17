@@ -84,4 +84,10 @@ data class Document(
      */
     val isValid: Boolean
         get() = !resolvedUrl.isNullOrBlank()
+
+    /**
+     * Check if this document has been marked for deletion
+     */
+    val isDeleted: Boolean
+        get() = (delete ?: deleteLower)?.trim()?.equals("deleted", ignoreCase = true) == true
 }
