@@ -16,7 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AppIconEntity::class,
         NotificationEntity::class // ✅ Added NotificationEntity
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -210,6 +210,30 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // ✅ Migration 11 → 12: Add dateOfBirth, landline2, isManualSubSection, subSection
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // employees: add dateOfBirth
+                try {
+                    database.execSQL("ALTER TABLE employees ADD COLUMN dateOfBirth INTEGER")
+                } catch (e: Exception) {}
+
+                // pending_registrations: add dateOfBirth, landline2, isManualSubSection, subSection
+                try {
+                    database.execSQL("ALTER TABLE pending_registrations ADD COLUMN dateOfBirth INTEGER")
+                } catch (e: Exception) {}
+                try {
+                    database.execSQL("ALTER TABLE pending_registrations ADD COLUMN landline2 TEXT")
+                } catch (e: Exception) {}
+                try {
+                    database.execSQL("ALTER TABLE pending_registrations ADD COLUMN isManualSubSection INTEGER NOT NULL DEFAULT 0")
+                } catch (e: Exception) {}
+                try {
+                    database.execSQL("ALTER TABLE pending_registrations ADD COLUMN subSection TEXT")
+                } catch (e: Exception) {}
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -217,7 +241,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "employee_directory_db"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11) // ✅ Keep user data on update
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12) // ✅ Keep user data on update
                     .fallbackToDestructiveMigration() // ✅ Wipe data if migration fails
                     .build()
                 INSTANCE = instance

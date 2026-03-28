@@ -18,5 +18,6 @@ data class UnitModel(
     val stationKeyword: String = "", // For dynamic filtering (e.g. "DCRB", "ESCOM")
     val mappedAreaType: String = "", // "DISTRICT", "BATTALION", "RANGE", "ZONE", "NONE"
     val hideFromRegistration: Boolean = false,
-    val hiddenFields: List<String> = emptyList() // ✅ Hybrid Field Visibility
+    val hiddenFields: List<String> = emptyList(), // ✅ Hybrid Field Visibility
+    val dutyRoles: List<String> = emptyList() // ✅ Unit-specific duty roles (sub-sections)
 )

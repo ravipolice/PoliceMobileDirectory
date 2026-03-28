@@ -26,6 +26,13 @@ interface EmployeeDao {
     @Query("DELETE FROM employees")
     suspend fun clearEmployees()
 
+    /**
+     * Delete all employees NOT in the provided list of KGIDs.
+     * Used for full sync cleanup.
+     */
+    @Query("DELETE FROM employees WHERE kgid NOT IN (:kgids)")
+    suspend fun deleteStaleEmployees(kgids: List<String>)
+
     @Query("DELETE FROM employees WHERE kgid = :kgid")
     suspend fun deleteByKgid(kgid: String)
 

@@ -18,6 +18,13 @@ interface OfficerDao {
     @Query("DELETE FROM officers")
     suspend fun clearOfficers()
 
+    /**
+     * Delete all officers NOT in the provided list of AGIDs.
+     * Used for full sync cleanup.
+     */
+    @Query("DELETE FROM officers WHERE agid NOT IN (:agids)")
+    suspend fun deleteStaleOfficers(agids: List<String>)
+
     @Query("DELETE FROM officers WHERE agid = :agid")
     suspend fun deleteByAgid(agid: String)
 
@@ -40,4 +47,7 @@ interface OfficerDao {
 
     @Query("SELECT * FROM officers WHERE searchBlob LIKE :query ORDER BY name ASC LIMIT 100")
     fun searchByBlob(query: String): Flow<List<OfficerEntity>>
+
+    @Query("SELECT * FROM officers WHERE agid = :agid LIMIT 1")
+    fun getOfficerById(agid: String): Flow<OfficerEntity?>
 }

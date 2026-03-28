@@ -2,8 +2,6 @@ package com.example.policemobiledirectory.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -14,8 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.zIndex
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -24,10 +20,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
-import com.example.policemobiledirectory.data.local.SearchFilter
-import com.example.policemobiledirectory.ui.theme.ChipSelectedEnd
-import com.example.policemobiledirectory.ui.theme.ChipSelectedStart
-import com.example.policemobiledirectory.ui.theme.ChipUnselected
 import com.example.policemobiledirectory.ui.theme.PrimaryTeal
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,16 +47,14 @@ fun SearchFilterBar(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     
-    // Search Filter Type
-    searchFilter: SearchFilter,
-    onSearchFilterChange: (SearchFilter) -> Unit,
-    
     // Config
     isDistrictLevelUnit: Boolean,
     isAdmin: Boolean,
     districtLabel: String = "District / HQ",
     stationLabel: String = "Station / Section",
     totalContactsCount: Int = 0,
+    showHidden: Boolean = false,
+    onShowHiddenChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // UI State for Dropdowns (Internal)
@@ -76,7 +66,6 @@ fun SearchFilterBar(
     // 🔹 COLLAPSIBLE STATE
     var filtersVisible by remember { mutableStateOf(false) }
 
-    val searchFields = SearchFilter.values().toList()
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -87,31 +76,15 @@ fun SearchFilterBar(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val searchLabel = when (searchFilter) {
-                SearchFilter.ALL -> "Power Search"
-                SearchFilter.RANK -> "Rank"
-                SearchFilter.NAME -> "Name"
-                SearchFilter.BLOOD_GROUP -> "Blood"
-                else -> searchFilter.name.lowercase().replaceFirstChar { it.uppercase() }
-            }
-
-            val placeholderText = if (searchFilter == SearchFilter.ALL) {
-                "Search by Name, KGID, Mobile, Rank, Station..."
-            } else {
-                "Search by $searchLabel"
-            }
-
-            val keyboardType = when (searchFilter) {
-                SearchFilter.MOBILE, SearchFilter.METAL_NUMBER -> KeyboardType.Number
-                else -> KeyboardType.Text
-            }
+            val placeholderText = "Search by Name, KGID, Mobile, Rank, Station..."
+            val keyboardType = KeyboardType.Text
 
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
                 placeholder = { 
                     Text(
-                        if (totalContactsCount > 0 && searchFilter == SearchFilter.ALL) "Searching from $totalContactsCount contacts..." else placeholderText, 
+                        if (totalContactsCount > 0) "Searching from $totalContactsCount contacts..." else placeholderText, 
                         maxLines = 1, 
                         fontSize = 12.sp
                     ) 
@@ -379,51 +352,43 @@ fun SearchFilterBar(
                         }
                     }
                 }
-            }
-        }
 
-        // 🔹 FILTER CHIPS
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            contentPadding = PaddingValues(horizontal = 2.dp),
-            modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp)
-        ) {
-            items(searchFields) { filter ->
-                if (filter == SearchFilter.KGID && !isAdmin) return@items
-                if (filter == SearchFilter.RANK) return@items
-
-                val selected = searchFilter == filter
-                val labelText = when (filter) {
-                    SearchFilter.METAL_NUMBER -> "Metal"
-                    SearchFilter.KGID -> "KGID"
-                    SearchFilter.BLOOD_GROUP -> "Blood"
-                    else -> filter.name.lowercase().replaceFirstChar { it.uppercase() }
-                }
-
-                Box(modifier = Modifier.shadow(elevation = if (selected) 4.dp else 0.dp, shape = RoundedCornerShape(20.dp))) {
-                    FilterChip(
-                        selected = selected,
-                        onClick = { onSearchFilterChange(filter) },
-                        enabled = true,
-                        label = { Text(labelText, fontSize = 13.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal) },
-                        shape = RoundedCornerShape(20.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = if (selected) Color.Transparent else ChipUnselected,
-                            selectedLabelColor = Color.White,
-                            containerColor = ChipUnselected,
-                            labelColor = if (selected) Color.White else PrimaryTeal
-                        ),
-                        modifier = if (selected) {
-                            Modifier.background(
-                                brush = Brush.linearGradient(
-                                    listOf(ChipSelectedStart, ChipSelectedEnd)
-                                ),
-                                shape = RoundedCornerShape(20.dp)
+                // 🔹 ROW 3: HIDDEN CONTACTS TOGGLE
+                if (isAdmin) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.3f))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = if (showHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = null,
+                                tint = if (showHidden) Color.Gray else PrimaryTeal,
+                                modifier = Modifier.size(18.dp)
                             )
-                        } else {
-                            Modifier
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Show Hidden Contacts",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
-                    )
+                        Switch(
+                            checked = showHidden,
+                            onCheckedChange = onShowHiddenChange,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = if (showHidden) Color(0xFF2196F3) else PrimaryTeal,
+                                uncheckedThumbColor = Color.White,
+                                uncheckedTrackColor = Color.LightGray.copy(alpha = 0.5f)
+                            )
+                        )
+                    }
                 }
             }
         }

@@ -19,6 +19,7 @@ data class Employee(
     var metalNumber: String? = null,   // Firestore field: "metalNumber" (Google Sheet column: "metal")
     val district: String? = null,
     val station: String? = null,
+    val subSection: String? = null,  // Duty role: Writer, Court, Summons, Crime, IO, etc.
     val bloodGroup: String? = null,
     val photoUrl: String? = null,
     val photoUrlFromGoogle: String? = null,
@@ -39,6 +40,8 @@ data class Employee(
     val isHidden: Boolean = false,       // Added for Hide/Unhide feature
     @get:PropertyName("isManualStation")
     val isManualStation: Boolean = false, // Added for manual section tracking
+    @get:PropertyName("isManualSubSection")
+    val isManualSubSection: Boolean = false, // Added for manual duty role tracking
     val gender: String = "Male",         // KCSR rule dependency
     val serviceStartDate: Date? = null,   // For future calculations
     @get:Exclude

@@ -215,6 +215,73 @@ fun GalleryScreen(
                 is OperationStatus.Idle -> EmptySection(icon = Icons.Default.PhotoLibrary, message = "No images loaded")
             }
 
+            // 👀 Fullscreen image dialog
+            val currentFullScreenImage = fullScreenImage
+            if (!currentFullScreenImage.isNullOrBlank()) {
+                // ✅ Convert Drive URL to direct image URL for fullscreen display
+                val fullScreenImageUrl = remember(currentFullScreenImage) {
+                    convertDriveUrlToDirectImageUrl(currentFullScreenImage)
+                }
+
+                Dialog(onDismissRequest = { fullScreenImage = null }) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color.Black.copy(alpha = 0.9f)
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (fullScreenImageUrl.isNotBlank()) {
+                                AsyncImage(
+                                    model = fullScreenImageUrl,
+                                    contentDescription = "Full Screen Image",
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentScale = ContentScale.Fit
+                                )
+                            } else {
+                                Text(
+                                    text = "Image not available",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                            
+                            // ✅ Top buttons (Close and Download)
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                IconButton(
+                                    onClick = { 
+                                        if (fullScreenImageUrl.isNotBlank()) {
+                                            downloadFile(context, fullScreenImageUrl, "Gallery_Image")
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.FileDownload,
+                                        contentDescription = "Download",
+                                        tint = Color.White
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { fullScreenImage = null }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = "Close",
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // 💡 Google Drive Fetching Disclaimer
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -225,6 +292,7 @@ fun GalleryScreen(
         }
     }
 }
+
 
 /**
  * Custom Grid Icon - Creates a visual grid representation based on columns

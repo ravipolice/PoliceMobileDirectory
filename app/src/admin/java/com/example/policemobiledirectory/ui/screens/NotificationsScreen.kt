@@ -43,6 +43,13 @@ fun NotificationsScreen(
         }
     }
 
+    // 🗑️ Auto-clean old notifications (>30 days) from Firestore when admin opens screen
+    LaunchedEffect(isAdmin) {
+        if (isAdmin) {
+            viewModel.deleteOldAdminNotifications()
+        }
+    }
+
     Scaffold(
         contentWindowInsets = WindowInsets(0.dp),
         topBar = {
@@ -62,58 +69,62 @@ fun NotificationsScreen(
             )
         }
     ) { paddingValues ->
-        if (notifications.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(if (isAdmin) "No admin notifications yet." else "No notifications yet.")
-            }
-    } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(horizontal = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                // ✅ Show Pending Approvals Card if there are any
-                if (isAdmin && pendingCount > 0) {
-                    item {
-                        Card(
-                            onClick = { navController.navigate(com.example.policemobiledirectory.navigation.Routes.PENDING_APPROVALS) },
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                            ),
-                            elevation = CardDefaults.cardElevation(4.dp)
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // ✅ Pending Approvals card — always at top when there are pending items
+            if (isAdmin && pendingCount > 0) {
+                item {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Card(
+                        onClick = { navController.navigate(com.example.policemobiledirectory.navigation.Routes.PENDING_APPROVALS) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        ),
+                        elevation = CardDefaults.cardElevation(6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "Pending Approvals",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = "$pendingCount user(s) waiting for approval",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                }
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.rotate(180f))
+                            Column {
+                                Text(
+                                    text = "⏳ Pending Approvals",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "$pendingCount user(s) awaiting approval — tap to review",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
                             }
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.rotate(180f))
                         }
                     }
                 }
+            }
 
+            // Notification items
+            if (notifications.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 48.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(if (isAdmin) "No admin notifications yet." else "No notifications yet.")
+                    }
+                }
+            } else {
                 items(notifications, key = { it.id }) { notification ->
                     NotificationCard(notification)
                 }

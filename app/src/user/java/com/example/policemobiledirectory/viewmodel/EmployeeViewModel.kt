@@ -41,7 +41,6 @@ import com.example.policemobiledirectory.repository.EmployeeRepository
 import com.example.policemobiledirectory.repository.PendingRegistrationRepository
 import com.example.policemobiledirectory.repository.ConstantsRepository
 import com.example.policemobiledirectory.repository.ImageRepository
-import com.example.policemobiledirectory.repository.ImageUploadRepository
 import com.example.policemobiledirectory.repository.RepoResult
 import com.example.policemobiledirectory.repository.AppIconRepository
 import kotlinx.coroutines.Dispatchers
@@ -128,7 +127,9 @@ open class EmployeeViewModel @Inject constructor(
     val selectedUnit: StateFlow<String> = _selectedUnit.asStateFlow()
     
     private val _selectedDistrict = MutableStateFlow("All")
+    val selectedDistrict: StateFlow<String> = _selectedDistrict.asStateFlow()
     private val _selectedStation = MutableStateFlow("All")
+    val selectedStation: StateFlow<String> = _selectedStation.asStateFlow()
     private val _selectedRank = MutableStateFlow("All")
     val selectedRank: StateFlow<String> = _selectedRank.asStateFlow()
 
@@ -289,7 +290,10 @@ open class EmployeeViewModel @Inject constructor(
         } else {
             filtered.sortedBy { it.name }
         }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }
+    .flowOn(Dispatchers.Default)
+    .distinctUntilChanged()
+    .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
     // Simplified Notifications for User App
     private val _userNotificationsLastSeen = MutableStateFlow(0L)
@@ -321,6 +325,11 @@ open class EmployeeViewModel @Inject constructor(
     val isDarkTheme: StateFlow<Boolean> = _isDarkTheme
     private val _fontScale = MutableStateFlow(1.0f)
     val fontScale: StateFlow<Float> = _fontScale.asStateFlow()
+
+    // ✅ Sync Throttling
+    private var lastEmployeeSyncTime = 0L
+    private var lastOfficerSyncTime = 0L
+    private val SYNC_THROTTLE_MS = 5 * 60 * 1000L // 5 minutes
     private val _firestoreToSheetStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
     val firestoreToSheetStatus: StateFlow<OperationStatus<String>> = _firestoreToSheetStatus.asStateFlow()
 
@@ -873,9 +882,21 @@ open class EmployeeViewModel @Inject constructor(
             return@launch
         }
         
-        _employeeStatus.value = OperationStatus.Loading
+        // ⏱️ Throttle full syncs (prevent spam on screen focus)
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastEmployeeSyncTime < SYNC_THROTTLE_MS && _employees.value.isNotEmpty()) {
+            Log.d("EmployeeVM", "⏱️ Skipping refreshEmployees (throttled)")
+            return@launch
+        }
+
+        // 🔄 Silent Loading: Only show progress bar if we have NO data
+        if (_employees.value.isEmpty()) {
+            _employeeStatus.value = OperationStatus.Loading
+        }
+
         try {
             employeeRepo.refreshEmployees()
+            lastEmployeeSyncTime = currentTime
             val result = employeeRepo.getEmployees()
                 .filterNot { it is RepoResult.Loading }
                 .firstOrNull()
@@ -970,10 +991,22 @@ open class EmployeeViewModel @Inject constructor(
             return@launch
         }
         
-        _officerStatus.value = OperationStatus.Loading
+        // ⏱️ Throttle full syncs
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastOfficerSyncTime < SYNC_THROTTLE_MS && _officers.value.isNotEmpty()) {
+            Log.d("EmployeeVM", "⏱️ Skipping refreshOfficers (throttled)")
+            return@launch
+        }
+
+        // 🔄 Silent Loading
+        if (_officers.value.isEmpty()) {
+            _officerStatus.value = OperationStatus.Loading
+        }
+
         try {
             // First sync from Firebase to Room
             officerRepo.syncAllOfficers()
+            lastOfficerSyncTime = currentTime
             
             // Then observe Room via Repo
             officerRepo.getOfficers().collect { result ->

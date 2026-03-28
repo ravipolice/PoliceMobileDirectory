@@ -37,8 +37,8 @@ android {
     defaultConfig {
         minSdk = 26
         targetSdk = 35
-        versionCode = 35
-        versionName = "1.35"
+        versionCode = 37
+        versionName = "1.37"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         multiDexEnabled = true
@@ -50,6 +50,20 @@ android {
         // App signature hash for verification (set via CI/CD)
         val signatureHash = project.findProperty("EXPECTED_SIGNATURE_HASH") as? String ?: ""
         buildConfigField("String", "EXPECTED_SIGNATURE_HASH", "\"$signatureHash\"")
+
+        // API Base URLs
+        buildConfigField("String", "DOCUMENTS_BASE_URL", "\"https://script.google.com/macros/s/AKfycby-7jOc_naI1_XDVzG1qAGvNc9w3tIU4ZwmCFGUUCLdg0_DEJh7oouF8a9iy5E93-p9zg/\"")
+        buildConfigField("String", "GALLERY_BASE_URL", "\"https://script.google.com/macros/s/AKfycbwXIhqfYWER3Z2KBlcrqZjyWCBfacHOeKCo_buWaZ6nG7qQpWaN91V7Y-IclzmOvG73/\"")
+        buildConfigField("String", "EMPLOYEES_SYNC_BASE_URL", "\"https://script.google.com/macros/s/AKfycbyEqYeeUGeToFPwhdTD2xs7uEWOzlwIjYm1f41KJCWiQYL2Swipgg_y10xRekyV1s2fjQ/\"")
+        buildConfigField("String", "OFFICERS_SYNC_BASE_URL", "\"https://script.google.com/macros/s/AKfycbyYb-m0egcqz69JNbBYQj0Qv8qStnn6GlntPfK47Nj75bN7K3u2onqUaPgvAtPQjH8V/\"")
+        buildConfigField("String", "CONSTANTS_BASE_URL", "\"https://script.google.com/macros/s/AKfycbyFMd7Qsv02wDYdM71ZCh_hUr08aFW6eYRztgmUYYI1ZuOKbKAXQtxnSZ3bhfbKWahY/\"")
+        buildConfigField("String", "USEFUL_LINKS_BASE_URL", "\"https://script.google.com/macros/s/AKfycbyut8D5xNsytdL7m0IDiK5fH2z0s7Kc9eO8bT5IDqCpHworWvaTBMzB0MUcJmszlT1v/\"")
+
+        // Google Drive Fetching (Public Folder)
+        val driveApiKey = project.findProperty("GOOGLE_DRIVE_API_KEY") as? String ?: "YOUR_API_KEY"
+        val driveFolderId = project.findProperty("DRIVE_DOCUMENTS_FOLDER_ID") as? String ?: "13qNrVmJQeFgcC_Q90yyD3fhTZq8j0GXK"
+        buildConfigField("String", "GOOGLE_DRIVE_API_KEY", "\"$driveApiKey\"")
+        buildConfigField("String", "DRIVE_DOCUMENTS_FOLDER_ID", "\"$driveFolderId\"")
     }
 
     compileOptions {
@@ -119,8 +133,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             isDebuggable = false
             signingConfig = signingConfigs.getByName("release") // Apply signing config
             proguardFiles(

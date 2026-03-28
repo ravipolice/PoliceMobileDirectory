@@ -127,13 +127,19 @@ class MainActivity : ComponentActivity() {
             .build()
 
         try {
-            Log.d("Auth", "Requesting credential...")
+            Log.d("Auth", "Requesting credential with 8s timeout...")
 
-            // Increased timeout to 5s for better reliability
-            val result: GetCredentialResponse = kotlinx.coroutines.withTimeout(5000L) {
-                 Log.d("Auth", "calling credentialManager.getCredential")
-                 credentialManager.getCredential(this@MainActivity, request)
+            // ✅ Wrap in timeout to prevent indefinite hangs
+            val result: GetCredentialResponse? = kotlinx.coroutines.withTimeoutOrNull(8000) {
+                credentialManager.getCredential(this@MainActivity, request)
             }
+            
+            if (result == null) {
+                Log.e("Auth", "❌ CredentialManager timed out (8s). Falling back to Legacy.")
+                launchLegacyGoogleSignIn()
+                return
+            }
+
             Log.d("Auth", "credentialManager.getCredential returned")
             val credential = result.credential
             
@@ -149,7 +155,8 @@ class MainActivity : ComponentActivity() {
                 viewModel.handleGoogleSignIn(email, googleIdToken)
                 wasLoggedOut = false
             } else {
-                Log.e("Auth", "❌ No ID token found in credential data")
+                Log.e("Auth", "❌ No ID token found in credential data. Trying legacy.")
+                launchLegacyGoogleSignIn()
             }
         } catch (e: androidx.credentials.exceptions.GetCredentialCancellationException) {
             Log.d("Auth", "⚠️ Sign-In cancelled by user")
@@ -169,12 +176,9 @@ class MainActivity : ComponentActivity() {
             Log.e("Auth", "❌ Google Sign-In failed: ${e.type} - ${e.message}", e)
             ToastUtil.showToast(this, "Sign-In error. Trying fallback...", Toast.LENGTH_LONG)
             launchLegacyGoogleSignIn()
-        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-             Log.e("Auth", "❌ Google Sign-In timed out (30s) - Triggering Legacy Fallback")
-             ToastUtil.showToast(this, "Still waiting? Falling back to Legacy Sign-In...", Toast.LENGTH_LONG)
-             launchLegacyGoogleSignIn()
         } catch (e: Exception) {
             Log.e("Auth", "❌ Google Sign-In unexpected error: ${e.javaClass.simpleName}", e)
+            launchLegacyGoogleSignIn()
         } finally {
             Log.d("Auth", "Google Sign-In flow completed")
             viewModel.setGoogleAccountPickerLoading(false)

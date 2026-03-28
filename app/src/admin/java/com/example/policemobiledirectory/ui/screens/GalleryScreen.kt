@@ -42,6 +42,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.border
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalConfiguration
+import android.app.DownloadManager
 
 enum class ViewMode {
     Grid, List
@@ -305,6 +306,22 @@ fun GalleryScreen(
                                     text = "Image not available",
                                     color = Color.White,
                                     style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                            IconButton(
+                                onClick = { 
+                                    if (fullScreenImageUrl.isNotBlank()) {
+                                        downloadFile(context, fullScreenImageUrl, "Gallery_Image")
+                                    }
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(end = 56.dp, top = 16.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.FileDownload,
+                                    contentDescription = "Download",
+                                    tint = Color.White
                                 )
                             }
                             IconButton(
@@ -1012,4 +1029,5 @@ fun UploadGalleryDialog(
             }
         )
     }
+
 

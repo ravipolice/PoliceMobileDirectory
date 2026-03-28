@@ -125,10 +125,19 @@ class MainActivity : ComponentActivity() {
                 .addCredentialOption(googleIdOption)
                 .build()
 
-            // Increased timeout to 5s for better reliability
-            val result: GetCredentialResponse = kotlinx.coroutines.withTimeout(5000L) {
-                 credentialManager.getCredential(this@MainActivity, request)
+            Log.d("Auth", "Requesting credential with 8s timeout...")
+
+            // ✅ Wrap in timeout to prevent indefinite hangs
+            val result: GetCredentialResponse? = kotlinx.coroutines.withTimeoutOrNull(8000) {
+                credentialManager.getCredential(this@MainActivity, request)
             }
+            
+            if (result == null) {
+                Log.e("Auth", "❌ CredentialManager timed out (8s). Falling back to Legacy.")
+                launchLegacyGoogleSignIn()
+                return
+            }
+
             val credential = result.credential
             
             val googleIdTokenCredential = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(credential.data)
@@ -141,8 +150,8 @@ class MainActivity : ComponentActivity() {
                 viewModel.handleGoogleSignIn(email, googleIdToken)
                 wasLoggedOut = false
             } else {
-                Log.e("Auth", "❌ No ID token found in credential data")
-                Toast.makeText(this, "No ID token found.", Toast.LENGTH_SHORT).show()
+                Log.e("Auth", "❌ No ID token found in credential data. Trying legacy.")
+                launchLegacyGoogleSignIn()
             }
         } catch (e: androidx.credentials.exceptions.GetCredentialCancellationException) {
             Log.d("Auth", "⚠️ Sign-In cancelled by user")
@@ -154,12 +163,9 @@ class MainActivity : ComponentActivity() {
             Log.e("Auth", "❌ Google Sign-In failed: ${e.type} - ${e.message}", e)
             Toast.makeText(this, "Sign-In Error. Trying fallback...", Toast.LENGTH_LONG).show()
             launchLegacyGoogleSignIn()
-        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-             Log.e("Auth", "❌ Google Sign-In timed out - Triggering Legacy Fallback")
-             launchLegacyGoogleSignIn()
         } catch (e: Exception) {
             Log.e("Auth", "❌ Google Sign-In unexpected error", e)
-            Toast.makeText(this, "Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+            launchLegacyGoogleSignIn()
         } finally {
             viewModel.setGoogleAccountPickerLoading(false)
         }
@@ -259,11 +265,21 @@ class MainActivity : ComponentActivity() {
                         return@LaunchedEffect
                     }
                     
-                    delay(300) // ⏳ wait for ViewModel to fully restore session
-
                     // Skip auto-navigation while splash is showing; splash handles routing
                     val currentRoute = navController.currentDestination?.route
                     if (currentRoute == Routes.SPLASH) return@LaunchedEffect
+
+                    // 🆕 Handle Notification Action: view_pending_approvals
+                    val notificationAction = intent.getStringExtra("notification_action")
+                    if (notificationAction == "view_pending_approvals") {
+                        intent.removeExtra("notification_action") // Clear once handled
+                        Log.d("MainActivity", "🔔 Notification action: view_pending_approvals")
+                        navController.navigate(Routes.PENDING_APPROVALS) {
+                            popUpTo(Routes.EMPLOYEE_LIST) { saveState = true }
+                            launchSingleTop = true
+                        }
+                        return@LaunchedEffect
+                    }
 
                     if (isLoggedIn && currentUser != null) {
                         val currentRoute = navController.currentDestination?.route

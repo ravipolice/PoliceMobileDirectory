@@ -44,6 +44,11 @@ class EmployeeListViewModel @Inject constructor(
     private val _officerStatus = MutableStateFlow<OperationStatus<List<Officer>>>(OperationStatus.Loading)
     val officerStatus: StateFlow<OperationStatus<List<Officer>>> = _officerStatus.asStateFlow()
 
+    // ✅ Sync Throttling
+    private var lastEmployeeSyncTime = 0L
+    private var lastOfficerSyncTime = 0L
+    private val SYNC_THROTTLE_MS = 5 * 60 * 1000L // 5 minutes
+
     // Combined contacts (employees + officers) for unified search
     data class Contact(
         val employee: Employee? = null,
@@ -210,10 +215,22 @@ class EmployeeListViewModel @Inject constructor(
     // =========================================================
 
     fun refreshEmployees() = viewModelScope.launch {
-        _employeeStatus.value = OperationStatus.Loading
+        // ⏱️ Throttle full syncs
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastEmployeeSyncTime < SYNC_THROTTLE_MS && _employees.value.isNotEmpty()) {
+            Log.d("ListVM", "⏱️ Skipping refreshEmployees (throttled)")
+            return@launch
+        }
+
+        // 🔄 Silent Loading
+        if (_employees.value.isEmpty()) {
+            _employeeStatus.value = OperationStatus.Loading
+        }
+
         try {
             PerformanceLogger.measureDatabaseOperation("employees", "refresh") {
                 employeeRepo.refreshEmployees()
+                lastEmployeeSyncTime = currentTime
                 val result = employeeRepo.getEmployees()
                     .filterNot { it is RepoResult.Loading }
                     .firstOrNull()
@@ -250,10 +267,22 @@ class EmployeeListViewModel @Inject constructor(
     // =========================================================
 
     fun refreshOfficers() = viewModelScope.launch {
-        _officerStatus.value = OperationStatus.Loading
+        // ⏱️ Throttle full syncs
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastOfficerSyncTime < SYNC_THROTTLE_MS && _officers.value.isNotEmpty()) {
+            Log.d("ListVM", "⏱️ Skipping refreshOfficers (throttled)")
+            return@launch
+        }
+
+        // 🔄 Silent Loading
+        if (_officers.value.isEmpty()) {
+            _officerStatus.value = OperationStatus.Loading
+        }
+
         try {
             // First sync from Firebase to Room
             officerRepo.syncAllOfficers()
+            lastOfficerSyncTime = currentTime
             
             // Then observe Room via Repo
             officerRepo.getOfficers().collect { result ->

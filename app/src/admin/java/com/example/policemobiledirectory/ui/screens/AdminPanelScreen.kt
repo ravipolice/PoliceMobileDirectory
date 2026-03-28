@@ -364,6 +364,15 @@ fun AdminUnifiedDashboard(
                 onClick = { navController.navigate(Routes.SEND_NOTIFICATION) }
             )
         }
+        item {
+            DashboardActionCardLarge(
+                title = "Manage\nDuty Roles",
+                icon = Icons.Default.AssignmentInd,
+                colorStart = Color(0xFF607D8B),
+                colorEnd = Color(0xFF90A4AE),
+                onClick = { navController.navigate(Routes.MANAGE_DUTY_ROLES_LIST) }
+            )
+        }
         item(span = { GridItemSpan(2) }) {
             DashboardActionCardLarge(
                 title = "Leave Manager Admin",

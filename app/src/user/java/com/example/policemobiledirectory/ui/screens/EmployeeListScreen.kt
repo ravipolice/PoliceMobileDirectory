@@ -107,7 +107,6 @@ fun EmployeeListScreen(
             viewModel.refreshEmployees()
             viewModel.refreshOfficers()
         }
-        // Constants.kt is the primary source - no automatic syncing
     }
 
     // ✅ Ensure status bar matches the PMD Home top bar color on this screen
@@ -259,26 +258,20 @@ private fun EmployeeListContent(
     val fullUnits by constantsViewModel.fullUnits.collectAsStateWithLifecycle()
     val stationsByDistrict by constantsViewModel.stationsByDistrict.collectAsStateWithLifecycle()
     val ranks by constantsViewModel.ranks.collectAsStateWithLifecycle()
+    val districtShortCodeMap by constantsViewModel.districtShortCodeMap.collectAsStateWithLifecycle()
 
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     
-    // 🔹 UNIT SELECTION STATE
-    var selectedUnit by remember { mutableStateOf("All") }
-    // var unitExpanded removed
-    val selectedUnitState by viewModel.selectedUnit.collectAsStateWithLifecycle()
-    
-    // Sync selectedUnit with ViewModel
-    LaunchedEffect(selectedUnitState) {
-        selectedUnit = selectedUnitState
-    }
+    // 🔹 FILTER STATES FROM VIEWMODEL
+    val selectedUnit by viewModel.selectedUnit.collectAsStateWithLifecycle()
+    val selectedDistrict by viewModel.selectedDistrict.collectAsStateWithLifecycle()
+    val selectedStation by viewModel.selectedStation.collectAsStateWithLifecycle()
+    val selectedRank by viewModel.selectedRank.collectAsStateWithLifecycle()
 
     // Check if selected unit is District Level (hides Station)
     val isDistrictLevelUnit by produceState(initialValue = false, key1 = selectedUnit) {
         value = constantsViewModel.isDistrictLevelUnit(selectedUnit)
     }
-
-    var selectedDistrict by remember { mutableStateOf("All") }
-    // var districtExpanded removed
 
     // Filter Units based on selected District
     val filteredUnitNames = remember(fullUnits, units, selectedDistrict) {
@@ -308,46 +301,23 @@ private fun EmployeeListContent(
         if (isAdmin) listOf("All") + baseList else baseList
     }
 
-    var selectedStation by remember { mutableStateOf("All") }
-    // var stationExpanded removed
-    
-    // 🔹 DYNAMIC STATIONS / SECTIONS STATE
-    // Fetches stations or sections based on unit configuration (Sync with Admin Panel)
+    // 🔹 DYNAMIC DROPDOWNS & LABELS
     val stationsForDistrict by produceState<List<String>>(initialValue = listOf("All"), key1 = selectedUnit, key2 = selectedDistrict) {
         val resolved = constantsViewModel.getStationsAndSectionsForUnit(selectedUnit, selectedDistrict)
         value = listOf("All") + resolved
     }
-
-    var selectedRank by remember { mutableStateOf("All") }
-    // var rankExpanded removed
     val allRanks = remember(ranks) { listOf("All") + ranks }
-    val selectedRankState by viewModel.selectedRank.collectAsStateWithLifecycle()
-    
-    // Sync selectedRank with ViewModel
-    LaunchedEffect(selectedRankState) {
-        selectedRank = selectedRankState
-    }
 
     // Initialize district to user's registered district when currentUser loads (for non-admins)
-    // For admins, default to "All"; for regular users, default to their registered district
     LaunchedEffect(currentUser, isAdmin, districts) {
-        if (isAdmin) {
-            // Admin: default to "All" if not already set
-            if (selectedDistrict == "All") {
-                viewModel.updateSelectedDistrict("All")
-            }
-        } else {
+        if (!isAdmin) {
             // Regular user: set to their registered district (if it exists in the list)
             val userDistrict = currentUser?.district?.takeIf { it.isNotBlank() }
             if (userDistrict != null && districts.contains(userDistrict)) {
-                // User's district is valid and exists in the list
-                selectedDistrict = userDistrict
                 viewModel.updateSelectedDistrict(userDistrict)
-            } else {
-                // Fallback: use first district if user has no district set or district is invalid
-                val fallbackDistrict = districts.firstOrNull() ?: "All"
-                selectedDistrict = fallbackDistrict
-                viewModel.updateSelectedDistrict(fallbackDistrict)
+            } else if (districts.isNotEmpty() && selectedDistrict == "All") {
+                // Fallback: use first district if user has no district set
+                districts.firstOrNull()?.let { viewModel.updateSelectedDistrict(it) }
             }
         }
     }
@@ -378,24 +348,13 @@ private fun EmployeeListContent(
                 selectedDistrict = selectedDistrict,
                 selectedStation = selectedStation,
                 selectedRank = selectedRank,
-                onUnitChange = { unit ->
-                    selectedUnit = unit
-                    viewModel.updateSelectedUnit(unit)
-                },
+                onUnitChange = { viewModel.updateSelectedUnit(it) },
                 onDistrictChange = { district ->
-                    selectedDistrict = district
-                    selectedStation = "All"
                     viewModel.updateSelectedDistrict(district)
                     viewModel.updateSelectedStation("All")
                 },
-                onStationChange = { station ->
-                    selectedStation = station
-                    viewModel.updateSelectedStation(station)
-                },
-                onRankChange = { rank ->
-                    selectedRank = rank
-                    viewModel.updateSelectedRank(rank)
-                },
+                onStationChange = { viewModel.updateSelectedStation(it) },
+                onRankChange = { viewModel.updateSelectedRank(it) },
                 searchQuery = searchQuery,
                 onSearchQueryChange = { viewModel.updateSearchQuery(it) },
                 isDistrictLevelUnit = isDistrictLevelUnit,
@@ -513,25 +472,8 @@ private fun EmployeeListContent(
                                  if (isFiltered) {
                                      Button(
                                          onClick = {
-                                             selectedUnit = "All"
-                                             selectedStation = "All"
-                                             selectedRank = "All"
-                                             
-                                             if (isAdmin) {
-                                                 selectedDistrict = "All"
-                                                 viewModel.updateSelectedDistrict("All")
-                                             } else {
-                                                 val userDistrict = currentUser?.district?.takeIf { it.isNotBlank() }
-                                                 if (userDistrict != null && districts.contains(userDistrict)) {
-                                                     selectedDistrict = userDistrict
-                                                     viewModel.updateSelectedDistrict(userDistrict)
-                                                 } else {
-                                                     selectedDistrict = "All"
-                                                     viewModel.updateSelectedDistrict("All")
-                                                 }
-                                             }
-
                                              viewModel.updateSelectedUnit("All")
+                                             viewModel.updateSelectedDistrict("All")
                                              viewModel.updateSelectedStation("All")
                                              viewModel.updateSelectedRank("All")
                                              viewModel.updateSearchQuery("")
@@ -562,7 +504,7 @@ private fun EmployeeListContent(
                             contentType = { "contact" }
                         ) { contact ->
                             Column {
-                                ContactCard(
+                            ContactCard(
                                     employee = contact.employee,
                                     officer = contact.officer,
                                     fontScale = fontScale,

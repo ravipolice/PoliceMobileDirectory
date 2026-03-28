@@ -54,9 +54,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideSecurityConfig(
-        @ApplicationContext context: Context
-    ): SecurityConfig = SecurityConfig(context)
+    fun provideSecurityConfig(): SecurityConfig = SecurityConfig()
 
     @Provides
     @Singleton

@@ -8,11 +8,12 @@ import java.net.URL
 
 object DrivePublicHelper {
 
-    // Replace with your Drive Folder ID
-    private const val FOLDER_ID = "13qNrVmJQeFgcC_Q90yyD3fhTZq8j0GXK"
-
+    // Use values from BuildConfig for security
+    private val FOLDER_ID = com.example.policemobiledirectory.BuildConfig.DRIVE_DOCUMENTS_FOLDER_ID
+    private val API_KEY = com.example.policemobiledirectory.BuildConfig.GOOGLE_DRIVE_API_KEY
+ 
     suspend fun fetchFiles(): List<Map<String, String>> = withContext(Dispatchers.IO) {
-        val apiUrl = "https://www.googleapis.com/drive/v3/files?q='$FOLDER_ID'+in+parents&key=YOUR_API_KEY&fields=files(id,name,mimeType,webViewLink,modifiedTime)"
+        val apiUrl = "https://www.googleapis.com/drive/v3/files?q='$FOLDER_ID'+in+parents&key=$API_KEY&fields=files(id,name,mimeType,webViewLink,modifiedTime)"
 
         val url = URL(apiUrl)
         val connection = url.openConnection() as HttpURLConnection

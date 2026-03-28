@@ -28,7 +28,7 @@ class PoliceMobileDirectoryApp : Application() {
                 // Get signature verifier via manual injection (since we can't inject in Application onCreate)
                 val signatureVerifier = com.example.policemobiledirectory.utils.AppSignatureVerifier(
                     applicationContext,
-                    com.example.policemobiledirectory.utils.SecurityConfig(applicationContext)
+                    com.example.policemobiledirectory.utils.SecurityConfig()
                 )
                 
                 if (!signatureVerifier.verifySignature()) {

@@ -91,7 +91,7 @@ fun EmployeeListScreen(
             viewModel.checkIfAdmin()
             viewModel.refreshEmployees()
             viewModel.refreshOfficers()
-            constantsViewModel.forceRefresh()
+            // constantsViewModel.forceRefresh() // Removed to reduce navigation lag; constants load on init
         }
     }
 
@@ -210,6 +210,7 @@ private fun EmployeeListContent(
     val units by constantsViewModel.units.collectAsState()
     val ranks by constantsViewModel.ranks.collectAsState()
     val allContacts by viewModel.allContacts.collectAsState()
+    val districtShortCodeMap by constantsViewModel.districtShortCodeMap.collectAsState()
 
     val isDistrictLevelUnit by produceState(initialValue = false, key1 = searchParams.unit) {
         value = constantsViewModel.isDistrictLevelUnit(searchParams.unit)
@@ -252,13 +253,13 @@ private fun EmployeeListContent(
             onRankChange = { viewModel.updateSelectedRank(it) },
             searchQuery = searchParams.query,
             onSearchQueryChange = { viewModel.updateSearchQuery(it) },
-            searchFilter = searchParams.filter,
-            onSearchFilterChange = { viewModel.updateSearchFilter(it) },
             isDistrictLevelUnit = isDistrictLevelUnit,
             isAdmin = isAdmin,
             districtLabel = districtLabel,
             stationLabel = stationLabel,
             totalContactsCount = allContacts.size,
+            showHidden = searchParams.showHidden,
+            onShowHiddenChange = { viewModel.updateShowHidden(it) },
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
         )
 
@@ -289,33 +290,35 @@ private fun EmployeeListContent(
                         contentPadding = PaddingValues(bottom = 80.dp)
                     ) {
                         items(filteredContacts, key = { it.id }) { contact ->
-                            if (isAdmin && contact.employee != null) {
-                                EmployeeCardAdmin(
-                                    employee = contact.employee,
-                                    isAdmin = true,
-                                    fontScale = fontScale,
-                                    navController = navController,
-                                    context = context
-                                )
-                            } else {
-                                ContactCard(
-                                    officer = contact.officer,
-                                    fontScale = fontScale,
-                                    isAdmin = isAdmin,
-                                    onEdit = { navController.navigate("${Routes.ADD_OFFICER}?officerId=${contact.officer?.agid ?: ""}") },
-                                    onDelete = { contact.officer?.agid?.let { id -> viewModel.deleteOfficer(id) } },
-                                    onClick = {
-                                        val id = contact.employee?.kgid ?: contact.officer?.agid ?: ""
-                                        val isOff = contact.officer != null
-                                        if (id.isNotEmpty()) navController.navigate(Routes.employeeDetailRoute(id, isOff))
+                            ContactCard(
+                                employee = contact.employee,
+                                officer = contact.officer,
+                                isAdmin = isAdmin,
+                                fontScale = fontScale,
+                                onEdit = { 
+                                    if (contact.employee != null) {
+                                        navController.navigate("${com.example.policemobiledirectory.navigation.Routes.ADD_EMPLOYEE}?employeeId=${contact.id}")
+                                    } else if (contact.officer != null) {
+                                        navController.navigate("${com.example.policemobiledirectory.navigation.Routes.ADD_OFFICER}?officerId=${contact.id}")
                                     }
-                                )
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(start = 74.dp, end = 16.dp),
-                                    thickness = 0.5.dp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f)
-                                )
-                            }
+                                },
+                                onDelete = { 
+                                    if (contact.employee != null) {
+                                        viewModel.deleteEmployee(contact.id, contact.employee.photoUrl)
+                                    } else if (contact.officer != null) {
+                                        viewModel.deleteOfficer(contact.id)
+                                    }
+                                },
+                                onToggleApproval = if (contact.employee != null) {
+                                    { viewModel.updateEmployeeStatus(contact.id, !contact.employee.isApproved) }
+                                } else null,
+                                onToggleVisibility = { 
+                                    viewModel.updateEmployeeVisibility(contact.id, !contact.isHidden, isOfficer = contact.officer != null) 
+                                },
+                                onClick = {
+                                    navController.navigate(com.example.policemobiledirectory.navigation.Routes.employeeDetailRoute(contact.id, contact.officer != null))
+                                }
+                            )
                         }
                     }
                 }

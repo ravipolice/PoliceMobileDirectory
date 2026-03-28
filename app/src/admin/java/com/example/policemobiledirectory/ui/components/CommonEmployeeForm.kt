@@ -103,6 +103,8 @@ fun CommonEmployeeForm(
     val ranks by constantsViewModel.ranks.collectAsStateWithLifecycle()
     val districts by constantsViewModel.districts.collectAsStateWithLifecycle()
     val stationsByDistrict by constantsViewModel.stationsByDistrict.collectAsStateWithLifecycle()
+    val subSectionList by constantsViewModel.subSectionList.collectAsStateWithLifecycle()
+    // val dutyRoleMapping by constantsViewModel.dutyRoleMapping.collectAsStateWithLifecycle() // No longer used
     val bloodGroups by constantsViewModel.bloodGroups.collectAsStateWithLifecycle()
 
     val ranksRequiringMetalNumber by constantsViewModel.ranksRequiringMetalNumber.collectAsStateWithLifecycle()
@@ -130,6 +132,8 @@ fun CommonEmployeeForm(
     var metalNumber by remember(initialEmployee) { mutableStateOf(initialEmployee?.metalNumber ?: "") }
     var district by remember(initialEmployee) { mutableStateOf(initialEmployee?.district ?: "") }
     var station by remember(initialEmployee) { mutableStateOf(if (initialEmployee?.isManualStation == true) "Others" else initialEmployee?.station ?: "") }
+    var subSection by remember(initialEmployee) { mutableStateOf(if (initialEmployee?.isManualSubSection == true) "Others" else initialEmployee?.subSection ?: "") }
+    var manualSubSection by remember(initialEmployee) { mutableStateOf(if (initialEmployee?.isManualSubSection == true) initialEmployee.subSection.orEmpty() else "") }
     var unit by remember(initialEmployee) { mutableStateOf(initialEmployee?.unit ?: "") }
     var bloodGroup by remember(initialEmployee) { mutableStateOf(initialEmployee?.bloodGroup ?: "") }
     var currentPhotoUrl by remember(initialEmployee) { mutableStateOf(initialEmployee?.photoUrl) }
@@ -164,6 +168,7 @@ fun CommonEmployeeForm(
     var rankExpanded by remember { mutableStateOf(false) }
     var districtExpanded by remember { mutableStateOf(false) }
     var stationExpanded by remember { mutableStateOf(false) }
+    var subSectionExpanded by remember { mutableStateOf(false) }
     var manualSection by remember(initialEmployee) { mutableStateOf(if (initialEmployee?.isManualStation == true) initialEmployee.station.orEmpty() else "") }
     var bloodGroupExpanded by remember { mutableStateOf(false) }
     var showSourceDialog by remember { mutableStateOf(false) }
@@ -258,6 +263,20 @@ fun CommonEmployeeForm(
     LaunchedEffect(station) {
         if (station != "Others") {
             manualSection = ""
+        }
+    }
+
+    // Reset manual sub-section if duty role selection changes away from "Others"
+    LaunchedEffect(subSection) {
+        if (subSection != "Others") {
+            manualSubSection = ""
+        }
+    }
+
+    // Reset sub-section when station changes
+    LaunchedEffect(station) {
+        if (station.isNotBlank()) {
+            // subSection = "" // Maybe don't clear it, as same roles exist across stations
         }
     }
 
@@ -493,34 +512,6 @@ fun CommonEmployeeForm(
 
 
 
-            // Unit (moved up)
-            ExposedDropdownMenuBox(
-                expanded = unitExpanded,
-                onExpandedChange = { unitExpanded = !unitExpanded },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = unit.ifEmpty { "Unit" },
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Unit") },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
-                    isError = showValidationErrors && unit.isBlank()
-                )
-                if (showValidationErrors && unit.isBlank()) {
-                    Text("Unit required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
-                ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
-                    units.forEach { selection ->
-                        DropdownMenuItem(text = { Text(selection) }, onClick = {
-                            unit = selection
-                            unitExpanded = false
-                        })
-                    }
-                }
-            }
-            Spacer(Modifier.height(fieldSpacing))
 
             // Row 6: KGID, Rank, Metal Number (conditional) - all in same row
             Row(
@@ -617,8 +608,33 @@ fun CommonEmployeeForm(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Unit was here, moved up.
-                Spacer(Modifier.width(1.dp)) // Placeholder to prevent empty Row issues if any, though District is aligned.
+                // Unit
+                ExposedDropdownMenuBox(
+                    expanded = unitExpanded,
+                    onExpandedChange = { unitExpanded = !unitExpanded },
+                    modifier = Modifier.weight(0.35f)
+                ) {
+                    OutlinedTextField(
+                        value = unit.ifEmpty { "Unit" },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Unit") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
+                        isError = showValidationErrors && unit.isBlank()
+                    )
+                    ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
+                        units.forEach { selection ->
+                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                unit = selection
+                                unitExpanded = false
+                            })
+                        }
+                    }
+                }
+                if (showValidationErrors && unit.isBlank()) {
+                    Text("Unit req.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
 
 
                 // District
@@ -628,7 +644,7 @@ fun CommonEmployeeForm(
                         onExpandedChange = {
                             if (!isSelfEdit) districtExpanded = !districtExpanded
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(0.65f)
                     ) {
                         OutlinedTextField(
                             value = district.ifEmpty { if (isSelfEdit) district else "Select District" },
@@ -743,50 +759,106 @@ fun CommonEmployeeForm(
                                 "Name required", 
                                 color = MaterialTheme.colorScheme.error, 
                                 style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.weight(1f).padding(start = 8.dp)
+                                 modifier = Modifier.weight(1f).padding(start = 8.dp)
                             )
                         }
                     }
                 }
-            }
 
+                Spacer(Modifier.height(fieldSpacing))
 
+                // Duty Role Dropdown (Sub-Section)
+                val registrationDutyRoles = remember(unit, subSectionList, fullUnits) {
+                    constantsViewModel.getDutyRolesForUnit(unit, isRegistration)
+                }
 
-
-            Spacer(Modifier.height(fieldSpacing))
-
-            // Blood Group row (Hide for Officer, Hide if configured hidden)
-            if (!isOfficer && isFieldVisible("bloodGroup")) {
+                // Row for Duty Role and Blood Group
                 Row(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    ExposedDropdownMenuBox(
-                        expanded = bloodGroupExpanded,
-                        onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OutlinedTextField(
-                            value = bloodGroup.ifEmpty { "Blood Group" },
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Blood Group") },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) }
-                        )
-                        ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
-                            bloodGroups.forEach { selection ->
-                                DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                    bloodGroup = selection
-                                    bloodGroupExpanded = false
-                                })
+                    // Duty Role Dropdown (Sub-Section)
+                    if (registrationDutyRoles.isNotEmpty()) {
+                        ExposedDropdownMenuBox(
+                            expanded = subSectionExpanded,
+                            onExpandedChange = { subSectionExpanded = !subSectionExpanded },
+                            modifier = Modifier.weight(0.65f)
+                        ) {
+                            OutlinedTextField(
+                                value = subSection.ifEmpty { "Select Duty Role" },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Duty Role / Sub-Section") },
+                                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subSectionExpanded) }
+                            )
+                            ExposedDropdownMenu(expanded = subSectionExpanded, onDismissRequest = { subSectionExpanded = false }) {
+                                registrationDutyRoles.forEach { selection ->
+                                    DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                        subSection = selection
+                                        subSectionExpanded = false
+                                    })
+                                }
+                                if (subSection.isNotEmpty()) {
+                                    DropdownMenuItem(
+                                        text = { Text("None", color = MaterialTheme.colorScheme.error) },
+                                        onClick = {
+                                            subSection = ""
+                                            subSectionExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Blood Group row (Hide for Officer, Hide if configured hidden)
+                    if (!isOfficer && isFieldVisible("bloodGroup")) {
+                        ExposedDropdownMenuBox(
+                            expanded = bloodGroupExpanded,
+                            onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded },
+                            modifier = Modifier.weight(0.35f)
+                        ) {
+                            OutlinedTextField(
+                                value = bloodGroup.ifEmpty { "Blood Group" },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Blood Group") },
+                                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) }
+                            )
+                            ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
+                                bloodGroups.forEach { selection ->
+                                    DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                        bloodGroup = selection
+                                        bloodGroupExpanded = false
+                                    })
+                                }
                             }
                         }
                     }
                 }
-                if (showValidationErrors && station.isBlank() && !isSpecialUnit && !isMinisterial) {
-                    Text("Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+
+                if (showValidationErrors && subSection == "Others" && manualSubSection.isBlank()) {
+                     // Error managed below for the manual field
                 }
-                Spacer(Modifier.height(fieldSpacing))
+
+                // Manual Duty Role Entry (Common for All)
+                if (subSection == "Others") {
+                    Spacer(Modifier.height(fieldSpacing))
+                    OutlinedTextField(
+                        value = manualSubSection,
+                        onValueChange = { manualSubSection = it },
+                        label = { Text("Specify Duty Role*") },
+                        placeholder = { Text("Duty Role Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = showValidationErrors && manualSubSection.isBlank(),
+                        singleLine = true
+                    )
+                    if (showValidationErrors && manualSubSection.isBlank()) {
+                        Text("Duty role name required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
             }
 
             // KCSR Fields: Gender
@@ -1128,14 +1200,68 @@ fun CommonEmployeeForm(
                     Spacer(Modifier.height(fieldSpacing))
                 }
 
+                // Duty Role Dropdown (Sub-Section) - Admin/Self-Edit
+                val otherDutyRoles = remember(unit, subSectionList, fullUnits) {
+                    constantsViewModel.getDutyRolesForUnit(unit, isRegistration)
+                }
 
+                if (otherDutyRoles.isNotEmpty()) {
+                    ExposedDropdownMenuBox(
+                        expanded = subSectionExpanded,
+                        onExpandedChange = { subSectionExpanded = !subSectionExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = subSection.ifEmpty { "Select Duty Role" },
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Duty Role / Sub-Section") },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subSectionExpanded) }
+                        )
+                        ExposedDropdownMenu(expanded = subSectionExpanded, onDismissRequest = { subSectionExpanded = false }) {
+                            otherDutyRoles.forEach { selection ->
+                                DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                    subSection = selection
+                                    subSectionExpanded = false
+                                })
+                            }
+                            if (subSection.isNotEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("None", color = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        subSection = ""
+                                        subSectionExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Manual Duty Role Entry (Admin/Self-Edit)
+                if (subSection == "Others") {
+                    Spacer(Modifier.height(fieldSpacing))
+                    OutlinedTextField(
+                        value = manualSubSection,
+                        onValueChange = { manualSubSection = it },
+                        label = { Text("Specify Duty Role*") },
+                        placeholder = { Text("Duty Role Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = showValidationErrors && manualSubSection.isBlank(),
+                        singleLine = true
+                    )
+                    if (showValidationErrors && manualSubSection.isBlank()) {
+                        Text("Duty role name required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
 
             Spacer(Modifier.height(fieldSpacing))
 
             // Blood group (Hide for Officer, Hide if configured hidden)
             if (!isOfficer && isFieldVisible("bloodGroup")) {
                 ExposedDropdownMenuBox(expanded = bloodGroupExpanded, onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded }) {
-                    OutlinedTextField(value = bloodGroup.ifEmpty { "Select Blood Group" }, onValueChange = {}, readOnly = true, label = { Text("Blood Group") }, modifier = Modifier.fillMaxWidth().menuAnchor(), trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) })
+                    OutlinedTextField(value = bloodGroup.ifEmpty { "Blood Group" }, onValueChange = {}, readOnly = true, label = { Text("Blood Group") }, modifier = Modifier.fillMaxWidth().menuAnchor(), trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) })
                     ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
                         bloodGroups.forEach { selection ->
                             DropdownMenuItem(text = { Text(selection) }, onClick = {
@@ -1309,6 +1435,12 @@ fun CommonEmployeeForm(
                     }
                 }
 
+                // Validate Manual Duty Role
+                if (subSection == "Others" && manualSubSection.isBlank()) {
+                    Toast.makeText(context, "Please specify your duty role", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
                 // ✅ Set submitting state to prevent duplicate clicks
                 android.util.Log.d("CommonEmployeeForm", "✅ Validation passed, setting isSubmitting = true")
                 isSubmitting = true
@@ -1337,7 +1469,9 @@ fun CommonEmployeeForm(
                     isManualStation = isManual,
                     gender = gender,
                     serviceStartDate = serviceStartDate,
-                    dateOfBirth = dateOfBirth
+                    dateOfBirth = dateOfBirth,
+                    subSection = if (subSection == "Others") manualSubSection.trim() else subSection.trim().takeIf { it.isNotBlank() },
+                    isManualSubSection = subSection == "Others"
                 )
 
                 // ✅ Submit in coroutine scope
@@ -1365,7 +1499,9 @@ fun CommonEmployeeForm(
                                 photoUrl = emp.photoUrl,
                                 isManualStation = emp.isManualStation,
                                 gender = emp.gender,
-                                serviceStartDate = emp.serviceStartDate
+                                serviceStartDate = emp.serviceStartDate,
+                                subSection = emp.subSection,
+                                isManualSubSection = emp.isManualSubSection
                             )
                             onRegisterSubmit?.invoke(pending, croppedPhotoUri)
                         } else {
@@ -1539,4 +1675,3 @@ private fun createTempImageUri(context: Context): Uri? {
         null
     }
 }
-

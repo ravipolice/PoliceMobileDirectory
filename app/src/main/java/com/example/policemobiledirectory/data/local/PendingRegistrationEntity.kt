@@ -32,7 +32,9 @@ data class PendingRegistrationEntity(
     val landline2: String? = null,
     val createdAt: java.util.Date? = null,
     val isManualStation: Boolean = false,
+    val isManualSubSection: Boolean = false,
     val gender: String = "Male",
     val serviceStartDate: java.util.Date? = null,
-    val dateOfBirth: java.util.Date? = null
+    val dateOfBirth: java.util.Date? = null,
+    val subSection: String? = null
 )

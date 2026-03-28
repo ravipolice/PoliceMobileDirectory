@@ -383,6 +383,18 @@ private fun AppNavHostContent(
             )
         }
 
+        // --- MANAGE DUTY ROLES ---
+        composable(Routes.MANAGE_DUTY_ROLES) { 
+            val constantsViewModel: com.example.policemobiledirectory.viewmodel.ConstantsViewModel = hiltViewModel()
+            ManageDutyRolesScreen(navController, constantsViewModel) 
+        }
+
+        // --- MANAGE DUTY ROLES LIST ---
+        composable(Routes.MANAGE_DUTY_ROLES_LIST) { 
+            val constantsViewModel: com.example.policemobiledirectory.viewmodel.ConstantsViewModel = hiltViewModel()
+            ManageDutyRolesListScreen(navController, constantsViewModel) 
+        }
+
         // --- LEAVE MANAGER ---
         composable(Routes.LEAVE_DASHBOARD) {
             val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()

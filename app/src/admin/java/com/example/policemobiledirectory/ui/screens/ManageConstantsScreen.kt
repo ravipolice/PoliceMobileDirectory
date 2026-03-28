@@ -40,13 +40,14 @@ fun ManageConstantsScreen(
 ) {
     val context = LocalContext.current
     var selectedTabIndex by remember { mutableIntStateOf(initialTab) }
-    val tabs = listOf("Districts", "Stations", "Units", "Ranks") // Added Ranks
+    val tabs = listOf("Districts", "Stations", "Units", "Ranks")
 
     // State collection
     val districts by viewModel.districts.collectAsState()
     val stationsByDistrict by viewModel.stationsByDistrict.collectAsState()
     val units by viewModel.fullUnits.collectAsState() // Changed to fullUnits
     val ranks by viewModel.ranks.collectAsState() // Collect ranks
+    val subSections by viewModel.subSectionList.collectAsState() // Collect sub-sections
     val ksrpBattalions by viewModel.ksrpBattalions.collectAsState() // Collect Battalions
     val refreshStatus by viewModel.refreshStatus.collectAsState()
 
@@ -143,6 +144,7 @@ fun ManageConstantsScreen(
                                 .offset(x = 10.dp, y = 10.dp)
                         )
                         
+
                         Column(
                             modifier = Modifier
                                 .align(Alignment.CenterStart)
@@ -543,6 +545,7 @@ fun ManageConstantsScreen(
             allDistricts = districts,
             allBattalions = ksrpBattalions, // Pass Battalions
             allRanks = ranks,
+            allDutyRoles = subSections,
             onDismiss = { showEditUnitDialog = false; unitToEdit = null },
             onSave = { updatedUnit ->
                 viewModel.updateUnitDetails(updatedUnit)

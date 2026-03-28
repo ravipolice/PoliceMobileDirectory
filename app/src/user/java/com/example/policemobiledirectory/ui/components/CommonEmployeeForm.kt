@@ -102,6 +102,8 @@ fun CommonEmployeeForm(
     val ranks by constantsViewModel.ranks.collectAsStateWithLifecycle()
     val districts by constantsViewModel.districts.collectAsStateWithLifecycle()
     val stationsByDistrict by constantsViewModel.stationsByDistrict.collectAsStateWithLifecycle()
+    val subSectionList by constantsViewModel.subSectionList.collectAsStateWithLifecycle()
+    // val dutyRoleMapping by constantsViewModel.dutyRoleMapping.collectAsStateWithLifecycle() // No longer used
     val bloodGroups by constantsViewModel.bloodGroups.collectAsStateWithLifecycle()
 
     val ranksRequiringMetalNumber by constantsViewModel.ranksRequiringMetalNumber.collectAsStateWithLifecycle()
@@ -140,6 +142,8 @@ fun CommonEmployeeForm(
     var metalNumber by remember(initialEmployee) { mutableStateOf(initialEmployee?.metalNumber ?: "") }
     var district by remember(initialEmployee) { mutableStateOf(initialEmployee?.district ?: "") }
     var station by remember(initialEmployee) { mutableStateOf(if (initialEmployee?.isManualStation == true) "Others" else initialEmployee?.station ?: "") }
+    var subSection by remember(initialEmployee) { mutableStateOf(if (initialEmployee?.isManualSubSection == true) "Others" else initialEmployee?.subSection ?: "") }
+    var manualSubSection by remember(initialEmployee) { mutableStateOf(if (initialEmployee?.isManualSubSection == true) initialEmployee.subSection.orEmpty() else "") }
     var unit by remember(initialEmployee) { mutableStateOf(initialEmployee?.unit ?: "") }
     var bloodGroup by remember(initialEmployee) { mutableStateOf(initialEmployee?.bloodGroup ?: "") }
     var currentPhotoUrl by remember(initialEmployee) { mutableStateOf(initialEmployee?.photoUrl) }
@@ -177,6 +181,7 @@ fun CommonEmployeeForm(
     var rankExpanded by remember { mutableStateOf(false) }
     var districtExpanded by remember { mutableStateOf(false) }
     var stationExpanded by remember { mutableStateOf(false) }
+    var subSectionExpanded by remember { mutableStateOf(false) }
     var manualSection by remember(initialEmployee) { mutableStateOf(if (initialEmployee?.isManualStation == true) initialEmployee.station.orEmpty() else "") }
     var bloodGroupExpanded by remember { mutableStateOf(false) }
     var showSourceDialog by remember { mutableStateOf(false) }
@@ -266,6 +271,13 @@ fun CommonEmployeeForm(
     // but have different station subsets (e.g. Traffic vs Civil).
 
 
+    // Reset manual sub-section if duty role selection changes away from "Others"
+    LaunchedEffect(subSection) {
+        if (subSection != "Others") {
+            manualSubSection = ""
+        }
+    }
+
     // Reset station when district changes (Manual override or cascade)
     LaunchedEffect(district) {
         if (district.isNotBlank() && station.isNotBlank()) {
@@ -298,7 +310,7 @@ fun CommonEmployeeForm(
         }
     }
 
-    // ðŸ”¹ CENTRALIZED STATIONS & SECTIONS LOGIC
+    // 🔎 CENTRALIZED STATIONS & SECTIONS LOGIC
     val stationsForSelectedDistrict by produceState<List<String>>(initialValue = emptyList(), key1 = unit, key2 = district) {
         value = constantsViewModel.getStationsAndSectionsForUnit(unit, district)
     }
@@ -630,7 +642,7 @@ fun CommonEmployeeForm(
                 ExposedDropdownMenuBox(
                     expanded = unitExpanded,
                     onExpandedChange = { unitExpanded = !unitExpanded },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(0.35f)
                 ) {
                     OutlinedTextField(
                         value = unit.ifEmpty { "Unit" },
@@ -661,7 +673,7 @@ fun CommonEmployeeForm(
                         onExpandedChange = {
                             if (!isSelfEdit && !isDistrictLocked) districtExpanded = !districtExpanded
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(0.65f)
                     ) {
                         OutlinedTextField(
                             value = district.ifEmpty { if (isSelfEdit) district else "Select District" },
@@ -806,18 +818,59 @@ fun CommonEmployeeForm(
 
             Spacer(Modifier.height(fieldSpacing))
 
-            // Blood Group row (Hide for Officer, Hide if configured hidden)
-            if (!isOfficer && isFieldVisible("bloodGroup")) {
-                Row(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+            // Duty Role and Blood Group Row - Registration
+            val registrationDutyRoles = remember(unit, subSectionList, fullUnits) {
+                constantsViewModel.getDutyRolesForUnit(unit, isRegistration)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Duty Role Dropdown (Sub-Section) - Registration
+                if (registrationDutyRoles.isNotEmpty()) {
+                    ExposedDropdownMenuBox(
+                        expanded = subSectionExpanded,
+                        onExpandedChange = { subSectionExpanded = !subSectionExpanded },
+                        modifier = Modifier.weight(0.65f)
+                    ) {
+                        OutlinedTextField(
+                            value = subSection.ifEmpty { "Select Duty Role" },
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Duty Role / Sub-Section") },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subSectionExpanded) }
+                        )
+                        ExposedDropdownMenu(expanded = subSectionExpanded, onDismissRequest = { subSectionExpanded = false }) {
+                            registrationDutyRoles.forEach { selection ->
+                                DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                    subSection = selection
+                                    subSectionExpanded = false
+                                })
+                            }
+                            
+                            if (subSection.isNotEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("None", color = MaterialTheme.colorScheme.error) },
+                                    onClick = {
+                                        subSection = ""
+                                        subSectionExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Blood Group row (Hide for Officer, Hide if configured hidden)
+                if (!isOfficer && isFieldVisible("bloodGroup")) {
                     ExposedDropdownMenuBox(
                         expanded = bloodGroupExpanded,
                         onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.weight(0.35f)
                     ) {
                         OutlinedTextField(
-                            value = bloodGroup.ifEmpty { "Select Blood Group" },
+                            value = bloodGroup.ifEmpty { "Blood Group" },
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Blood Group*") },
@@ -835,11 +888,12 @@ fun CommonEmployeeForm(
                         }
                     }
                 }
-                if (showValidationErrors && bloodGroup.isBlank()) {
-                    Text("Blood Group is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
-                Spacer(Modifier.height(fieldSpacing))
             }
+            // Error messages
+            if (showValidationErrors && bloodGroup.isBlank() && !isOfficer && isFieldVisible("bloodGroup")) {
+                Text("Blood Group is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+            Spacer(Modifier.height(fieldSpacing))
 
             // KCSR Fields: Gender
             if (isFieldVisible("gender")) {
@@ -1223,39 +1277,99 @@ fun CommonEmployeeForm(
                     }
                 }
 
+                // Duty Role Dropdown (Sub-Section) - Admin/Self-Edit
+                val otherDutyRoles = remember(unit, subSectionList, fullUnits) {
+                    constantsViewModel.getDutyRolesForUnit(unit, isRegistration)
+                }
 
+                // Row for Duty Role and Blood Group
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Duty Role Dropdown (Sub-Section) - Admin/Self-Edit
+                    if (otherDutyRoles.isNotEmpty()) {
+                        ExposedDropdownMenuBox(
+                            expanded = subSectionExpanded,
+                            onExpandedChange = { subSectionExpanded = !subSectionExpanded },
+                            modifier = Modifier.weight(0.65f)
+                        ) {
+                            OutlinedTextField(
+                                value = subSection.ifEmpty { "Select Duty Role" },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Duty Role / Sub-Section") },
+                                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subSectionExpanded) }
+                            )
+                            ExposedDropdownMenu(expanded = subSectionExpanded, onDismissRequest = { subSectionExpanded = false }) {
+                                otherDutyRoles.forEach { selection ->
+                                    DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                        subSection = selection
+                                        subSectionExpanded = false
+                                    })
+                                }
+                                if (subSection.isNotEmpty()) {
+                                    DropdownMenuItem(
+                                        text = { Text("None", color = MaterialTheme.colorScheme.error) },
+                                        onClick = {
+                                            subSection = ""
+                                            subSectionExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
 
-            Spacer(Modifier.height(fieldSpacing))
-
-            Spacer(Modifier.height(fieldSpacing))
-
-            // Blood Group row (Hide for Officer, Hide if configured hidden)
-            if (!isOfficer && isFieldVisible("bloodGroup")) {
-                ExposedDropdownMenuBox(expanded = bloodGroupExpanded, onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded }) {
-                    OutlinedTextField(
-                        value = bloodGroup.ifEmpty { "Select Blood Group" },
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Blood Group*") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) },
-                        isError = showValidationErrors && bloodGroup.isBlank()
-                    )
-                    ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
-                        bloodGroups.forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                bloodGroup = selection
-                                bloodGroupExpanded = false
-                            })
+                    // Blood Group row (Hide for Officer, Hide if configured hidden)
+                    if (!isOfficer && isFieldVisible("bloodGroup")) {
+                        ExposedDropdownMenuBox(
+                            expanded = bloodGroupExpanded, 
+                            onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded },
+                            modifier = Modifier.weight(0.35f)
+                        ) {
+                            OutlinedTextField(
+                                value = bloodGroup.ifEmpty { "Blood Group" },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Blood Group*") },
+                                modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) },
+                                isError = showValidationErrors && bloodGroup.isBlank()
+                            )
+                            ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
+                                bloodGroups.forEach { selection ->
+                                    DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                        bloodGroup = selection
+                                        bloodGroupExpanded = false
+                                    })
+                                }
+                            }
                         }
                     }
                 }
-                if (showValidationErrors && bloodGroup.isBlank()) {
+
+                if (showValidationErrors && bloodGroup.isBlank() && !isOfficer && isFieldVisible("bloodGroup")) {
                     Text("Blood Group is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
-                
-                Spacer(Modifier.height(fieldSpacing))
-            }
+
+                // Handle manual entry for Duty Role below the row if "Others" is selected
+                if (subSection == "Others") {
+                    Spacer(Modifier.height(fieldSpacing))
+                    OutlinedTextField(
+                        value = manualSubSection,
+                        onValueChange = { manualSubSection = it },
+                        label = { Text("Specify Duty Role*") },
+                        placeholder = { Text("Duty Role Name") },
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = showValidationErrors && manualSubSection.isBlank(),
+                        singleLine = true
+                    )
+                    if (showValidationErrors && manualSubSection.isBlank()) {
+                        Text("Duty role name required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
 
             // KCSR Fields: Gender
             if (isFieldVisible("gender")) {
@@ -1384,12 +1498,12 @@ fun CommonEmployeeForm(
         // Submit
         Button(
             onClick = {
-                // âœ… Prevent duplicate submissions (Immediate check)
+                // ✅ Prevent duplicate submissions (Immediate check)
                 if (isSubmitting || isLoading) {
                     return@Button
                 }
                 
-                // âœ… Set submitting state IMMEDIATELY
+                // ✅ Set submitting state IMMEDIATELY
                 isSubmitting = true
                 
                 showValidationErrors = true
@@ -1457,6 +1571,13 @@ fun CommonEmployeeForm(
                     }
                 }
 
+                // Validate Manual Duty Role
+                if (subSection == "Others" && manualSubSection.isBlank()) {
+                    Toast.makeText(context, "Please specify your duty role", Toast.LENGTH_SHORT).show()
+                    isSubmitting = false // Reset
+                    return@Button
+                }
+
 
                 val finalKgid = if (kgid.isBlank()) "TEMP-${System.currentTimeMillis()}" else kgid
 
@@ -1481,15 +1602,17 @@ fun CommonEmployeeForm(
                     isManualStation = isManual,
                     gender = gender,
                     serviceStartDate = serviceStartDate,
-                    dateOfBirth = dateOfBirth, // âœ… Pass DOB
+                    dateOfBirth = dateOfBirth, // ✅ Pass DOB
+                    subSection = if (subSection == "Others") manualSubSection.trim() else subSection.trim().takeIf { it.isNotBlank() },
+                    isManualSubSection = subSection == "Others",
                     isHidden = false // defaults
                 )
 
-                // âœ… Submit in coroutine scope
-                android.util.Log.d("CommonEmployeeForm", "ðŸš€ Launching coroutine for submission...")
+                // ✅ Submit in coroutine scope
+                android.util.Log.d("CommonEmployeeForm", "🚀 Launching coroutine for submission...")
                 coroutineScope.launch {
                     try {
-                        android.util.Log.d("CommonEmployeeForm", "ðŸ“‹ Inside coroutine, isRegistration: $isRegistration")
+                        android.util.Log.d("CommonEmployeeForm", "📝 Inside coroutine, isRegistration: $isRegistration")
                         if (isRegistration) {
                             // Build PendingRegistrationEntity and call callback
                             val firebaseUid = "" // wrapper will add actual uid
@@ -1513,13 +1636,15 @@ fun CommonEmployeeForm(
                                 isManualStation = emp.isManualStation,
                                 gender = emp.gender,
                                 serviceStartDate = emp.serviceStartDate,
-                                dateOfBirth = emp.dateOfBirth // âœ… Include DOB in pending
+                                dateOfBirth = emp.dateOfBirth, // ✅ Include DOB in pending
+                                subSection = emp.subSection,
+                                isManualSubSection = emp.isManualSubSection
                             )
                             onRegisterSubmit?.invoke(pending, croppedPhotoUri)
                         } else {
-                            android.util.Log.d("CommonEmployeeForm", "â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•")
-                            android.util.Log.d("CommonEmployeeForm", "ðŸ“¤ Calling onSubmit with photo: ${croppedPhotoUri != null}")
-                            android.util.Log.d("CommonEmployeeForm", "ðŸ“¤ Employee KGID: ${emp.kgid}")
+                            android.util.Log.d("CommonEmployeeForm", "–––––––––––––––––––––––––––––––––––––––––––––––––")
+                            android.util.Log.d("CommonEmployeeForm", "✉️ Calling onSubmit with photo: ${croppedPhotoUri != null}")
+                            android.util.Log.d("CommonEmployeeForm", "✉️ Employee KGID: ${emp.kgid}")
                             onSubmit(emp, croppedPhotoUri)
                             android.util.Log.d("CommonEmployeeForm", "âœ… onSubmit call completed")
                         }
@@ -1698,4 +1823,3 @@ private fun saveBitmapToCacheAndGetUri(context: Context, bitmap: Bitmap): Uri? {
         null
     }
 }
-

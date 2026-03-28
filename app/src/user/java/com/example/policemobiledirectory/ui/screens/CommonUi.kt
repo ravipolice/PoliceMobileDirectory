@@ -1,5 +1,6 @@
 package com.example.policemobiledirectory.ui.screens
 
+import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -353,4 +354,18 @@ fun shareAppLink(context: Context) {
     }
     
     context.startActivity(Intent.createChooser(intent, "Share App Via"))
+}
+
+fun downloadFile(context: Context, url: String, title: String) {
+    try {
+        val request = DownloadManager.Request(Uri.parse(url))
+            .setTitle(title)
+            .setDescription("Downloading file...")
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        dm.enqueue(request)
+        android.widget.Toast.makeText(context, "Downloading $title...", android.widget.Toast.LENGTH_SHORT).show()
+    } catch (e: Exception) {
+        android.widget.Toast.makeText(context, "Failed to download", android.widget.Toast.LENGTH_SHORT).show()
+    }
 }

@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -110,6 +111,30 @@ class OfficerRepository @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Error saving officer: ${e.message}", e)
             emit(RepoResult.Error(e, "Failed to save officer: ${e.message}"))
+        }
+    }.flowOn(Dispatchers.IO)
+    
+    /**
+     * Update specific fields of an Officer
+     */
+    fun updateOfficerFields(officerId: String, fields: Map<String, Any>): Flow<RepoResult<Boolean>> = flow {
+        emit(RepoResult.Loading)
+        try {
+            Log.d(TAG, "Updating officer $officerId with fields: $fields")
+            officersCollection.document(officerId).update(fields).await()
+            
+            // Optionally update Room
+            val currentEntity = officerDao.getOfficerById(officerId).firstOrNull()
+            if (currentEntity != null) {
+                // This is a bit complex since we'd need to re-map and re-generate blob, 
+                // but for simple fields like isHidden it might be okay.
+                // For now, relies on next sync or manual refresh.
+            }
+            
+            emit(RepoResult.Success(true))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating officer fields: ${e.message}", e)
+            emit(RepoResult.Error(e, "Failed to update officer: ${e.message}"))
         }
     }.flowOn(Dispatchers.IO)
 

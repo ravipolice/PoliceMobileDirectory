@@ -1,6 +1,11 @@
 package com.example.policemobiledirectory.viewmodel
 
 import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.app.NotificationManager
+import android.app.NotificationChannel
+import android.app.PendingIntent
 import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.State
@@ -19,6 +24,7 @@ import com.example.policemobiledirectory.model.ExternalLinkInfo
 import com.example.policemobiledirectory.ui.screens.GoogleSignInUiEvent
 import com.example.policemobiledirectory.model.NotificationTarget
 import com.example.policemobiledirectory.model.AppNotification
+import com.example.policemobiledirectory.MainActivity
 import com.example.policemobiledirectory.utils.OperationStatus
 import com.example.policemobiledirectory.utils.Constants
 import com.example.policemobiledirectory.ui.theme.CardStyle
@@ -139,17 +145,19 @@ open class EmployeeViewModel @Inject constructor(
         val district: String? get() = employee?.district ?: officer?.district
         val mobile1: String? get() = employee?.mobile1 ?: officer?.primaryPhone
         val photoUrl: String? get() = employee?.photoUrl ?: employee?.photoUrlFromGoogle ?: officer?.photoUrl
+        val isHidden: Boolean get() = employee?.isHidden ?: officer?.isHidden ?: false
     }
     
     // --- Centralized Search Logic ---
     data class SearchParameters(
         val query: String = "",
-        val filter: SearchFilter = SearchFilter.NAME,
+        val filter: SearchFilter = SearchFilter.ALL,
         val district: String = "All",
         val station: String = "All",
         val rank: String = "All",
         val unit: String = "All", // New Unit filter
-        val staffType: StaffType = StaffType.ALL
+        val staffType: StaffType = StaffType.ALL,
+        val showHidden: Boolean = false // Toggle for hidden contacts
     )
     
     // Unified Search Source of Truth
@@ -185,6 +193,10 @@ open class EmployeeViewModel @Inject constructor(
 
     fun updateStaffType(staffType: StaffType) {
         _searchParams.value = _searchParams.value.copy(staffType = staffType)
+    }
+
+    fun updateShowHidden(show: Boolean) {
+        _searchParams.value = _searchParams.value.copy(showHidden = show)
     }
     
     fun clearFilters() {
@@ -250,11 +262,14 @@ open class EmployeeViewModel @Inject constructor(
 
         val isGlobalSearch = effectiveParams.query.isNotBlank()
 
-        // If Global Search, bypass dropdown filters
+        // 1. Initial Filtering by Hidden Status
+        val visibleContacts = contacts.filter { it.isHidden == effectiveParams.showHidden }
+
+        // 2. Filter by Type (Employee/Officer)
         val filteredByType = when (effectiveParams.staffType) {
-            StaffType.ALL -> contacts
-            StaffType.EMPLOYEE -> contacts.filter { it.employee != null }
-            StaffType.OFFICER -> contacts.filter { it.officer != null }
+            StaffType.ALL -> visibleContacts
+            StaffType.EMPLOYEE -> visibleContacts.filter { it.employee != null }
+            StaffType.OFFICER -> visibleContacts.filter { it.officer != null }
         }
 
         val filteredByDropdowns = if (isGlobalSearch) {
@@ -281,7 +296,10 @@ open class EmployeeViewModel @Inject constructor(
         } else {
             filteredByDropdowns.sortedBy { it.name }
         }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }
+    .flowOn(Dispatchers.Default)
+    .distinctUntilChanged()
+    .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
     private fun normalizeDistrict(district: String?): String {
         if (district == null) return ""
@@ -585,6 +603,79 @@ open class EmployeeViewModel @Inject constructor(
                 _adminNotificationsLastSeen.value = lastSeen
             }
         }
+
+        // 🆕 Observe pending approvals for Badge & System Notification
+        viewModelScope.launch {
+            pendingApprovalsTotalCount.collectLatest { count ->
+                if (_isAdmin.value) {
+                    updateBadgeNotification(count)
+                } else {
+                    clearBadgeNotification()
+                }
+            }
+        }
+    }
+
+    /**
+     * 🆕 Updates a persistent system notification with the current pending count.
+     * This also updates the app icon badge count on supported Android launchers.
+     */
+    private fun updateBadgeNotification(count: Int) {
+        if (count == 0) {
+            clearBadgeNotification()
+            return
+        }
+
+        val channelId = "pending_approval_channel_id"
+        val notificationId = 9991 // Unique fixed ID for the badge notification
+
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        
+        // Ensure channel exists
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel(
+                channelId,
+                "Pending Approvals",
+                android.app.NotificationManager.IMPORTANCE_LOW // Use LOW to avoid intrusive sound every update
+            ).apply {
+                description = "Shows the count of users awaiting approval"
+                setShowBadge(true)
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val intent = android.content.Intent(context, MainActivity::class.java).apply {
+            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("notification_action", "view_pending_approvals")
+        }
+        
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            context, 
+            0, 
+            intent, 
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) android.app.PendingIntent.FLAG_IMMUTABLE else android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val notification = androidx.core.app.NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(com.example.policemobiledirectory.R.drawable.app_logo)
+            .setContentTitle("Pending Approvals")
+            .setContentText("$count user(s) awaiting your approval")
+            .setNumber(count) // 🏆 This sets the badge number
+            .setOngoing(true) // Sticky notification
+            .setAutoCancel(false)
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        notificationManager.notify(notificationId, notification)
+    }
+
+    /**
+     * 🆕 Clears the badge notification.
+     */
+    fun clearBadgeNotification() {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        notificationManager.cancel(9991)
     }
 
     // =========================================================
@@ -702,7 +793,10 @@ open class EmployeeViewModel @Inject constructor(
 
         if (adminNotificationsListener != null) return
 
+        val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+
         adminNotificationsListener = firestore.collection("admin_notifications")
+            .whereGreaterThan("timestamp", thirtyDaysAgo)
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
@@ -733,6 +827,23 @@ open class EmployeeViewModel @Inject constructor(
         }
     }
 
+    /** Deletes admin_notifications older than 30 days from Firestore */
+    fun deleteOldAdminNotifications() = viewModelScope.launch {
+        try {
+            val cutoff = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+            val oldDocs = firestore.collection("admin_notifications")
+                .whereLessThan("timestamp", cutoff)
+                .get()
+                .await()
+            for (doc in oldDocs.documents) {
+                doc.reference.delete().await()
+            }
+            Log.d("EmployeeVM", "🗑️ Cleared ${oldDocs.size()} old admin notifications (>30 days)")
+        } catch (e: Exception) {
+            Log.e("EmployeeVM", "❌ Failed to delete old notifications: ${e.message}")
+        }
+    }
+
     private fun updateUserNotificationListener(user: Employee?) {
         val kgid = user?.kgid
 
@@ -755,7 +866,10 @@ open class EmployeeViewModel @Inject constructor(
             return
         }
 
+        val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+
         userNotificationsListener = firestore.collection("notifications_queue")
+            .whereGreaterThan("timestamp", thirtyDaysAgo)
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
@@ -1107,7 +1221,9 @@ open class EmployeeViewModel @Inject constructor(
     // EMPLOYEE CRUD + HELPERS
     // =========================================================
     fun refreshEmployees() = viewModelScope.launch {
-        _employeeStatus.value = OperationStatus.Loading
+        if (_employees.value.isEmpty()) {
+            _employeeStatus.value = OperationStatus.Loading
+        }
         try {
             employeeRepo.refreshEmployees()
             val result = employeeRepo.getEmployees()
@@ -1183,7 +1299,9 @@ open class EmployeeViewModel @Inject constructor(
     }
     
     fun refreshOfficers() = viewModelScope.launch {
-        _officerStatus.value = OperationStatus.Loading
+        if (_officers.value.isEmpty()) {
+            _officerStatus.value = OperationStatus.Loading
+        }
         try {
             // First sync from Firebase to Room
             officerRepo.syncAllOfficers()
@@ -1837,11 +1955,19 @@ open class EmployeeViewModel @Inject constructor(
         }
     }
 
-    fun updateEmployeeVisibility(kgid: String, isHidden: Boolean) {
+    fun updateEmployeeVisibility(id: String, isHidden: Boolean, isOfficer: Boolean = false) {
         viewModelScope.launch {
-            employeeRepo.updateEmployeeFields(kgid, mapOf("isHidden" to isHidden)).collect { result ->
-                if (result is RepoResult.Success) {
-                    refreshEmployees()
+            if (isOfficer) {
+                officerRepo.updateOfficerFields(id, mapOf("isHidden" to isHidden)).collect { result ->
+                    if (result is RepoResult.Success) {
+                        refreshOfficers()
+                    }
+                }
+            } else {
+                employeeRepo.updateEmployeeFields(id, mapOf("isHidden" to isHidden)).collect { result ->
+                    if (result is RepoResult.Success) {
+                        refreshEmployees()
+                    }
                 }
             }
         }

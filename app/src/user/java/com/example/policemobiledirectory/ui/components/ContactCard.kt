@@ -36,6 +36,7 @@ import com.example.policemobiledirectory.ui.theme.*
 import com.example.policemobiledirectory.utils.IntentUtils
 import com.example.policemobiledirectory.utils.getBloodGroupColor
 import com.example.policemobiledirectory.utils.getFormattedBloodGroup
+import com.example.policemobiledirectory.utils.getRankColor
 
 /**
  * Unified contact card that works for both Employee and Officer
@@ -53,111 +54,182 @@ fun ContactCard(
     
     val name = employee?.name ?: officer?.name ?: ""
     val rank = employee?.displayRank ?: officer?.rank
-    val unit = employee?.unit ?: officer?.unit
+    val station = employee?.station ?: officer?.station ?: officer?.unit // station/section for subtitle
     val district = employee?.district ?: officer?.district
     val photoUrl = employee?.photoUrl ?: employee?.photoUrlFromGoogle ?: officer?.photoUrl
     val placeholderRes = if (employee != null) R.drawable.officer else R.drawable.ic_officer_building
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // ... (Avatar code remains same)
-        Box(
+    val bloodGroup = employee?.bloodGroup ?: officer?.bloodGroup
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)), // Themed lavender-like background
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (!photoUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = photoUrl,
-                    contentDescription = "Contact Photo",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    placeholder = painterResource(placeholderRes),
-                    error = painterResource(placeholderRes)
-                )
-            } else {
-                // Initial Letter Avatar (Kerala Police Style)
-                val initial = name.takeIf { it.isNotBlank() }?.first()?.uppercase() ?: "?"
-                Text(
-                    text = initial.toString(),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
+            // ... (Avatar code remains same)
+            // --- Avatar Section (Updated to match Admin's vibrant style) ---
+            val avatarColors = listOf(
+                Color(0xFF1565C0), // Deep Blue
+                Color(0xFF2E7D32), // Deep Green
+                Color(0xFF6A1B9A), // Deep Purple
+                Color(0xFFC62828), // Deep Red
+                Color(0xFF00838F), // Deep Cyan
+                Color(0xFF4527A0), // Indigo
+                Color(0xFF00695C), // Teal
+                Color(0xFFAD1457), // Pink
+                Color(0xFF283593), // Navy
+                Color(0xFF558B2F), // Olive Green
+                Color(0xFF6D4C41), // Brown
+            )
+            val avatarBgColor = remember(name) {
+                if (name.isBlank()) Color(0xFFE0E0E0)
+                else avatarColors[Math.abs(name.hashCode() % avatarColors.size)]
             }
-        }
 
-        Spacer(Modifier.width(14.dp))
-
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.Center
-        ) {
-            // Name + Rank (Bold & Clean)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = (15 * fontScale).sp,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
-                
-                if (!rank.isNullOrBlank()) {
-                    Spacer(Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(avatarBgColor),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!photoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = photoUrl,
+                        contentDescription = "Contact Photo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        placeholder = painterResource(placeholderRes),
+                        error = painterResource(placeholderRes)
+                    )
+                } else {
+                    // Initial Letter Avatar (Vibrant Style with White Text)
+                    val initial = name.takeIf { it.isNotBlank() }?.first()?.uppercase() ?: "?"
                     Text(
-                        text = rank,
-                        fontSize = (11 * fontScale).sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                        text = initial.toString(),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
                 }
             }
 
-            // Unit / Section + District (Subtitle)
-            val subTitleParts = listOfNotNull(unit, district).filter { it.isNotBlank() }
-            if (subTitleParts.isNotEmpty()) {
-                Text(
-                    text = subTitleParts.joinToString(" • "),
-                    fontSize = (13 * fontScale).sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                    modifier = Modifier.padding(top = 1.dp)
+            Spacer(Modifier.width(14.dp))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Name + Rank (Top Row)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = (15 * fontScale).sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    if (!rank.isNullOrBlank()) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = rank,
+                            fontSize = (11 * fontScale).sp,
+                            fontWeight = FontWeight.Bold,
+                            color = getRankColor(rank)
+                        )
+                    }
+                }
+
+                // Unified Subtitle: Duty Role, UNIT, Station
+                val subtitleParts = mutableListOf<String>()
+                
+                // 1. Duty Role (Only if not blank and not "Others")
+                if (!employee?.subSection.isNullOrBlank() && employee?.subSection != "Others") {
+                    subtitleParts.add(employee?.subSection!!)
+                }
+                
+                // 2. UNIT (Show only if different from district)
+                val unitVal = employee?.unit ?: officer?.unit
+                if (!unitVal.isNullOrBlank() && unitVal != district) {
+                    subtitleParts.add(unitVal)
+                }
+                
+                // 3. Station
+                if (!station.isNullOrBlank()) {
+                    subtitleParts.add(station)
+                }
+
+                // 4. District
+                if (!district.isNullOrBlank()) {
+                    subtitleParts.add(district)
+                }
+                
+                val finalSubtitleParts = subtitleParts.distinct()
+
+                if (finalSubtitleParts.isNotEmpty()) {
+                    Text(
+                        text = finalSubtitleParts.joinToString(", "),
+                        fontSize = (11 * fontScale).sp,
+                        lineHeight = (14 * fontScale).sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
+
+
+            // 🔹 Actions (Edit or Chevron)
+            if (isAdmin && onEdit != null) {
+                IconButton(
+                    onClick = onEdit,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Edit Officer",
+                        tint = PrimaryTeal.copy(alpha = 0.6f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            } else {
+                // Subtle up-arrow or indicator (Kerala Style)
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = "View Details",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
 
-        // 🔹 Actions (Edit or Chevron)
-        if (isAdmin && onEdit != null) {
-            IconButton(
-                onClick = onEdit,
-                modifier = Modifier.size(32.dp)
+        // 🔹 Blood Group Badge in top-right
+        if (!bloodGroup.isNullOrBlank()) {
+            val formattedBG = getFormattedBloodGroup(bloodGroup)
+            val bgColor = getBloodGroupColor(formattedBG)
+            
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = (-8).dp, y = 6.dp)
+                    .size(24.dp) // Fixed size for perfect circle
+                    .background(bgColor, CircleShape),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Edit Officer",
-                    tint = PrimaryTeal.copy(alpha = 0.6f),
-                    modifier = Modifier.size(18.dp)
+                Text(
+                    text = formattedBG,
+                    fontSize = (8 * fontScale).sp, // Slightly smaller font
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
             }
-        } else {
-            // Subtle up-arrow or indicator (Kerala Style)
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = "View Details",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                modifier = Modifier.size(20.dp)
-            )
         }
     }
 }

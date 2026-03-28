@@ -81,6 +81,7 @@ fun StaffListContent(
     // Collect Filter Data from ConstantsViewModel
     val unitsList by constantsViewModel.units.collectAsStateWithLifecycle(initialValue = emptyList())
     val districtsList by constantsViewModel.districts.collectAsStateWithLifecycle(initialValue = emptyList())
+    val districtShortCodeMap by constantsViewModel.districtShortCodeMap.collectAsStateWithLifecycle(initialValue = emptyMap())
     
     // Collect Search/Filter State from EmployeeViewModel
     val selectedUnitState by viewModel.selectedUnit.collectAsStateWithLifecycle(initialValue = "All")
@@ -274,13 +275,17 @@ fun StaffListContent(
                 ) {
                     items(filteredContacts, key = { it.id }) { contact ->
                         if (contact.employee != null) {
-                            com.example.policemobiledirectory.ui.theme.components.EmployeeCardAdmin(
+                            ContactCard(
                                 employee = contact.employee,
-                                isAdmin = isAdmin,
                                 fontScale = fontScale,
-                                navController = navController,
-                                context = context,
-                                cardStyle = cardStyle
+                                isAdmin = isAdmin,
+                                onEdit = { navController.navigate("${Routes.ADD_EMPLOYEE}?employeeId=${contact.id}") },
+                                onDelete = { viewModel.deleteEmployee(contact.id, contact.employee.photoUrl) },
+                                onToggleApproval = { viewModel.updateEmployeeStatus(contact.id, !contact.employee.isApproved) },
+                                onToggleVisibility = { viewModel.updateEmployeeVisibility(contact.id, !contact.employee.isHidden) },
+                                onClick = {
+                                    navController.navigate(Routes.employeeDetailRoute(contact.id, false))
+                                }
                             )
                         } else if (contact.officer != null) {
                             ContactCard(
@@ -288,7 +293,13 @@ fun StaffListContent(
                                 fontScale = fontScale,
                                 isAdmin = isAdmin,
                                 onEdit = { onEditOfficer(contact.id) },
-                                onDelete = { onDeleteOfficer(contact.id) }
+                                onDelete = { onDeleteOfficer(contact.id) },
+                                onToggleVisibility = { 
+                                    viewModel.updateEmployeeVisibility(contact.id, !contact.officer.isHidden, isOfficer = true) 
+                                },
+                                onClick = {
+                                    navController.navigate(com.example.policemobiledirectory.navigation.Routes.employeeDetailRoute(contact.id, true))
+                                }
                             )
                         }
                     }

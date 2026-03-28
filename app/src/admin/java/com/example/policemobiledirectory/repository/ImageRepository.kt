@@ -44,7 +44,7 @@ class ImageRepository(
 ) {
 
     // Security helper for Apps Script auth token
-    private val securityConfig = com.example.policemobiledirectory.utils.SecurityConfig(context)
+    private val securityConfig = com.example.policemobiledirectory.utils.SecurityConfig()
 
     // ⚙️ Retrofit setup — your deployed Apps Script base URL (no action params here)
     private val gson = GsonBuilder()

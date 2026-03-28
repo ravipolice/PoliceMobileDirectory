@@ -37,6 +37,8 @@ object Routes {
     const val TERMS_AND_CONDITIONS = "terms_and_conditions"
     const val NUDI_CONVERTER = "nudi_converter"
     const val MANAGE_CONSTANTS = "manage_constants" // ✅ New Route
+    const val MANAGE_DUTY_ROLES = "manage_duty_roles"
+    const val MANAGE_DUTY_ROLES_LIST = "manage_duty_roles_list"
 
     // --- Leave Manager ---
     const val LEAVE_DASHBOARD = "leave_dashboard"

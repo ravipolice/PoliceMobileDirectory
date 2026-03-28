@@ -1,5 +1,6 @@
 package com.example.policemobiledirectory.ui.screens
 
+import android.app.DownloadManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap

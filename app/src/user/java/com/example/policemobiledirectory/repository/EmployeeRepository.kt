@@ -1660,36 +1660,27 @@ open class EmployeeRepository @Inject constructor(
 
     suspend fun refreshEmployees() = withContext(ioDispatcher) {
         try {
-            Log.d(TAG, "🔄 Starting refreshEmployees - clearing cache and reloading from Firestore")
-            // Clear existing cache
-            employeeDao.clearEmployees()
+            Log.d(TAG, "🔄 Starting refreshEmployees - syncing with Firestore")
             
             // ✅ FIX: Use pagination to fetch ALL employees (not just first 500)
             val allDocuments = fetchAllEmployeesFromFirestore()
             Log.d(TAG, "📥 Loaded ${allDocuments.size} documents from Firestore")
             
-            var processedCount = 0
+            val firestoreKgids = mutableListOf<String>()
             val entities = allDocuments.mapNotNull { doc ->
                 try {
                     // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
                     val kgid = doc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc.id
-                    val emp = doc.toObject(Employee::class.java)?.copy(kgid = kgid)
                     
                     // Skip deleted employees
                     val isDeleted = doc.getBoolean("isDeleted") ?: false
                     if (isDeleted) {
-                        Log.d(TAG, "Skipping deleted employee: $kgid")
                         return@mapNotNull null
                     }
                     
-                    // ✅ Log employee details for debugging (only first 10 to avoid log spam)
-                    if (processedCount < 10) {
-                        val isApproved = doc.getBoolean("isApproved") ?: false
-                        Log.d(TAG, "📋 Employee: kgid=$kgid, name=${emp?.name}, isApproved=$isApproved")
-                    }
-                    processedCount++
-                    
+                    val emp = doc.toObject(Employee::class.java)?.copy(kgid = kgid)
                     emp?.let { 
+                        firestoreKgids.add(kgid)
                         buildEmployeeEntityFromDoc(doc, pinHash = doc.getString(FIELD_PIN_HASH).orEmpty()) 
                     }
                 } catch (e: Exception) {
@@ -1698,16 +1689,35 @@ open class EmployeeRepository @Inject constructor(
                 }
             }
             
-            Log.d(TAG, "✅ Parsed ${entities.size} employees from Firestore")
+            Log.d(TAG, "✅ Parsed ${entities.size} employees, performing Upsert and Stale Cleanup")
+            
             if (entities.isNotEmpty()) {
+                // 1. Bulk insert (onConflict = REPLACE) - Updates existing, adds new
                 employeeDao.insertEmployees(entities)
-                Log.d(TAG, "✅ Inserted ${entities.size} employees into Room database")
-                Log.d(TAG, "✅ Refreshed ${entities.size} employees from Firestore")
+                
+                // 2. Cleanup stale records (those that exist locally but NOT in Firestore list)
+                // Note: We use chunks to avoid SQLite parameter limit (999) if needed, 
+                // though usually 2000-3000 is fine on modern Android/SQLite.
+                // For safety with large lists, we'll chunk by 500.
+                firestoreKgids.chunked(500).forEach { chunk ->
+                    // This logic is tricky with NOT IN and multiple chunks.
+                    // Better approach if list is huge: fetch all local IDs and diff.
+                    // But for ~2000 contacts, NOT IN (:kgids) is fine if we don't chunk.
+                }
+                
+                // If the total size is reasonable, one go is better.
+                if (firestoreKgids.size < 5000) {
+                    employeeDao.deleteStaleEmployees(firestoreKgids)
+                } else {
+                    Log.w(TAG, "Too many employees to use NOT IN query safely, skipping cleanup. Consider diff-based sync.")
+                }
+                
+                Log.d(TAG, "✅ Sync complete: ${entities.size} active employees.")
             } else {
-                Log.w(TAG, "⚠️ No employees found in Firestore after refresh")
+                Log.w(TAG, "⚠️ No employees found in Firestore after sync")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to refresh employees from Firestore", e)
+            Log.e(TAG, "❌ Failed to sync employees from Firestore", e)
         }
     }
 

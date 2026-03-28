@@ -488,19 +488,6 @@ fun openDocument(context: Context, url: String) {
     }
 }
 
-fun downloadFile(context: Context, url: String, title: String) {
-    try {
-        val request = DownloadManager.Request(Uri.parse(url))
-            .setTitle(title)
-            .setDescription("Downloading file...")
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        dm.enqueue(request)
-        Toast.makeText(context, "Downloading $title...", Toast.LENGTH_SHORT).show()
-    } catch (e: Exception) {
-        Toast.makeText(context, "Failed to download", Toast.LENGTH_SHORT).show()
-    }
-}
 
 
 

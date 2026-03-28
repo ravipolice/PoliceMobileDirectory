@@ -30,6 +30,7 @@ fun EditUnitDialog(
     allDistricts: List<String>,
     allBattalions: List<String>,
     allRanks: List<String>,
+    allDutyRoles: List<String>,
     onDismiss: () -> Unit,
     onSave: (UnitModel) -> Unit
 ) {
@@ -37,6 +38,7 @@ fun EditUnitDialog(
     var currentUnit by remember { mutableStateOf(unit) }
     var showMappedDistrictsDialog by remember { mutableStateOf(false) }
     var showRanksDialog by remember { mutableStateOf(false) }
+    var showDutyRolesDialog by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -277,6 +279,35 @@ fun EditUnitDialog(
                                 )
                             )
                     }
+
+                    // 6. DUTY ROLES (Sub-Sections)
+                    item {
+                        UnitSectionHeader("6. DUTY ROLES (SUB-SECTIONS)")
+                        OutlinedTextField(
+                            value = if (currentUnit.dutyRoles.isEmpty()) "All Roles (Default)" else "${currentUnit.dutyRoles.size} Roles Selected",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Applicable Duty Roles") },
+                            trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showDutyRolesDialog = true },
+                            enabled = false,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                        if (currentUnit.dutyRoles.isEmpty()) {
+                            Text(
+                                text = "If none selected, all roles from the master list will be available.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
                 }
 
                 // Foooter Buttons
@@ -308,6 +339,20 @@ fun EditUnitDialog(
             onConfirm = { selected ->
                 currentUnit = currentUnit.copy(applicableRanks = selected)
                 showRanksDialog = false
+            }
+        )
+    }
+
+    // Duty Roles Dialog
+    if (showDutyRolesDialog) {
+        MultiSelectDialog(
+            title = "Select Applicable Duty Roles",
+            items = allDutyRoles,
+            selectedItems = currentUnit.dutyRoles,
+            onDismiss = { showDutyRolesDialog = false },
+            onConfirm = { selected ->
+                currentUnit = currentUnit.copy(dutyRoles = selected)
+                showDutyRolesDialog = false
             }
         )
     }

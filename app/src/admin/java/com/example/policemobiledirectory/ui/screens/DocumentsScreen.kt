@@ -60,6 +60,7 @@ fun DocumentsScreen(
     // 🔍 Preview state
     var previewUrl by remember { mutableStateOf<String?>(null) }
     var previewMimeType by remember { mutableStateOf<String?>(null) }
+    var previewTitle by remember { mutableStateOf<String?>(null) }
 
     // Get the current back stack entry to detect when screen comes back into focus
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -193,6 +194,7 @@ fun DocumentsScreen(
                                         onViewClick = {
                                             val url = doc.resolvedUrl
                                             previewUrl = url
+                                            previewTitle = doc.resolvedTitle
 
                                             // Smarter MIME detection
                                             previewMimeType = when {
@@ -278,11 +280,13 @@ fun DocumentsScreen(
             // 👀 Fullscreen preview dialog
             if (previewUrl != null && previewMimeType != null) {
                 FullscreenPreviewDialog(
+                    title = previewTitle ?: "Document",
                     url = previewUrl!!,
                     mimeType = previewMimeType!!,
                     onDismiss = {
                         previewUrl = null
                         previewMimeType = null
+                        previewTitle = null
                     }
                 )
             }
@@ -388,6 +392,7 @@ fun DocumentItem(
 
 @Composable
 fun FullscreenPreviewDialog(
+    title: String,
     url: String,
     mimeType: String,
     onDismiss: () -> Unit
@@ -410,7 +415,7 @@ fun FullscreenPreviewDialog(
             Column {
                 // ✅ Top Bar
                 CenterAlignedTopAppBar(
-                    title = { Text("Preview") },
+                    title = { Text(title, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Close")
@@ -420,7 +425,7 @@ fun FullscreenPreviewDialog(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
                     ),
                     actions = {
-                        IconButton(onClick = { downloadFile(context, url, "Document") }) {
+                        IconButton(onClick = { downloadFile(context, url, title) }) {
                             Icon(Icons.Default.FileDownload, contentDescription = "Download")
                         }
                     }

@@ -75,7 +75,10 @@ class NotificationViewModel @Inject constructor(
 
         if (adminNotificationsListener != null) return
 
+        val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+
         adminNotificationsListener = firestore.collection("admin_notifications")
+            .whereGreaterThan("timestamp", thirtyDaysAgo)
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
@@ -115,7 +118,10 @@ class NotificationViewModel @Inject constructor(
             return
         }
 
+        val thirtyDaysAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+
         userNotificationsListener = firestore.collection("notifications_queue")
+            .whereGreaterThan("timestamp", thirtyDaysAgo)
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
@@ -221,6 +227,23 @@ class NotificationViewModel @Inject constructor(
             targetDistrict = targetDistrict,
             targetStation = targetStation
         )
+    }
+
+    /** Deletes admin_notifications older than 30 days from Firestore. Call when admin opens notifications screen. */
+    fun deleteOldAdminNotifications() = viewModelScope.launch {
+        try {
+            val cutoff = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+            val oldDocs = firestore.collection("admin_notifications")
+                .whereLessThan("timestamp", cutoff)
+                .get()
+                .await()
+            for (doc in oldDocs.documents) {
+                doc.reference.delete().await()
+            }
+            Log.d("NotificationViewModel", "🗑️ Deleted ${oldDocs.size()} old admin notifications")
+        } catch (e: Exception) {
+            Log.e("NotificationViewModel", "❌ Failed to delete old notifications: ${e.message}")
+        }
     }
 
     override fun onCleared() {

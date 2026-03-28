@@ -518,4 +518,36 @@ object Constants {
         // Add district name itself and sort
         (specificStations + districtName).distinct().sorted()
     }
+
+    /**
+     * Filter stations for a given unit. Handles special unit-specific subsets.
+     * Falls back to districtStations for normal units.
+     */
+    fun getStationsForUnit(unitName: String, districtStations: List<String>): List<String> {
+        return when {
+            unitName.contains("KSRP", ignoreCase = true) -> ksrpBattalions
+            unitName.contains("IRB", ignoreCase = true) -> irbBattalions
+            unitName.contains("State INT", ignoreCase = true) -> stateIntSections
+            else -> districtStations
+        }
+    }
+
+    /**
+     * ✅ Official Karnataka Police District to Range Mapping
+     * Returns the name of the Police Range for a given district.
+     */
+    fun getRangeForDistrict(district: String): String {
+        return when (district.trim()) {
+            "Bengaluru Urban", "Bengaluru Dist", "Kolar", "Chikkaballapura", "Ramanagara", "Tumakuru" -> "Central Range"
+            "Belagavi Dist", "Vijayapura", "Dharwad", "Bagalkot", "Gadag" -> "Northern Range"
+            "Kalaburagi", "Bidar", "Yadgir" -> "North Eastern Range"
+            "Ballari", "Raichur", "Koppal", "Vijayanagara" -> "Ballari Range"
+            "Mysuru Dist", "Chamarajanagar", "Hassan", "Kodagu", "Mandya" -> "Southern Range"
+            "Dakshina Kannada", "Udupi", "Chikkamagaluru", "Shivamogga", "Uttara Kannada" -> "Western Range"
+            "Davanagere", "Chitradurga", "Haveri" -> "Davangere Range"
+            // Commissionerates and Special Units
+            "Bengaluru City", "Hubballi Dharwad City", "Mysuru City", "Mangaluru City", "Belagavi City", "Kalaburagi City" -> "Commissionerate"
+            else -> ""
+        }
+    }
 }

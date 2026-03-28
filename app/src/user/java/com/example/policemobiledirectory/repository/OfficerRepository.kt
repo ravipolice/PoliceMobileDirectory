@@ -38,10 +38,12 @@ class OfficerRepository @Inject constructor(
         try {
             Log.d(TAG, "🔄 Syncing Officers from Firestore to Room...")
             val snapshot = officersCollection.get().await()
+            val firestoreAgids = mutableListOf<String>()
             val entities = snapshot.documents.mapNotNull { doc ->
                 try {
                     val off = doc.toObject(Officer::class.java)?.copy(agid = doc.id)
                     if (off != null && off.isHidden != true) {
+                        firestoreAgids.add(doc.id)
                         off.toEntity()
                     } else null
                 } catch (e: Exception) {
@@ -50,9 +52,15 @@ class OfficerRepository @Inject constructor(
                 }
             }
             
-            officerDao.clearOfficers()
             if (entities.isNotEmpty()) {
+                // UPSERT via REPLACE strategy in DAO
                 officerDao.insertOfficers(entities)
+                
+                // Cleanup stale officers NOT in Firestore anymore
+                if (firestoreAgids.size < 5000) {
+                    officerDao.deleteStaleOfficers(firestoreAgids)
+                }
+                
                 Log.d(TAG, "✅ Synced ${entities.size} officers to Room")
             }
             RepoResult.Success(Unit)

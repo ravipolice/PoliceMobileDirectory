@@ -38,6 +38,7 @@ import com.example.policemobiledirectory.R
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.model.Officer
 import com.example.policemobiledirectory.ui.theme.PrimaryTeal
+import com.example.policemobiledirectory.utils.Constants
 import com.example.policemobiledirectory.utils.IntentUtils
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 
@@ -74,29 +75,75 @@ fun EmployeeDetailScreen(
                     }
                 },
                 actions = {
+                    // Edit Button
                     IconButton(onClick = { 
-                        if (contact != null) {
-                            val name = if (contact is Employee) contact.name else (contact as Officer).name
-                            val mobile = if (contact is Employee) contact.mobile1 else (contact as Officer).mobile
-                            val email = if (contact is Employee) contact.email else (contact as Officer).email
-                            val rank = if (contact is Employee) contact.displayRank else (contact as Officer).rank ?: ""
-                            val unit = if (contact is Employee) contact.unit else (contact as Officer).unit
-                            IntentUtils.addToContacts(context, name, mobile, email, "$rank, $unit")
+                        if (contact is Employee) {
+                            navController.navigate("${Routes.ADD_EMPLOYEE}?employeeId=${contact.kgid}")
+                        } else if (contact is Officer) {
+                            navController.navigate("${Routes.ADD_OFFICER}?officerId=${contact.agid}")
+                        }
+                    }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Contact")
+                    }
+
+                    // Delete Button
+                    var showDeleteDialog by remember { mutableStateOf(false) }
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete Contact")
+                    }
+
+                    IconButton(onClick = { 
+                        contact.let {
+                            val name = if (it is Employee) it.name else (it as? Officer)?.name ?: ""
+                            val mobile = if (it is Employee) it.mobile1 else (it as? Officer)?.mobile
+                            val email = if (it is Employee) it.email else (it as? Officer)?.email
+                            val rankStr = if (it is Employee) it.displayRank else (it as? Officer)?.rank ?: ""
+                            val unitStr = if (it is Employee) it.unit ?: "" else (it as? Officer)?.unit ?: ""
+                            IntentUtils.addToContacts(context, name, mobile ?: "", email ?: "", "$rankStr, $unitStr")
                         }
                     }) {
                         Icon(Icons.Default.PersonAdd, contentDescription = "Save Contact")
                     }
                     IconButton(onClick = { 
-                        if (contact != null) {
-                            val name = if (contact is Employee) contact.name else (contact as Officer).name
-                            val rank = if (contact is Employee) contact.displayRank else (contact as Officer).rank ?: ""
-                            val mobile = if (contact is Employee) contact.mobile1 else (contact as Officer).mobile
-                            val district = if (contact is Employee) contact.district else (contact as Officer).district
-                            val shareText = "Name: $name\nRank: $rank\nMobile: $mobile\nDistrict: $district"
+                        contact.let {
+                            val name = if (it is Employee) it.name else (it as? Officer)?.name ?: ""
+                            val rankStr = if (it is Employee) it.displayRank else (it as? Officer)?.rank ?: ""
+                            val mobileStr = if (it is Employee) it.mobile1 else (it as? Officer)?.mobile ?: ""
+                            val districtStr = if (it is Employee) it.district ?: "" else (it as? Officer)?.district ?: ""
+                            val shareText = "Name: $name\nRank: $rankStr\nMobile: $mobileStr\nDistrict: $districtStr"
                             IntentUtils.shareText(context, shareText)
                         }
                     }) {
                         Icon(Icons.Default.Share, contentDescription = "Share Contact")
+                    }
+
+                    if (showDeleteDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showDeleteDialog = false },
+                            title = { Text("Delete Contact") },
+                            text = { Text("Are you sure you want to delete ${if (contact is Employee) contact.name else (contact as? Officer)?.name ?: ""}? This action cannot be undone.") },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        showDeleteDialog = false
+                                        if (contact is Employee) {
+                                            viewModel.deleteEmployee(contact.kgid, contact.photoUrl ?: contact.photoUrlFromGoogle)
+                                        } else if (contact is Officer) {
+                                            viewModel.deleteOfficer(contact.agid)
+                                        }
+                                        navController.popBackStack()
+                                    },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                ) {
+                                    Text("Delete")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showDeleteDialog = false }) {
+                                    Text("Cancel")
+                                }
+                            }
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -114,17 +161,17 @@ fun EmployeeDetailScreen(
                 Text("Contact not found")
             }
         } else {
-            val name = if (contact is Employee) contact.name else (contact as Officer).name
-            val rank = if (contact is Employee) contact.displayRank else (contact as Officer).rank ?: ""
-            val photoUrl = if (contact is Employee) (contact.photoUrl ?: contact.photoUrlFromGoogle) else (contact as Officer).photoUrl
+            val name = if (contact is Employee) contact.name else (contact as? Officer)?.name ?: ""
+            val rank = if (contact is Employee) contact.displayRank else (contact as? Officer)?.rank ?: ""
+            val photoUrlVal = if (contact is Employee) (contact.photoUrl ?: contact.photoUrlFromGoogle) else (contact as? Officer)?.photoUrl
             val placeholderRes = if (contact is Employee) R.drawable.officer else R.drawable.ic_officer_building
             
-            val mobile = if (contact is Employee) contact.mobile1 else (contact as Officer).mobile
-            val landline = if (contact is Employee) contact.landline else (contact as Officer).landline
-            val email = if (contact is Employee) contact.email else (contact as Officer).email
-            val unit = if (contact is Employee) contact.unit else (contact as Officer).unit
-            val station = if (contact is Employee) contact.station else (contact as Officer).station
-            val district = if (contact is Employee) contact.district else (contact as Officer).district
+            val mobile = if (contact is Employee) contact.mobile1 else (contact as? Officer)?.mobile
+            val landline = if (contact is Employee) contact.landline else (contact as? Officer)?.landline
+            val email = if (contact is Employee) contact.email else (contact as? Officer)?.email
+            val unit = if (contact is Employee) contact.unit else (contact as? Officer)?.unit
+            val station = if (contact is Employee) contact.station else (contact as? Officer)?.station
+            val district = if (contact is Employee) contact.district else (contact as? Officer)?.district
 
             LazyColumn(
                 modifier = Modifier
@@ -132,32 +179,34 @@ fun EmployeeDetailScreen(
                     .padding(innerPadding)
                     .padding(horizontal = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp), // Increased spacing
                 contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp)
             ) {
                 // 🔹 Profile Header
                 item {
-                    val seniorRanks = remember { setOf("SP", "DCP", "DIG", "IGP", "ADGP", "DG", "CP", "DG & IGP") }
-                    val isSenior = remember(rank) { seniorRanks.any { rank.trim().uppercase().contains(it) } }
+                    val bloodGroup = if (contact is Employee) contact.bloodGroup else (contact as Officer).bloodGroup
+                    val range = if (district != null) Constants.getRangeForDistrict(district) else ""
 
                     Box(modifier = Modifier.fillMaxWidth()) {
-                        // 🏅 Senior Rank Badge
-                        if (isSenior) {
+                        // 🩸 Blood Group Badge (Top Right)
+                        if (!bloodGroup.isNullOrBlank() && bloodGroup != "??") {
                             Surface(
                                 modifier = Modifier
-                                    .padding(top = 8.dp)
-                                    .align(Alignment.TopStart),
-                                color = Color(0xFF2E7D32), 
-                                shape = RoundedCornerShape(8.dp),
+                                    .padding(top = 4.dp, end = 4.dp)
+                                    .size(40.dp)
+                                    .align(Alignment.TopEnd),
+                                color = Color(0xFFC62828), // Deep Red
+                                shape = CircleShape,
                                 shadowElevation = 4.dp
                             ) {
-                                Text(
-                                    text = rank,
-                                    color = Color.White,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                )
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = bloodGroup,
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
 
@@ -167,14 +216,14 @@ fun EmployeeDetailScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(120.dp)
+                                    .size(140.dp) // Slightly larger
                                     .shadow(8.dp, CircleShape)
                                     .border(4.dp, Color.White, CircleShape)
                                     .clip(CircleShape)
                                     .background(Color.White)
                             ) {
                                 AsyncImage(
-                                    model = photoUrl,
+                                    model = photoUrlVal,
                                     contentDescription = "Profile Photo",
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop,
@@ -183,36 +232,133 @@ fun EmployeeDetailScreen(
                                 )
                             }
                             
-                            Spacer(Modifier.height(16.dp))
+                            Spacer(Modifier.height(20.dp))
                             
-                            Text(
-                                text = name,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary, // Using primary color for name
-                                textAlign = TextAlign.Center
-                            )
+                            // Name and Rank on same line
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
+                            ) {
+                                Text(
+                                    text = name,
+                                    fontSize = 26.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF8B1A1A), // Maroon
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = rank,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color.Gray,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                             
-                            val rankUnit = buildString {
-                                append(rank)
+                            Spacer(Modifier.height(8.dp))
+
+                            // Subtitle Line 1: Duty Role, Unit / Station
+                            val line1 = buildString {
+                                val dr = if (contact is Employee) contact.subSection else ""
+                                if (!dr.isNullOrBlank()) {
+                                    append(dr)
+                                    append(", ")
+                                }
                                 if (!unit.isNullOrBlank()) {
-                                    append(" • ")
                                     append(unit)
                                 }
+                                if (!station.isNullOrBlank()) {
+                                    append(" / ")
+                                    append(station)
+                                }
                             }
-                            Text(
-                                text = rankUnit,
-                                fontSize = 18.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
+                            
+                            if (line1.isNotBlank()) {
+                                Text(
+                                    text = line1,
+                                    fontSize = 17.sp,
+                                    color = Color(0xFF546E7A), // Blue-Grey
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+
+                            // Subtitle Line 2: District - Range
+                            val line2 = buildString {
+                                if (!district.isNullOrBlank()) {
+                                    append(district)
+                                }
+                                if (range.isNotBlank()) {
+                                    append(" - ")
+                                    append(range)
+                                }
+                            }
+
+                            if (line2.isNotBlank()) {
+                                Text(
+                                    text = line2,
+                                    fontSize = 17.sp,
+                                    color = Color(0xFF546E7A),
+                                    textAlign = TextAlign.Center,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                         }
                     }
                 }
 
-                // 🔹 Contact Information Section
+                // 🔹 Administration Section (Approval & Visibility)
                 item {
+                    DetailSection(title = "Administration") {
+                        if (contact is Employee) {
+                            AdminToggleRow(
+                                label = "App Access",
+                                checked = contact.isApproved,
+                                onCheckedChange = { viewModel.updateEmployeeStatus(contact.kgid, it) },
+                                checkedColor = PrimaryTeal
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
+                        }
+                        
+                        val isHidden = if (contact is Employee) contact.isHidden else if (contact is Officer) contact.isHidden else false
+                        val id = if (contact is Employee) contact.kgid else if (contact is Officer) contact.agid else ""
+                        val isOff = contact is Officer
+
+                        AdminToggleRow(
+                            label = "Hidden from Home",
+                            checked = isHidden,
+                            onCheckedChange = { viewModel.updateEmployeeVisibility(id, it, isOff) },
+                            checkedColor = Color(0xFF2196F3)
+                        )
+                    }
+                }
+
+                item {
+                    val metalNumber = if (contact is Employee) contact.metalNumber else null
+                    val gender = if (contact is Employee) contact.gender else "N/A"
+
                     DetailSection(title = "Contact info") {
+                        if (!metalNumber.isNullOrBlank()) {
+                            InfoRow(
+                                label = "Metal Number",
+                                value = metalNumber,
+                                icon = Icons.Default.Badge,
+                                onAction = { IntentUtils.copyToClipboard(context, "Metal Number", metalNumber) }
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
+                        }
+
+                        if (gender != "N/A" && gender.isNotBlank()) {
+                            val genderIcon = if (gender.contains("Female", ignoreCase = true)) Icons.Default.Woman else Icons.Default.Man
+                            InfoRow(
+                                label = "Gender",
+                                value = gender,
+                                icon = genderIcon
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
+                        }
+
                         if (!mobile.isNullOrBlank()) {
                             InfoRow(
                                 label = "Mobile",
@@ -251,120 +397,8 @@ fun EmployeeDetailScreen(
                     }
                 }
 
-                // 🔹 Work Details Section
-                item {
-                    DetailSection(title = "Work Info") {
-                        InfoRow(
-                            label = "District / HQ",
-                            value = district ?: "N/A",
-                            icon = Icons.Default.LocationCity
-                        )
-                        
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
 
-                        InfoRow(
-                            label = "Station / Section",
-                            value = station ?: "N/A",
-                            icon = Icons.Default.Security
-                        )
-                    }
-                }
 
-                // 🔹 Administration Section (Admin Only)
-                if (contact != null) {
-                    item {
-                        DetailSection(title = "Administration") {
-                            if (contact is Employee) {
-                                // App Access
-                                AdminToggleRow(
-                                    label = "App Access",
-                                    checked = contact.isApproved,
-                                    onCheckedChange = { viewModel.updateEmployeeStatus(contact.kgid, it) },
-                                    checkedColor = PrimaryTeal
-                                )
-                                
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
-
-                                // Hidden status
-                                AdminToggleRow(
-                                    label = "Hidden from Home",
-                                    checked = contact.isHidden,
-                                    onCheckedChange = { viewModel.updateEmployeeVisibility(contact.kgid, it) },
-                                    checkedColor = MaterialTheme.colorScheme.error
-                                )
-
-                                Spacer(Modifier.height(20.dp))
-                            }
-
-                            // Edit & Delete Buttons
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Button(
-                                    onClick = { 
-                                        if (contact is Employee) {
-                                            navController.navigate("${Routes.ADD_EMPLOYEE}?employeeId=${contact.kgid}")
-                                        } else if (contact is Officer) {
-                                            navController.navigate("${Routes.ADD_OFFICER}?officerId=${contact.agid}")
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
-                                    shape = RoundedCornerShape(12.dp),
-                                    contentPadding = PaddingValues(vertical = 12.dp)
-                                ) {
-                                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Edit Info")
-                                }
-
-                                var showDeleteDialog by remember { mutableStateOf(false) }
-                                OutlinedButton(
-                                    onClick = { showDeleteDialog = true },
-                                    modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)),
-                                    shape = RoundedCornerShape(12.dp),
-                                    contentPadding = PaddingValues(vertical = 12.dp)
-                                ) {
-                                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Delete")
-                                }
-
-                                if (showDeleteDialog) {
-                                    AlertDialog(
-                                        onDismissRequest = { showDeleteDialog = false },
-                                        title = { Text("Delete Contact") },
-                                        text = { Text("Are you sure you want to delete $name? This action cannot be undone.") },
-                                        confirmButton = {
-                                            TextButton(
-                                                onClick = {
-                                                    showDeleteDialog = false
-                                                    if (contact is Employee) {
-                                                        viewModel.deleteEmployee(contact.kgid, contact.photoUrl ?: contact.photoUrlFromGoogle)
-                                                    } else if (contact is Officer) {
-                                                        viewModel.deleteOfficer(contact.agid)
-                                                    }
-                                                    navController.popBackStack()
-                                                },
-                                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                                            ) {
-                                                Text("Delete")
-                                            }
-                                        },
-                                        dismissButton = {
-                                            TextButton(onClick = { showDeleteDialog = false }) {
-                                                Text("Cancel")
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }
