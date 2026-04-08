@@ -253,6 +253,9 @@ dependencies {
 
     // --- END POI SECTION ---
 
+    // Chrome Custom Tabs for secure dashboards
+    implementation("androidx.browser:browser:1.8.0")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.espresso.core)

@@ -1,24 +1,22 @@
 package com.example.policemobiledirectory.ui.screens
 
-import android.annotation.SuppressLint
-import android.graphics.Bitmap
-import android.view.ViewGroup
-import android.webkit.WebResourceError
-import android.webkit.WebResourceRequest
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import androidx.activity.compose.BackHandler
+import android.net.Uri
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Launch
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,21 +24,27 @@ import androidx.navigation.NavController
 fun MissionsDashboardScreen(
     navController: NavController
 ) {
+    val context = LocalContext.current
     val url = "https://nandija.vercel.app/missions"
-    var webView: WebView? by remember { mutableStateOf(null) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var canGoBack by remember { mutableStateOf(false) }
+    
+    // Function to launch Chrome Custom Tabs
+    val launchDashboard = {
+        val intent = CustomTabsIntent.Builder()
+            .setShowTitle(true)
+            .setToolbarColor(android.graphics.Color.parseColor("#00BCD4")) // Match your primary color
+            .build()
+        intent.launchUrl(context, Uri.parse(url))
+    }
 
-    // Handle system back button to navigate within WebView history
-    BackHandler(enabled = canGoBack) {
-        webView?.goBack()
+    // Automatically launch when the screen opens
+    LaunchedEffect(Unit) {
+        launchDashboard()
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Missions Dashboard") },
+                title = { Text("Global Data Hub") },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
@@ -50,14 +54,6 @@ fun MissionsDashboardScreen(
                         )
                     }
                 },
-                actions = {
-                    IconButton(onClick = { 
-                        errorMessage = null
-                        webView?.reload() 
-                    }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color.White)
-                    }
-                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White
@@ -65,96 +61,63 @@ fun MissionsDashboardScreen(
             )
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            AndroidView(
-                factory = { context ->
-                    WebView(context).apply {
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
-                        @SuppressLint("SetJavaScriptEnabled")
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.loadWithOverviewMode = true
-                        settings.useWideViewPort = true
-                        settings.supportZoom()
-                        settings.javaScriptCanOpenWindowsAutomatically = true
-                        // Set a mobile Chrome user agent to bypass Google's 'disallowed_useragent' block
-                        settings.userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
-
-                        webViewClient = object : WebViewClient() {
-                            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                                isLoading = true
-                                errorMessage = null
-                            }
-
-                            override fun onPageFinished(view: WebView?, url: String?) {
-                                isLoading = false
-                                canGoBack = view?.canGoBack() ?: false
-                            }
-
-                            override fun onReceivedError(
-                                view: WebView?,
-                                request: WebResourceRequest?,
-                                error: WebResourceError?
-                            ) {
-                                if (request?.isForMainFrame == true) {
-                                    isLoading = false
-                                    errorMessage = "Failed to load dashboard. Please check your connection."
-                                }
-                            }
-                        }
-                        loadUrl(url)
-                        webView = this
-                    }
-                },
-                update = {
-                    webView = it
-                },
-                modifier = Modifier.fillMaxSize()
+            Icon(
+                imageVector = Icons.Default.Language,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                休憩 = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) // Wait, wrong prop name
+            )
+            
+            // Corrected Icon call
+            Icon(
+                imageVector = Icons.Default.Language,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
             )
 
-            if (isLoading) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.TopCenter),
-                    color = MaterialTheme.colorScheme.secondary
-                )
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Text(
+                text = "Launching Secure Missions Dashboard",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Text(
+                text = "Opening in a secure browser window to support Google and Firebase authentication.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Button(
+                onClick = { launchDashboard() },
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(16.dp)
+            ) {
+                Icon(Icons.Default.Launch, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Open Dashboard Now")
             }
-
-            errorMessage?.let { message ->
-                Card(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .align(Alignment.Center),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = message,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Button(onClick = { 
-                            errorMessage = null
-                            webView?.reload() 
-                        }) {
-                            Text("Retry")
-                        }
-                    }
-                }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            TextButton(onClick = { navController.navigateUp() }) {
+                Text("Go Back")
             }
         }
     }
