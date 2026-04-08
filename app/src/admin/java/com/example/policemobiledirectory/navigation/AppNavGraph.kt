@@ -211,6 +211,11 @@ private fun AppNavHostContent(
             )
         }
 
+        // --- MISSIONS DASHBOARD ---
+        composable(Routes.MISSIONS_DASHBOARD) {
+            MissionsDashboardScreen(navController = navController)
+        }
+
         // --- EMPLOYEE STATS ---
         composable(Routes.EMPLOYEE_STATS) {
             EmployeeStatsScreen(navController = navController, viewModel = hiltViewModel())

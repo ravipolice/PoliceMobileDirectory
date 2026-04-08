@@ -39,6 +39,7 @@ object Routes {
     const val MANAGE_CONSTANTS = "manage_constants" // ✅ New Route
     const val MANAGE_DUTY_ROLES = "manage_duty_roles"
     const val MANAGE_DUTY_ROLES_LIST = "manage_duty_roles_list"
+    const val MISSIONS_DASHBOARD = "missions_dashboard"
 
     // --- Leave Manager ---
     const val LEAVE_DASHBOARD = "leave_dashboard"

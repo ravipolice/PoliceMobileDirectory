@@ -76,100 +76,1431 @@
 > Task :app:writeUserDebugAppMetadata UP-TO-DATE
 > Task :app:writeUserDebugSigningConfigVersions UP-TO-DATE
 
-> Task :app:compileAdminDebugKotlin FAILED
-.\gradlew : e: file:///C:/Users/ra
-vip/AndroidStudioProjects/PoliceMo
-bileDirectory/app/src/admin/java/c
-om/example/policemobiledirectory/u
-i/components/CommonEmployeeForm.kt
-:675:59 Unresolved reference 
-'hasSections'.
+> Task :app:compileUserDebugKotlin FAILED
+.\gradlew.bat : e: file:///C:/User
+s/ravip/AndroidStudioProjects/Poli
+ceMobileDirectory/app/src/user/jav
+a/com/example/policemobiledirector
+y/PoliceMobileDirectoryApp.kt:98:5
+1 Unresolved reference 
+'getCacheAgeDays'.
 At line:1 char:1
-+ .\gradlew assembleAdminDebug 
-assembleUserDebug > 
-build_output.txt 2>& ...
++ .\gradlew.bat assembleDebug 
+--console=plain > 
+build_output.txt 2>&1
 + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-~~~
-    + CategoryInfo          : 
-NotSpeci    fied: (e: 
-file:///C:/U... 'hasSect    
-ions'.:String) [], RemoteException
-    + FullyQualifiedErrorId : 
-NativeCo    mmandError
+~
+    + CategoryInfo          : Not 
+   Specified: (e: file:///C:/U..  
+  .tCacheAgeDays'.:String) [],    
+ RemoteException
+    + FullyQualifiedErrorId : Nat 
+   iveCommandError
  
 e: file:///C:/Users/ravip/AndroidS
 tudioProjects/PoliceMobileDirector
-y/app/src/admin/java/com/example/p
-olicemobiledirectory/ui/components
-/CommonEmployeeForm.kt:774:67 
+y/app/src/user/java/com/example/po
+licemobiledirectory/repository/Con
+stantsRepository.kt:29:5 
+Conflicting overloads:
+fun getStationsForUnit(unitName: 
+String, districtStations: 
+List<String>): List<String>
+suspend fun 
+getStationsForUnit(unitName: 
+String, districtStations: 
+List<String>): List<String>
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/repository/Con
+stantsRepository.kt:30:66 
 Unresolved reference 
-'isDistrictLevelUnit'.
+'getStationsForUnit'.
 e: file:///C:/Users/ravip/AndroidS
 tudioProjects/PoliceMobileDirector
-y/app/src/admin/java/com/example/p
-olicemobiledirectory/ui/components
-/CommonEmployeeForm.kt:1095:40 
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:104:31 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:104:31 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:104:50 
 Unresolved reference 
-'unitSections'.
+'stationsByDistrict'.
 e: file:///C:/Users/ravip/AndroidS
 tudioProjects/PoliceMobileDirector
-y/app/src/admin/java/com/example/p
-olicemobiledirectory/ui/components
-/CommonEmployeeForm.kt:1096:17 
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:104:69 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:107:38 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:107:38 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:107:57 
 Unresolved reference 
-'unitSections'.
+'ranksRequiringMetalNumber'.
 e: file:///C:/Users/ravip/AndroidS
 tudioProjects/PoliceMobileDirector
-y/app/src/admin/java/com/example/p
-olicemobiledirectory/ui/components
-/CommonEmployeeForm.kt:1099:44 
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:107:83 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:108:29 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:108:29 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:108:48 
 Unresolved reference 
-'isDistrictLevelUnit'.
+'ministerialRanks'.
 e: file:///C:/Users/ravip/AndroidS
 tudioProjects/PoliceMobileDirector
-y/app/src/admin/java/com/example/p
-olicemobiledirectory/ui/components
-/CommonEmployeeForm.kt:1100:110 
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:108:65 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:109:31 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:109:31 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:109:50 
 Unresolved reference 
-'unitSections'.
+'policeStationRanks'.
 e: file:///C:/Users/ravip/AndroidS
 tudioProjects/PoliceMobileDirector
-y/app/src/admin/java/com/example/p
-olicemobiledirectory/ui/components
-/CommonEmployeeForm.kt:1101:25 
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:109:69 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:110:32 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:110:32 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:110:51 
 Unresolved reference 
-'unitSections'.
+'highRankingOfficers'.
 e: file:///C:/Users/ravip/AndroidS
 tudioProjects/PoliceMobileDirector
-y/app/src/admin/java/com/example/p
-olicemobiledirectory/ui/components
-/CommonEmployeeForm.kt:1102:25 
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:110:71 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:112:22 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:112:22 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:112:41 
+Unresolved reference 'fullUnits'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:112:51 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:113:31 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:113:31 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:113:50 
 Unresolved reference 
-'unitSections'.
+'globalHiddenFields'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:113:69 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:114:30 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:114:30 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:114:49 
+Unresolved reference 
+'ranksWithAutoAgid'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:114:67 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:116:27 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:116:27 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:116:46 
+Unresolved reference 
+'ksrpBattalions'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:116:61 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:121:45 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out 
+T>.filter(predicate: (T) -> 
+Boolean): List<T>
+fun 
+BooleanArray.filter(predicate: 
+(Boolean) -> Boolean): 
+List<Boolean>
+fun ByteArray.filter(predicate: 
+(Byte) -> Boolean): List<Byte>
+fun CharArray.filter(predicate: 
+(Char) -> Boolean): List<Char>
+fun DoubleArray.filter(predicate: 
+(Double) -> Boolean): List<Double>
+fun FloatArray.filter(predicate: 
+(Float) -> Boolean): List<Float>
+fun IntArray.filter(predicate: 
+(Int) -> Boolean): List<Int>
+fun LongArray.filter(predicate: 
+(Long) -> Boolean): List<Long>
+fun ShortArray.filter(predicate: 
+(Short) -> Boolean): List<Short>
+fun <T> 
+Iterable<T>.filter(predicate: (T) 
+-> Boolean): List<T>
+fun <K, V> Map<out K, 
+V>.filter(predicate: 
+(Map.Entry<K, V>) -> Boolean): 
+Map<K, V>
+fun UByteArray.filter(predicate: 
+(UByte) -> Boolean): List<UByte>
+fun UIntArray.filter(predicate: 
+(UInt) -> Boolean): List<UInt>
+fun ULongArray.filter(predicate: 
+(ULong) -> Boolean): List<ULong>
+fun UShortArray.filter(predicate: 
+(UShort) -> Boolean): List<UShort>
+fun <T> 
+Sequence<T>.filter(predicate: (T) 
+-> Boolean): Sequence<T>
+fun 
+CharSequence.filter(predicate: 
+(Char) -> Boolean): CharSequence
+fun String.filter(predicate: 
+(Char) -> Boolean): String
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:121:52 
+Unresolved reference 
+'hideFromRegistration'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:121:54 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:121:80 
+Overload resolution ambiguity 
+between candidates:
+fun <R, T> 
+Result<T>.map(transform: 
+(@ParameterName(...) T) -> R): 
+Result<R>
+    [R|Contract description]
+     <
+        CallsInPlace(transform, 
+AT_MOST_ONCE)
+    >
+fun <T, R> Array<out 
+T>.map(transform: (T) -> R): 
+List<R>
+fun <R> 
+BooleanArray.map(transform: 
+(Boolean) -> R): List<R>
+fun <R> ByteArray.map(transform: 
+(Byte) -> R): List<R>
+fun <R> CharArray.map(transform: 
+(Char) -> R): List<R>
+fun <R> 
+DoubleArray.map(transform: 
+(Double) -> R): List<R>
+fun <R> FloatArray.map(transform: 
+(Float) -> R): List<R>
+fun <R> IntArray.map(transform: 
+(Int) -> R): List<R>
+fun <R> LongArray.map(transform: 
+(Long) -> R): List<R>
+fun <R> ShortArray.map(transform: 
+(Short) -> R): List<R>
+fun <T, R> 
+Iterable<T>.map(transform: (T) -> 
+R): List<R>
+fun <K, V, R> Map<out K, 
+V>.map(transform: (Map.Entry<K, 
+V>) -> R): List<R>
+fun <R> UByteArray.map(transform: 
+(UByte) -> R): List<R>
+fun <R> UIntArray.map(transform: 
+(UInt) -> R): List<R>
+fun <R> ULongArray.map(transform: 
+(ULong) -> R): List<R>
+fun <R> 
+UShortArray.map(transform: 
+(UShort) -> R): List<R>
+fun <T, R> 
+Sequence<T>.map(transform: (T) -> 
+R): Sequence<R>
+fun <R> 
+CharSequence.map(transform: 
+(Char) -> R): List<R>
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:121:84 
+Unresolved reference 'name'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:121:86 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:121:96 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out T>.toSet(): 
+Set<T>
+fun BooleanArray.toSet(): 
+Set<Boolean>
+fun ByteArray.toSet(): Set<Byte>
+fun CharArray.toSet(): Set<Char>
+fun DoubleArray.toSet(): 
+Set<Double>
+fun FloatArray.toSet(): Set<Float>
+fun IntArray.toSet(): Set<Int>
+fun LongArray.toSet(): Set<Long>
+fun ShortArray.toSet(): Set<Short>
+fun <T> Iterable<T>.toSet(): 
+Set<T>
+fun <T> Sequence<T>.toSet(): 
+Set<T>
+fun CharSequence.toSet(): 
+Set<Char>
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:159:29 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:159:55 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:160:19 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out 
+T>.find(predicate: (T) -> 
+Boolean): T?
+fun BooleanArray.find(predicate: 
+(Boolean) -> Boolean): Boolean?
+fun ByteArray.find(predicate: 
+(Byte) -> Boolean): Byte?
+fun CharArray.find(predicate: 
+(Char) -> Boolean): Char?
+fun DoubleArray.find(predicate: 
+(Double) -> Boolean): Double?
+fun FloatArray.find(predicate: 
+(Float) -> Boolean): Float?
+fun IntArray.find(predicate: 
+(Int) -> Boolean): Int?
+fun LongArray.find(predicate: 
+(Long) -> Boolean): Long?
+fun ShortArray.find(predicate: 
+(Short) -> Boolean): Short?
+fun <T> 
+Iterable<T>.find(predicate: (T) 
+-> Boolean): T?
+fun UByteArray.find(predicate: 
+(UByte) -> Boolean): UByte?
+fun UIntArray.find(predicate: 
+(UInt) -> Boolean): UInt?
+fun ULongArray.find(predicate: 
+(ULong) -> Boolean): ULong?
+fun UShortArray.find(predicate: 
+(UShort) -> Boolean): UShort?
+fun <T> 
+Sequence<T>.find(predicate: (T) 
+-> Boolean): T?
+fun CharSequence.find(predicate: 
+(Char) -> Boolean): Char?
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:160:26 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:164:28 
+Unresolved reference 
+'mappingType'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:171:49 
+Unresolved reference 
+'hiddenFields'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:188:25 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:188:58 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:189:26 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out 
+T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun BooleanArray.any(predicate: 
+(Boolean) -> Boolean): Boolean
+fun ByteArray.any(predicate: 
+(Byte) -> Boolean): Boolean
+fun CharArray.any(predicate: 
+(Char) -> Boolean): Boolean
+fun DoubleArray.any(predicate: 
+(Double) -> Boolean): Boolean
+fun FloatArray.any(predicate: 
+(Float) -> Boolean): Boolean
+fun IntArray.any(predicate: (Int) 
+-> Boolean): Boolean
+fun LongArray.any(predicate: 
+(Long) -> Boolean): Boolean
+fun ShortArray.any(predicate: 
+(Short) -> Boolean): Boolean
+fun <T> 
+Iterable<T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun <K, V> Map<out K, 
+V>.any(predicate: (Map.Entry<K, 
+V>) -> Boolean): Boolean
+fun UByteArray.any(predicate: 
+(UByte) -> Boolean): Boolean
+fun UIntArray.any(predicate: 
+(UInt) -> Boolean): Boolean
+fun ULongArray.any(predicate: 
+(ULong) -> Boolean): Boolean
+fun UShortArray.any(predicate: 
+(UShort) -> Boolean): Boolean
+fun <T> 
+Sequence<T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun CharSequence.any(predicate: 
+(Char) -> Boolean): Boolean
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:189:32 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:207:32 
+Unresolved reference 
+'getDistrictsForUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:214:40 
+Unresolved reference 
+'getSectionsForUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:295:33 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:295:62 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:296:28 
+Unresolved reference 'entries'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:296:48 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:296:48 
+Function 'component1()' is 
+ambiguous for this expression: 
+fun <T> Array<out 
+T>.component1(): T
+fun BooleanArray.component1(): 
+Boolean
+fun ByteArray.component1(): Byte
+fun CharArray.component1(): Char
+fun DoubleArray.component1(): 
+Double
+fun FloatArray.component1(): Float
+fun IntArray.component1(): Int
+fun LongArray.component1(): Long
+fun ShortArray.component1(): Short
+fun <T> List<T>.component1(): T
+fun <K, V> Map.Entry<K, 
+V>.component1(): K
+fun UByteArray.component1(): UByte
+fun UIntArray.component1(): UInt
+fun ULongArray.component1(): ULong
+fun UShortArray.component1(): 
+UShort.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:296:48 
+Function 'component2()' is 
+ambiguous for this expression: 
+fun <T> Array<out 
+T>.component2(): T
+fun BooleanArray.component2(): 
+Boolean
+fun ByteArray.component2(): Byte
+fun CharArray.component2(): Char
+fun DoubleArray.component2(): 
+Double
+fun FloatArray.component2(): Float
+fun IntArray.component2(): Int
+fun LongArray.component2(): Long
+fun ShortArray.component2(): Short
+fun <T> List<T>.component2(): T
+fun <K, V> Map.Entry<K, 
+V>.component2(): V
+fun UByteArray.component2(): UByte
+fun UIntArray.component2(): UInt
+fun ULongArray.component2(): ULong
+fun UShortArray.component2(): 
+UShort.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:297:36 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:303:36 
+Unresolved reference 
+'getStationsAndSectionsForUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:572:54 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out 
+T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun BooleanArray.any(predicate: 
+(Boolean) -> Boolean): Boolean
+fun ByteArray.any(predicate: 
+(Byte) -> Boolean): Boolean
+fun CharArray.any(predicate: 
+(Char) -> Boolean): Boolean
+fun DoubleArray.any(predicate: 
+(Double) -> Boolean): Boolean
+fun FloatArray.any(predicate: 
+(Float) -> Boolean): Boolean
+fun IntArray.any(predicate: (Int) 
+-> Boolean): Boolean
+fun LongArray.any(predicate: 
+(Long) -> Boolean): Boolean
+fun ShortArray.any(predicate: 
+(Short) -> Boolean): Boolean
+fun <T> 
+Iterable<T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun <K, V> Map<out K, 
+V>.any(predicate: (Map.Entry<K, 
+V>) -> Boolean): Boolean
+fun UByteArray.any(predicate: 
+(UByte) -> Boolean): Boolean
+fun UIntArray.any(predicate: 
+(UInt) -> Boolean): Boolean
+fun ULongArray.any(predicate: 
+(ULong) -> Boolean): Boolean
+fun UShortArray.any(predicate: 
+(UShort) -> Boolean): Boolean
+fun <T> 
+Sequence<T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun CharSequence.any(predicate: 
+(Char) -> Boolean): Boolean
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:572:60 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:701:60 
+Unresolved reference 'not' for 
+operator '!'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:703:66 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out 
+T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun BooleanArray.any(predicate: 
+(Boolean) -> Boolean): Boolean
+fun ByteArray.any(predicate: 
+(Byte) -> Boolean): Boolean
+fun CharArray.any(predicate: 
+(Char) -> Boolean): Boolean
+fun DoubleArray.any(predicate: 
+(Double) -> Boolean): Boolean
+fun FloatArray.any(predicate: 
+(Float) -> Boolean): Boolean
+fun IntArray.any(predicate: (Int) 
+-> Boolean): Boolean
+fun LongArray.any(predicate: 
+(Long) -> Boolean): Boolean
+fun ShortArray.any(predicate: 
+(Short) -> Boolean): Boolean
+fun <T> 
+Iterable<T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun <K, V> Map<out K, 
+V>.any(predicate: (Map.Entry<K, 
+V>) -> Boolean): Boolean
+fun UByteArray.any(predicate: 
+(UByte) -> Boolean): Boolean
+fun UIntArray.any(predicate: 
+(UInt) -> Boolean): Boolean
+fun ULongArray.any(predicate: 
+(ULong) -> Boolean): Boolean
+fun UShortArray.any(predicate: 
+(UShort) -> Boolean): Boolean
+fun <T> 
+Sequence<T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun CharSequence.any(predicate: 
+(Char) -> Boolean): Boolean
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:703:72 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:1063:54 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out 
+T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun BooleanArray.any(predicate: 
+(Boolean) -> Boolean): Boolean
+fun ByteArray.any(predicate: 
+(Byte) -> Boolean): Boolean
+fun CharArray.any(predicate: 
+(Char) -> Boolean): Boolean
+fun DoubleArray.any(predicate: 
+(Double) -> Boolean): Boolean
+fun FloatArray.any(predicate: 
+(Float) -> Boolean): Boolean
+fun IntArray.any(predicate: (Int) 
+-> Boolean): Boolean
+fun LongArray.any(predicate: 
+(Long) -> Boolean): Boolean
+fun ShortArray.any(predicate: 
+(Short) -> Boolean): Boolean
+fun <T> 
+Iterable<T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun <K, V> Map<out K, 
+V>.any(predicate: (Map.Entry<K, 
+V>) -> Boolean): Boolean
+fun UByteArray.any(predicate: 
+(UByte) -> Boolean): Boolean
+fun UIntArray.any(predicate: 
+(UInt) -> Boolean): Boolean
+fun ULongArray.any(predicate: 
+(ULong) -> Boolean): Boolean
+fun UShortArray.any(predicate: 
+(UShort) -> Boolean): Boolean
+fun <T> 
+Sequence<T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun CharSequence.any(predicate: 
+(Char) -> Boolean): Boolean
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:1063:60 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/components/
+CommonEmployeeForm.kt:1429:95 
+Unresolved reference 'not' for 
+operator '!'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:180:44 
+Unresolved reference 
+'forceRefresh'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:259:22 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:259:22 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:259:41 
+Unresolved reference 'fullUnits'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:259:51 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:260:31 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:260:31 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:260:50 
+Unresolved reference 
+'stationsByDistrict'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:260:69 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:288:28 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out 
+T>.isNotEmpty(): Boolean
+fun BooleanArray.isNotEmpty(): 
+Boolean
+fun ByteArray.isNotEmpty(): 
+Boolean
+fun CharArray.isNotEmpty(): 
+Boolean
+fun DoubleArray.isNotEmpty(): 
+Boolean
+fun FloatArray.isNotEmpty(): 
+Boolean
+fun IntArray.isNotEmpty(): Boolean
+fun LongArray.isNotEmpty(): 
+Boolean
+fun ShortArray.isNotEmpty(): 
+Boolean
+fun <T> 
+Collection<T>.isNotEmpty(): 
+Boolean
+fun <K, V> Map<out K, 
+V>.isNotEmpty(): Boolean
+fun CharSequence.isNotEmpty(): 
+Boolean
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:289:28 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out 
+T>.filter(predicate: (T) -> 
+Boolean): List<T>
+fun 
+BooleanArray.filter(predicate: 
+(Boolean) -> Boolean): 
+List<Boolean>
+fun ByteArray.filter(predicate: 
+(Byte) -> Boolean): List<Byte>
+fun CharArray.filter(predicate: 
+(Char) -> Boolean): List<Char>
+fun DoubleArray.filter(predicate: 
+(Double) -> Boolean): List<Double>
+fun FloatArray.filter(predicate: 
+(Float) -> Boolean): List<Float>
+fun IntArray.filter(predicate: 
+(Int) -> Boolean): List<Int>
+fun LongArray.filter(predicate: 
+(Long) -> Boolean): List<Long>
+fun ShortArray.filter(predicate: 
+(Short) -> Boolean): List<Short>
+fun <T> 
+Iterable<T>.filter(predicate: (T) 
+-> Boolean): List<T>
+fun <K, V> Map<out K, 
+V>.filter(predicate: 
+(Map.Entry<K, V>) -> Boolean): 
+Map<K, V>
+fun UByteArray.filter(predicate: 
+(UByte) -> Boolean): List<UByte>
+fun UIntArray.filter(predicate: 
+(UInt) -> Boolean): List<UInt>
+fun ULongArray.filter(predicate: 
+(ULong) -> Boolean): List<ULong>
+fun UShortArray.filter(predicate: 
+(UShort) -> Boolean): List<UShort>
+fun <T> 
+Sequence<T>.filter(predicate: (T) 
+-> Boolean): Sequence<T>
+fun 
+CharSequence.filter(predicate: 
+(Char) -> Boolean): CharSequence
+fun String.filter(predicate: 
+(Char) -> Boolean): String
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:289:37 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:290:30 
+Unresolved reference 
+'mappingType'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:294:69 
+Unresolved reference 
+'mappedDistricts'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:294:91 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:297:20 
+Overload resolution ambiguity 
+between candidates:
+fun <R, T> 
+Result<T>.map(transform: 
+(@ParameterName(...) T) -> R): 
+Result<R>
+    [R|Contract description]
+     <
+        CallsInPlace(transform, 
+AT_MOST_ONCE)
+    >
+fun <T, R> Array<out 
+T>.map(transform: (T) -> R): 
+List<R>
+fun <R> 
+BooleanArray.map(transform: 
+(Boolean) -> R): List<R>
+fun <R> ByteArray.map(transform: 
+(Byte) -> R): List<R>
+fun <R> CharArray.map(transform: 
+(Char) -> R): List<R>
+fun <R> 
+DoubleArray.map(transform: 
+(Double) -> R): List<R>
+fun <R> FloatArray.map(transform: 
+(Float) -> R): List<R>
+fun <R> IntArray.map(transform: 
+(Int) -> R): List<R>
+fun <R> LongArray.map(transform: 
+(Long) -> R): List<R>
+fun <R> ShortArray.map(transform: 
+(Short) -> R): List<R>
+fun <T, R> 
+Iterable<T>.map(transform: (T) -> 
+R): List<R>
+fun <K, V, R> Map<out K, 
+V>.map(transform: (Map.Entry<K, 
+V>) -> R): List<R>
+fun <R> UByteArray.map(transform: 
+(UByte) -> R): List<R>
+fun <R> UIntArray.map(transform: 
+(UInt) -> R): List<R>
+
+> Task :app:compileAdminDebugKotlin
+fun <R> ULongArray.map(transform: 
+(ULong) -> R): List<R>
+fun <R> 
+UShortArray.map(transform: 
+(UShort) -> R): List<R>
+fun <T, R> 
+Sequence<T>.map(transform: (T) -> 
+R): Sequence<R>
+fun <R> 
+CharSequence.map(transform: 
+(Char) -> R): List<R>
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:297:24 
+Unresolved reference 'name'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:297:26 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:297:36 
+Overload resolution ambiguity 
+between candidates:
+fun <T : Comparable<T>> Array<out 
+T>.sorted(): List<T>
+fun ByteArray.sorted(): List<Byte>
+fun CharArray.sorted(): List<Char>
+fun DoubleArray.sorted(): 
+List<Double>
+fun FloatArray.sorted(): 
+List<Float>
+fun IntArray.sorted(): List<Int>
+fun LongArray.sorted(): List<Long>
+fun ShortArray.sorted(): 
+List<Short>
+fun <T : Comparable<T>> 
+Iterable<T>.sorted(): List<T>
+fun UByteArray.sorted(): 
+List<UByte>
+fun UIntArray.sorted(): List<UInt>
+fun ULongArray.sorted(): 
+List<ULong>
+fun UShortArray.sorted(): 
+List<UShort>
+fun <T : Comparable<T>> 
+Sequence<T>.sorted(): Sequence<T>
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:307:85 
+Unresolved reference 
+'getDistrictsForUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:317:43 
+Unresolved reference 
+'getStationsAndSectionsForUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:366:33 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out 
+T>.find(predicate: (T) -> 
+Boolean): T?
+fun BooleanArray.find(predicate: 
+(Boolean) -> Boolean): Boolean?
+fun ByteArray.find(predicate: 
+(Byte) -> Boolean): Byte?
+fun CharArray.find(predicate: 
+(Char) -> Boolean): Char?
+fun DoubleArray.find(predicate: 
+(Double) -> Boolean): Double?
+fun FloatArray.find(predicate: 
+(Float) -> Boolean): Float?
+fun IntArray.find(predicate: 
+(Int) -> Boolean): Int?
+fun LongArray.find(predicate: 
+(Long) -> Boolean): Long?
+fun ShortArray.find(predicate: 
+(Short) -> Boolean): Short?
+fun <T> 
+Iterable<T>.find(predicate: (T) 
+-> Boolean): T?
+fun UByteArray.find(predicate: 
+(UByte) -> Boolean): UByte?
+fun UIntArray.find(predicate: 
+(UInt) -> Boolean): UInt?
+fun ULongArray.find(predicate: 
+(ULong) -> Boolean): ULong?
+fun UShortArray.find(predicate: 
+(UShort) -> Boolean): UShort?
+fun <T> 
+Sequence<T>.find(predicate: (T) 
+-> Boolean): T?
+fun CharSequence.find(predicate: 
+(Char) -> Boolean): Char?
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:366:40 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeListScreen.kt:367:42 
+Unresolved reference 
+'mappedAreaType'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeStatsScreen.kt:89:31 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeStatsScreen.kt:89:31 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeStatsScreen.kt:89:50 
+Unresolved reference 
+'stationsByDistrict'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeStatsScreen.kt:89:69 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeStatsScreen.kt:106:39 
+Function invocation 'keys(...)' 
+expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeStatsScreen.kt:106:79 No 
+parameter with name 'ignoreCase' 
+found.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeStatsScreen.kt:107:20 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeStatsScreen.kt:107:20 Not 
+enough information to infer type 
+argument for 'T'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/user/java/com/example/po
+licemobiledirectory/ui/screens/Emp
+loyeeStatsScreen.kt:165:61 
+Argument type mismatch: actual 
+type is 'kotlin.collections.List<k
+otlin.Any>', but 'kotlin.collectio
+ns.List<kotlin.String>' was 
+expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/PoliceMobileD
+irectoryApp.kt:98:51 Unresolved 
+reference 'getCacheAgeDays'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/repository/Co
+nstantsRepository.kt:215:5 
+Conflicting overloads:
+fun getStationsForUnit(unitName: 
+String, districtStations: 
+List<String>): List<String>
+suspend fun 
+getStationsForUnit(unitName: 
+String, districtStations: 
+List<String>): List<String>
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/repository/Co
+nstantsRepository.kt:216:66 
+Unresolved reference 
+'getStationsForUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/repository/Of
+ficerRepository.kt:126:44 
+Unresolved reference 
+'getOfficerById'.
 e: file:///C:/Users/ravip/AndroidS
 tudioProjects/PoliceMobileDirector
 y/app/src/admin/java/com/example/p
 olicemobiledirectory/ui/components
-/CommonEmployeeForm.kt:1123:84 
-Unresolved reference 'isNotEmpty'.
-e: file:///C:/Users/ravip/AndroidS
-tudioProjects/PoliceMobileDirector
-y/app/src/admin/java/com/example/p
-olicemobiledirectory/ui/components
-/CommonEmployeeForm.kt:1136:94 
-Unresolved reference 'isNotEmpty'.
-e: file:///C:/Users/ravip/AndroidS
-tudioProjects/PoliceMobileDirector
-y/app/src/admin/java/com/example/p
-olicemobiledirectory/ui/components
-/CommonEmployeeForm.kt:1140:42 
-Unresolved reference 'forEach'.
-e: file:///C:/Users/ravip/AndroidS
-tudioProjects/PoliceMobileDirector
-y/app/src/admin/java/com/example/p
-olicemobiledirectory/ui/components
-/CommonEmployeeForm.kt:1140:52 
+/CommonEmployeeForm.kt:105:31 
 Cannot infer type for this 
 parameter. Please specify it 
 explicitly.
@@ -177,7 +1508,621 @@ e: file:///C:/Users/ravip/AndroidS
 tudioProjects/PoliceMobileDirector
 y/app/src/admin/java/com/example/p
 olicemobiledirectory/ui/components
-/CommonEmployeeForm.kt:1141:29 
+/CommonEmployeeForm.kt:105:31 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:105:50 
+Unresolved reference 
+'stationsByDistrict'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:105:69 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:108:38 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:108:38 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:108:57 
+Unresolved reference 
+'ranksRequiringMetalNumber'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:108:83 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:110:29 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:110:29 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:110:48 
+Unresolved reference 
+'ministerialRanks'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:110:65 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:111:31 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:111:31 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:111:50 
+Unresolved reference 
+'policeStationRanks'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:111:69 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:112:32 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:112:32 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:112:51 
+Unresolved reference 
+'highRankingOfficers'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:112:71 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:114:22 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:114:22 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:114:41 
+Unresolved reference 'fullUnits'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:114:51 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:115:31 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:115:31 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:115:50 
+Unresolved reference 
+'globalHiddenFields'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:115:69 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:116:27 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:116:27 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:116:46 
+Unresolved reference 
+'ksrpBattalions'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:116:61 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:150:29 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:150:55 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:151:19 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out 
+T>.find(predicate: (T) -> 
+Boolean): T?
+fun BooleanArray.find(predicate: 
+(Boolean) -> Boolean): Boolean?
+fun ByteArray.find(predicate: 
+(Byte) -> Boolean): Byte?
+fun CharArray.find(predicate: 
+(Char) -> Boolean): Char?
+fun DoubleArray.find(predicate: 
+(Double) -> Boolean): Double?
+fun FloatArray.find(predicate: 
+(Float) -> Boolean): Float?
+fun IntArray.find(predicate: 
+(Int) -> Boolean): Int?
+fun LongArray.find(predicate: 
+(Long) -> Boolean): Long?
+fun ShortArray.find(predicate: 
+(Short) -> Boolean): Short?
+fun <T> 
+Iterable<T>.find(predicate: (T) 
+-> Boolean): T?
+fun UByteArray.find(predicate: 
+(UByte) -> Boolean): UByte?
+fun UIntArray.find(predicate: 
+(UInt) -> Boolean): UInt?
+fun ULongArray.find(predicate: 
+(ULong) -> Boolean): ULong?
+fun UShortArray.find(predicate: 
+(UShort) -> Boolean): UShort?
+fun <T> 
+Sequence<T>.find(predicate: (T) 
+-> Boolean): T?
+fun CharSequence.find(predicate: 
+(Char) -> Boolean): Char?
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:151:26 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:158:49 
+Unresolved reference 
+'hiddenFields'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:175:25 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:175:58 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:176:26 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out 
+T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun BooleanArray.any(predicate: 
+(Boolean) -> Boolean): Boolean
+fun ByteArray.any(predicate: 
+(Byte) -> Boolean): Boolean
+fun CharArray.any(predicate: 
+(Char) -> Boolean): Boolean
+fun DoubleArray.any(predicate: 
+(Double) -> Boolean): Boolean
+fun FloatArray.any(predicate: 
+(Float) -> Boolean): Boolean
+fun IntArray.any(predicate: (Int) 
+-> Boolean): Boolean
+fun LongArray.any(predicate: 
+(Long) -> Boolean): Boolean
+fun ShortArray.any(predicate: 
+(Short) -> Boolean): Boolean
+fun <T> 
+Iterable<T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun <K, V> Map<out K, 
+V>.any(predicate: (Map.Entry<K, 
+V>) -> Boolean): Boolean
+fun UByteArray.any(predicate: 
+(UByte) -> Boolean): Boolean
+fun UIntArray.any(predicate: 
+(UInt) -> Boolean): Boolean
+fun ULongArray.any(predicate: 
+(ULong) -> Boolean): Boolean
+fun UShortArray.any(predicate: 
+(UShort) -> Boolean): Boolean
+fun <T> 
+Sequence<T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun CharSequence.any(predicate: 
+(Char) -> Boolean): Boolean
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:176:32 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:199:31 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:199:31 Not 
+enough information to infer type 
+argument for 'T'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:199:31 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:199:31 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:199:31 Not 
+enough information to infer type 
+argument for 'T'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:199:59 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:199:59 Not 
+enough information to infer type 
+argument for 'T'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:200:36 
+Unresolved reference 
+'getDistrictsForUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:227:32 
+Function invocation 'size(...)' 
+expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:228:52 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out T>.first(): T
+fun BooleanArray.first(): Boolean
+fun ByteArray.first(): Byte
+fun CharArray.first(): Char
+fun DoubleArray.first(): Double
+fun FloatArray.first(): Float
+fun IntArray.first(): Int
+fun LongArray.first(): Long
+fun ShortArray.first(): Short
+fun <T> Iterable<T>.first(): T
+fun <T> List<T>.first(): T
+fun UByteArray.first(): UByte
+fun UIntArray.first(): UInt
+fun ULongArray.first(): ULong
+fun UShortArray.first(): UShort
+fun CharProgression.first(): Char
+fun IntProgression.first(): Int
+fun LongProgression.first(): Long
+fun UIntProgression.first(): UInt
+fun ULongProgression.first(): 
+ULong
+fun <T> Sequence<T>.first(): T
+fun CharSequence.first(): Char
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:266:36 
+Unresolved reference 
+'getStationsAndSectionsForUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:569:54 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out 
+T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun BooleanArray.any(predicate: 
+(Boolean) -> Boolean): Boolean
+fun ByteArray.any(predicate: 
+(Byte) -> Boolean): Boolean
+fun CharArray.any(predicate: 
+(Char) -> Boolean): Boolean
+fun DoubleArray.any(predicate: 
+(Double) -> Boolean): Boolean
+fun FloatArray.any(predicate: 
+(Float) -> Boolean): Boolean
+fun IntArray.any(predicate: (Int) 
+-> Boolean): Boolean
+fun LongArray.any(predicate: 
+(Long) -> Boolean): Boolean
+fun ShortArray.any(predicate: 
+(Short) -> Boolean): Boolean
+fun <T> 
+Iterable<T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun <K, V> Map<out K, 
+V>.any(predicate: (Map.Entry<K, 
+V>) -> Boolean): Boolean
+fun UByteArray.any(predicate: 
+(UByte) -> Boolean): Boolean
+fun UIntArray.any(predicate: 
+(UInt) -> Boolean): Boolean
+fun ULongArray.any(predicate: 
+(ULong) -> Boolean): Boolean
+fun UShortArray.any(predicate: 
+(UShort) -> Boolean): Boolean
+fun <T> 
+Sequence<T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun CharSequence.any(predicate: 
+(Char) -> Boolean): Boolean
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:569:60 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:613:36 
+Unresolved reference 
+'mappingType'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:644:52 
+Overload resolution ambiguity 
+between candidates:
+fun <T> 
+Iterable<T>.forEach(action: (T) 
+-> Unit): Unit
+fun <K, V> Map<out K, 
+V>.forEach(action: (Map.Entry<K, 
+V>) -> Unit): Unit
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:644:62 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:645:37 
 @Composable invocations can only 
 happen from the context of a 
 @Composable function
@@ -185,64 +2130,1093 @@ e: file:///C:/Users/ravip/AndroidS
 tudioProjects/PoliceMobileDirector
 y/app/src/admin/java/com/example/p
 olicemobiledirectory/ui/components
-/CommonEmployeeForm.kt:1325:90 
-Unresolved reference 
-'isDistrictLevelUnit'.
-
-> Task :app:compileUserDebugKotlin FAILED
+/CommonEmployeeForm.kt:662:60 
+Unresolved reference 'not' for 
+operator '!'.
 e: file:///C:/Users/ravip/AndroidS
 tudioProjects/PoliceMobileDirector
-y/app/src/user/java/com/example/po
-licemobiledirectory/ui/components/
-CommonEmployeeForm.kt:724:59 
-Unresolved reference 
-'hasSections'.
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:786:84 
+Unresolved reference 'not' for 
+operator '!'.
 e: file:///C:/Users/ravip/AndroidS
 tudioProjects/PoliceMobileDirector
-y/app/src/user/java/com/example/po
-licemobiledirectory/ui/components/
-CommonEmployeeForm.kt:764:75 
-Unresolved reference 
-'hasSections'.
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1021:50 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out 
+T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun BooleanArray.any(predicate: 
+(Boolean) -> Boolean): Boolean
+fun ByteArray.any(predicate: 
+(Byte) -> Boolean): Boolean
+fun CharArray.any(predicate: 
+(Char) -> Boolean): Boolean
+fun DoubleArray.any(predicate: 
+(Double) -> Boolean): Boolean
+fun FloatArray.any(predicate: 
+(Float) -> Boolean): Boolean
+fun IntArray.any(predicate: (Int) 
+-> Boolean): Boolean
+fun LongArray.any(predicate: 
+(Long) -> Boolean): Boolean
+fun ShortArray.any(predicate: 
+(Short) -> Boolean): Boolean
+fun <T> 
+Iterable<T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun <K, V> Map<out K, 
+V>.any(predicate: (Map.Entry<K, 
+V>) -> Boolean): Boolean
+fun UByteArray.any(predicate: 
+(UByte) -> Boolean): Boolean
+fun UIntArray.any(predicate: 
+(UInt) -> Boolean): Boolean
+fun ULongArray.any(predicate: 
+(ULong) -> Boolean): Boolean
+fun UShortArray.any(predicate: 
+(UShort) -> Boolean): Boolean
+fun <T> 
+Sequence<T>.any(predicate: (T) -> 
+Boolean): Boolean
+fun CharSequence.any(predicate: 
+(Char) -> Boolean): Boolean
 e: file:///C:/Users/ravip/AndroidS
 tudioProjects/PoliceMobileDirector
-y/app/src/user/java/com/example/po
-licemobiledirectory/ui/components/
-CommonEmployeeForm.kt:766:37 
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1021:56 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1077:36 
 Unresolved reference 
-'hasSections'.
+'mappingType'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1081:59 
+Function invocation 'size(...)' 
+expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1101:48 
+Overload resolution ambiguity 
+between candidates:
+fun <T> 
+Iterable<T>.forEach(action: (T) 
+-> Unit): Unit
+fun <K, V> Map<out K, 
+V>.forEach(action: (Map.Entry<K, 
+V>) -> Unit): Unit
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1101:58 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1102:33 
+@Composable invocations can only 
+happen from the context of a 
+@Composable function
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/components
+/CommonEmployeeForm.kt:1290:46 
+Unresolved reference 'not' for 
+operator '!'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+dEmployeeScreen.kt:53:31 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+dEmployeeScreen.kt:53:31 Property 
+delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+dEmployeeScreen.kt:53:50 
+Unresolved reference 
+'stationsByDistrict'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+dEmployeeScreen.kt:53:69 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+dEmployeeScreen.kt:132:92 
+Unresolved reference 
+'getDistrictsForUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+dEmployeeScreen.kt:141:50 
+Unresolved reference 
+'getStationsAndSectionsForUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:70:24 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:70:24 Property 
+delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:70:43 
+Unresolved reference 
+'stationsByDistrict'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:70:62 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:71:30 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:71:52 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:72:21 
+Unresolved reference 'values'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:72:34 Function 
+invocation 'size(...)' expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:72:36 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:80:35 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:80:35 Property 
+delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:80:54 
+Unresolved reference 
+'refreshStatus'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:80:68 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:98:60 
+Unresolved reference 
+'resetRefreshStatus'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ad
+minPanelScreen.kt:157:48 
+Unresolved reference 
+'forceRefresh'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeListScreen.kt:94:32 
+Unresolved reference 
+'forceRefresh'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeListScreen.kt:144:44 
+Unresolved reference 
+'forceRefresh'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeListScreen.kt:208:22 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeListScreen.kt:208:22 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeListScreen.kt:208:41 
+Unresolved reference 'fullUnits'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeListScreen.kt:208:51 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeListScreen.kt:219:90 
+Unresolved reference 
+'getDistrictsForUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeListScreen.kt:224:43 
+Unresolved reference 
+'getStationsAndSectionsForUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeListScreen.kt:233:33 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out 
+T>.find(predicate: (T) -> 
+Boolean): T?
+fun BooleanArray.find(predicate: 
+(Boolean) -> Boolean): Boolean?
+fun ByteArray.find(predicate: 
+(Byte) -> Boolean): Byte?
+fun CharArray.find(predicate: 
+(Char) -> Boolean): Char?
+fun DoubleArray.find(predicate: 
+(Double) -> Boolean): Double?
+fun FloatArray.find(predicate: 
+(Float) -> Boolean): Float?
+fun IntArray.find(predicate: 
+(Int) -> Boolean): Int?
+fun LongArray.find(predicate: 
+(Long) -> Boolean): Long?
+fun ShortArray.find(predicate: 
+(Short) -> Boolean): Short?
+fun <T> 
+Iterable<T>.find(predicate: (T) 
+-> Boolean): T?
+fun UByteArray.find(predicate: 
+(UByte) -> Boolean): UByte?
+fun UIntArray.find(predicate: 
+(UInt) -> Boolean): UInt?
+fun ULongArray.find(predicate: 
+(ULong) -> Boolean): ULong?
+fun UShortArray.find(predicate: 
+(UShort) -> Boolean): UShort?
+fun <T> 
+Sequence<T>.find(predicate: (T) 
+-> Boolean): T?
+fun CharSequence.find(predicate: 
+(Char) -> Boolean): Char?
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeListScreen.kt:233:40 
+Unresolved reference 'it'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeListScreen.kt:234:42 
+Unresolved reference 
+'mappedAreaType'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeListScreen.kt:313:93 
+Unresolved reference 'isHidden'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeStatsScreen.kt:81:31 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeStatsScreen.kt:81:31 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeStatsScreen.kt:81:50 
+Unresolved reference 
+'stationsByDistrict'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeStatsScreen.kt:81:69 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeStatsScreen.kt:98:39 
+Function invocation 'keys(...)' 
+expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeStatsScreen.kt:98:79 No 
+parameter with name 'ignoreCase' 
+found.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeStatsScreen.kt:99:20 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeStatsScreen.kt:99:20 Not 
+enough information to infer type 
+argument for 'T'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Em
+ployeeStatsScreen.kt:156:61 
+Argument type mismatch: actual 
+type is 'kotlin.collections.List<k
+otlin.Any>', but 'kotlin.collectio
+ns.List<kotlin.String>' was 
+expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:47:31 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:47:31 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:47:41 
+Unresolved reference 
+'stationsByDistrict'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:47:60 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:48:18 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:48:18 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:48:28 
+Unresolved reference 'fullUnits'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:48:38 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:50:27 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:50:27 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:50:37 
+Unresolved reference 
+'ksrpBattalions'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:50:52 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:51:26 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:51:26 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:51:36 
+Unresolved reference 
+'refreshStatus'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:51:50 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:71:28 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:71:28 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:71:38 
+Unresolved reference 
+'currentUnitSections'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:71:58 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:75:16 One 
+type argument expected. Use class 
+'Success' if you don't intend to 
+pass type arguments.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:77:27 
+Unresolved reference 
+'resetRefreshStatus'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:87:27 
+Unresolved reference 
+'resetRefreshStatus'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:271:44 
+Overload resolution ambiguity 
+between candidates:
+fun <T> 
+Iterable<T>.forEach(action: (T) 
+-> Unit): Unit
+fun <K, V> Map<out K, 
+V>.forEach(action: (Map.Entry<K, 
+V>) -> Unit): Unit
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:271:54 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:271:54 
+Function 'component1()' is 
+ambiguous for this expression: 
+fun <T> Array<out 
+T>.component1(): T
+fun BooleanArray.component1(): 
+Boolean
+fun ByteArray.component1(): Byte
+fun CharArray.component1(): Char
+fun DoubleArray.component1(): 
+Double
+fun FloatArray.component1(): Float
+fun IntArray.component1(): Int
+fun LongArray.component1(): Long
+fun ShortArray.component1(): Short
+fun <T> List<T>.component1(): T
+fun <K, V> Map.Entry<K, 
+V>.component1(): K
+fun UByteArray.component1(): UByte
+fun UIntArray.component1(): UInt
+fun ULongArray.component1(): ULong
+fun UShortArray.component1(): 
+UShort.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:271:54 
+Function 'component2()' is 
+ambiguous for this expression: 
+fun <T> Array<out 
+T>.component2(): T
+fun BooleanArray.component2(): 
+Boolean
+fun ByteArray.component2(): Byte
+fun CharArray.component2(): Char
+fun DoubleArray.component2(): 
+Double
+fun FloatArray.component2(): Float
+fun IntArray.component2(): Int
+fun LongArray.component2(): Long
+fun ShortArray.component2(): Short
+fun <T> List<T>.component2(): T
+fun <K, V> Map.Entry<K, 
+V>.component2(): V
+fun UByteArray.component2(): UByte
+fun UIntArray.component2(): UInt
+fun ULongArray.component2(): ULong
+fun UShortArray.component2(): 
+UShort.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:282:44 
+Argument type mismatch: actual 
+type is 'kotlin.Int', but 
+'kotlin.String' was expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:284:54 
+Assignment type mismatch: actual 
+type is 'kotlin.Int', but 
+'kotlin.String' was expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:285:60 
+Assignment type mismatch: actual 
+type is 'kotlin.Int', but 
+'kotlin.String' was expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:289:84 
+Argument type mismatch: actual 
+type is 'kotlin.Int', but 
+'kotlin.String' was expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:315:61 
+Unresolved reference 'name'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:323:66 
+Unresolved reference 'isActive'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:327:69 
+Unresolved reference 'isActive'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:328:70 
+Unresolved reference 'isActive'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:338:50 
+Unresolved reference 'scopes'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:340:72 
+Unresolved reference 'scopes'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:347:50 
+Unresolved reference 
+'hideFromRegistration'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:360:67 
+Unresolved reference 'name'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:361:59 
+Unresolved reference 
+'loadSectionsForUnit'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:361:84 
+Unresolved reference 'name'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:363:103 
+Unresolved reference 'name'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:377:58 
+Assignment type mismatch: actual 
+type is 'kotlin.Int', but 'com.exa
+mple.policemobiledirectory.model.U
+nitModel?' was expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:382:90 
+Unresolved reference 'name'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:568:45 
+Overload resolution ambiguity 
+between candidates:
+fun <T> Array<out T>.isEmpty(): 
+Boolean
+fun BooleanArray.isEmpty(): 
+Boolean
+fun ByteArray.isEmpty(): Boolean
+fun CharArray.isEmpty(): Boolean
+fun DoubleArray.isEmpty(): Boolean
+fun FloatArray.isEmpty(): Boolean
+fun IntArray.isEmpty(): Boolean
+fun LongArray.isEmpty(): Boolean
+fun ShortArray.isEmpty(): Boolean
+fun CharSequence.isEmpty(): 
+Boolean
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:577:33 
+None of the following candidates 
+is applicable:
+fun Text(text: AnnotatedString, 
+modifier: Modifier = ..., color: 
+Color = ..., fontSize: TextUnit = 
+..., fontStyle: FontStyle? = ..., 
+fontWeight: FontWeight? = ..., 
+fontFamily: FontFamily? = ..., 
+letterSpacing: TextUnit = ..., 
+textDecoration: TextDecoration? = 
+..., textAlign: TextAlign? = ..., 
+lineHeight: TextUnit = ..., 
+overflow: TextOverflow = ..., 
+softWrap: Boolean = ..., 
+maxLines: Int = ..., minLines: 
+Int = ..., inlineContent: 
+Map<String, InlineTextContent> = 
+..., onTextLayout: 
+(TextLayoutResult) -> Unit = ..., 
+style: TextStyle = ...): Unit
+fun Text(text: String, modifier: 
+Modifier = ..., color: Color = 
+..., fontSize: TextUnit = ..., 
+fontStyle: FontStyle? = ..., 
+fontWeight: FontWeight? = ..., 
+fontFamily: FontFamily? = ..., 
+letterSpacing: TextUnit = ..., 
+textDecoration: TextDecoration? = 
+..., textAlign: TextAlign? = ..., 
+lineHeight: TextUnit = ..., 
+overflow: TextOverflow = ..., 
+softWrap: Boolean = ..., 
+maxLines: Int = ..., minLines: 
+Int = ..., onTextLayout: 
+((TextLayoutResult) -> Unit)? = 
+..., style: TextStyle = ...): Unit
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Ma
+nageConstantsScreen.kt:579:85 
+Argument type mismatch: actual 
+type is 'kotlin.Int', but 
+'kotlin.String' was expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Of
+ficerStatsScreen.kt:36:31 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Of
+ficerStatsScreen.kt:36:31 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Of
+ficerStatsScreen.kt:36:50 
+Unresolved reference 
+'stationsByDistrict'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Of
+ficerStatsScreen.kt:36:69 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Of
+ficerStatsScreen.kt:53:39 
+Function invocation 'keys(...)' 
+expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Of
+ficerStatsScreen.kt:53:79 No 
+parameter with name 'ignoreCase' 
+found.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Of
+ficerStatsScreen.kt:54:20 Cannot 
+infer type for this parameter. 
+Please specify it explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Of
+ficerStatsScreen.kt:54:20 Not 
+enough information to infer type 
+argument for 'T'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Of
+ficerStatsScreen.kt:112:66 
+Argument type mismatch: actual 
+type is 'kotlin.collections.List<k
+otlin.Any>', but 'kotlin.collectio
+ns.List<kotlin.String>' was 
+expected.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Se
+ndNotificationScreen.kt:71:31 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Se
+ndNotificationScreen.kt:71:31 
+Property delegate must have a 
+'getValue(Nothing?, 
+KProperty0<ERROR CLASS: Cannot 
+infer argument for type parameter 
+T>)' method. None of the 
+following functions is applicable:
+fun <T> 
+State<T>.getValue(thisObj: Any?, 
+property: KProperty<*>): T
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Se
+ndNotificationScreen.kt:71:50 
+Unresolved reference 
+'stationsByDistrict'.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Se
+ndNotificationScreen.kt:71:69 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Se
+ndNotificationScreen.kt:91:31 New 
+inference error 
+[NewConstraintError at 
+Incorporate TypeVariable(T) == kot
+lin/collections/List<kotlin/String
+> from Fix variable T from 
+position Fix variable T: 
+kotlin/text/MatchGroup <!: 
+kotlin/String].
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/ui/screens/Se
+ndNotificationScreen.kt:93:71 
+Cannot infer type for this 
+parameter. Please specify it 
+explicitly.
+e: file:///C:/Users/ravip/AndroidS
+tudioProjects/PoliceMobileDirector
+y/app/src/admin/java/com/example/p
+olicemobiledirectory/viewmodel/Emp
+loyeeViewModel.kt:224:48 Overload 
+resolution ambiguity between 
+candidates:
+fun getStationsForUnit(unitName: 
+String, districtStations: 
+List<String>): List<String>
+suspend fun 
+getStationsForUnit(unitName: 
+String, districtStations: 
+List<String>): List<String>
 
 FAILURE: Build completed with 2 
 failures.
 
 1: Task failed with an exception.
------------
-* What went wrong:
-Execution failed for task 
-':app:compileAdminDebugKotlin'.
-> A failure occurred while 
-executing org.jetbrains.kotlin.com
-pilerRunner.GradleCompilerRunnerWi
-thWorkers$GradleKotlinCompilerWork
-Action
-   > Compilation error. See log 
-for more details
-
-* Try:
-> Run with --stacktrace option to 
-get the stack trace.
-68 actionable tasks: 2 executed, 66 up-to-date
-> Run with --info or --debug 
-option to get more log output.
-> Run with --scan to get full 
-insights.
-> Get more help at 
-https://help.gradle.org.
-==================================
-==================================
-==========
-
-2: Task failed with an exception.
 -----------
 * What went wrong:
 Execution failed for task 
@@ -268,4 +3242,33 @@ https://help.gradle.org.
 ==================================
 ==========
 
-BUILD FAILED in 11s
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task 
+':app:compileAdminDebugKotlin'.
+> A failure occurred while 
+executing org.jetbrains.kotlin.com
+pilerRunner.GradleCompilerRunnerWi
+thWorkers$GradleKotlinCompilerWork
+Action
+   > Compilation error. See log 
+for more details
+
+* Try:
+> Run with --stacktrace option to 
+get the stack trace.
+> Run with --info or --debug 
+option to get more log output.
+> Run with --scan to get full 
+insights.
+> Get more help at 
+https://help.gradle.org.
+
+> Task :app:compileAdminDebugKotlin FAILED
+68 actionable tasks: 2 executed, 66 up-to-date
+==================================
+==================================
+==========
+
+BUILD FAILED in 19s

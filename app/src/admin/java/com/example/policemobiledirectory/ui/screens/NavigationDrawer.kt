@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -434,6 +435,19 @@ fun NavigationDrawer(
                         scope.launch {
                             drawerState.close()
                             navController.navigate(Routes.USEFUL_LINKS)
+                        }
+                    }
+                )
+
+                // 9. Missions Dashboard
+                DrawerItem(
+                    icon = Icons.Default.Public, // Using Public globe icon
+                    text = "Missions Dashboard",
+                    selected = currentRoute == Routes.MISSIONS_DASHBOARD,
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate(Routes.MISSIONS_DASHBOARD)
                         }
                     }
                 )
