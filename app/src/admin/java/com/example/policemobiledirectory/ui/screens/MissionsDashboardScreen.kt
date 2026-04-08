@@ -76,32 +76,7 @@ fun MissionsDashboardScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Dashboard Title Section (Per Sketch)
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "DASHBOARD",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Black,
-                        color = Color(0xFF1A1A1A),
-                        letterSpacing = 2.sp
-                    )
-                    Text(
-                        text = "Indian missions on Globe",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.Gray,
-                        fontWeight = FontWeight.Medium
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp).width(120.dp),
-                        thickness = 3.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
+
 
             // 2. Stats Section (Per Sketch)
             item {
