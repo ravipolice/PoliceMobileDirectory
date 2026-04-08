@@ -50,6 +50,7 @@ fun BottomNavigationBar(
         NavigationBar(
             containerColor = BackgroundLight, // Light off-white background
             contentColor = TextPrimary,
+            windowInsets = WindowInsets(0),
             modifier = Modifier
         ) {
         bottomNavItems.forEach { item ->

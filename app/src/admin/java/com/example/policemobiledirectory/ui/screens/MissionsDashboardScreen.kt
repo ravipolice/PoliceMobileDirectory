@@ -175,7 +175,8 @@ fun MissionsDashboardScreen(
                 }
             }
             
-            item { Spacer(modifier = Modifier.height(32.dp)) }
+            // Removed extra spacer to reduce bottom padding
+
         }
     }
 }
@@ -264,14 +265,18 @@ fun SearchableSelector(
 
 @Composable
 fun MissionDetailFormCard(mission: Mission) {
+    var isExpanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp)),
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { isExpanded = !isExpanded },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
+            // Header: Country / City format
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -284,11 +289,12 @@ fun MissionDetailFormCard(mission: Mission) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = mission.country.uppercase(),
+                        text = "${mission.country.uppercase()} / ${mission.city.uppercase()}",
                         color = Color.White,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 1.sp
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.weight(1f)
                     )
                     
                     Badge(
@@ -304,45 +310,51 @@ fun MissionDetailFormCard(mission: Mission) {
                 }
             }
 
-            Column(modifier = Modifier.padding(16.dp)) {
-                FormField(label = "Mission City", value = mission.city, icon = Icons.Default.Place)
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.LightGray.copy(alpha = 0.5f))
-                
-                FormField(label = "Mission Type", value = mission.type, icon = Icons.Default.Info)
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.LightGray.copy(alpha = 0.5f))
-                
-                FormField(label = "Mission Name", value = mission.name)
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.LightGray.copy(alpha = 0.5f))
+            if (isExpanded) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Row 1: Mission Type and Region
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            FormField(label = "Mission Type", value = mission.type, icon = Icons.Default.Info)
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            FormField(label = "Region", value = mission.region)
+                        }
+                    }
+                    
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color.LightGray.copy(alpha = 0.5f))
+                    
+                    // Row 2: Mission Name and COLI Index
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1.5f)) {
+                            FormField(label = "Mission Name", value = mission.name)
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            ColiBadge(coli = mission.costOfLiving)
+                        }
+                    }
 
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        FormField(label = "Region", value = mission.region)
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        ColiBadge(coli = mission.costOfLiving)
-                    }
-                }
-                
-                if (mission.notes.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0xFFF5F5F5))
-                            .padding(8.dp)
-                    ) {
-                        Column {
-                            Text(
-                                text = "REMARKS / NOTES",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Gray
-                            )
-                            Text(
-                                text = mission.notes,
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                    if (mission.notes.isNotBlank()) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color.LightGray.copy(alpha = 0.5f))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0xFFF5F5F5))
+                                .padding(8.dp)
+                        ) {
+                            Column {
+                                Text(
+                                    text = "REMARKS / NOTES",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Gray
+                                )
+                                Text(
+                                    text = mission.notes,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
                     }
                 }
