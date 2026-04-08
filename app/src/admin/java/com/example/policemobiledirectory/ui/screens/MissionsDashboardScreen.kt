@@ -2,12 +2,14 @@ package com.example.policemobiledirectory.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Public
@@ -18,8 +20,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,37 +38,13 @@ fun MissionsDashboardScreen(
     viewModel: MissionsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var isSearchActive by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    if (isSearchActive) {
-                        TextField(
-                            value = uiState.searchQuery,
-                            onValueChange = { viewModel.onSearchQueryChange(it) },
-                            placeholder = { Text("Search Country, City...") },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                cursorColor = Color.White,
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White.copy(alpha = 0.7f),
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
-                            singleLine = true
-                        )
-                    } else {
-                        Text("Missions Dashboard")
-                    }
-                },
+                title = { Text("Missions Dashboard") },
                 navigationIcon = {
-                    IconButton(onClick = { 
-                        if (isSearchActive) isSearchActive = false else navController.navigateUp() 
-                    }) {
+                    IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -73,13 +53,6 @@ fun MissionsDashboardScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { isSearchActive = !isSearchActive }) {
-                        Icon(
-                            imageVector = if (isSearchActive) Icons.Default.Public else Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = Color.White
-                        )
-                    }
                     IconButton(onClick = { viewModel.fetchMissions(forceRefresh = true) }) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
@@ -95,74 +68,220 @@ fun MissionsDashboardScreen(
             )
         }
     ) { padding ->
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(MaterialTheme.colorScheme.surface)
+                .background(Color(0xFFF8F9FA)), // Light gray background
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (uiState.isLoading && uiState.missions.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (uiState.error != null && uiState.missions.isEmpty()) {
+            // 1. Dashboard Title Section (Per Sketch)
+            item {
                 Column(
-                    modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(text = "Error: ${uiState.error}", color = MaterialTheme.colorScheme.error)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { viewModel.fetchMissions() }) {
-                        Text("Retry")
-                    }
+                    Text(
+                        text = "DASHBOARD",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF1A1A1A),
+                        letterSpacing = 2.sp
+                    )
+                    Text(
+                        text = "Indian missions on Globe",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Medium
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp).width(120.dp),
+                        thickness = 3.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+            }
+
+            // 2. Stats Section (Per Sketch)
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    item {
-                        DashboardSummaryHeader(
-                            total = uiState.missions.size,
-                            filtered = uiState.filteredMissions.size
-                        )
-                    }
-                    
-                    items(uiState.filteredMissions) { mission ->
-                        MissionDetailFormCard(mission = mission)
-                    }
-                    
-                    item {
-                        Spacer(modifier = Modifier.height(40.dp))
+                    StatCard(
+                        title = "Total Missions",
+                        value = uiState.totalCount.toString(),
+                        modifier = Modifier.weight(1f),
+                        containerColor = Color(0xFF2C5590)
+                    )
+                    StatCard(
+                        title = "Resident Missions",
+                        value = uiState.residentCount.toString(),
+                        modifier = Modifier.weight(1f),
+                        containerColor = Color(0xFF4CAF50)
+                    )
+                }
+            }
+
+            // 3. Filter Section (Per Sketch)
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Country Selection
+                            SearchableSelector(
+                                label = "Country",
+                                selectedOption = uiState.selectedCountry,
+                                options = uiState.countries,
+                                onOptionSelected = { viewModel.onCountrySelected(it) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            
+                            // Mission (City) Selection
+                            SearchableSelector(
+                                label = "Mission",
+                                selectedOption = uiState.selectedMission,
+                                options = uiState.availableMissions,
+                                onOptionSelected = { viewModel.onMissionSelected(it) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(20.dp))
+                        
+                        // SEARCH BUTTON (Per Sketch)
+                        Button(
+                            onClick = { viewModel.onSearchClicked() },
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C5590))
+                        ) {
+                            Icon(Icons.Default.Search, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "SEARCH",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
                     }
                 }
             }
+
+            // 4. Results List
+            if (uiState.isLoading) {
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp)) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
+                }
+            } else if (uiState.filteredMissions.isEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(48.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Default.Info, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(48.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("No missions found for selection", color = Color.Gray)
+                    }
+                }
+            } else {
+                items(uiState.filteredMissions) { mission ->
+                    MissionDetailFormCard(mission = mission)
+                }
+            }
+            
+            item { Spacer(modifier = Modifier.height(32.dp)) }
         }
     }
 }
 
 @Composable
-fun DashboardSummaryHeader(total: Int, filtered: Int) {
+fun StatCard(title: String, value: String, modifier: Modifier = Modifier, containerColor: Color) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(Icons.Default.Public, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(
-                    text = "Global Diplomatic Network",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = if (total == filtered) "Total: $total Nodes" else "Showing $filtered of $total Nodes",
-                    style = MaterialTheme.typography.bodySmall
-                )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Black,
+                color = Color.White
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.8f),
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchableSelector(
+    label: String,
+    selectedOption: String,
+    options: List<String>,
+    onOptionSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier) {
+        Text(
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Black,
+            color = Color.Gray,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded }
+        ) {
+            OutlinedTextField(
+                value = selectedOption,
+                onValueChange = {},
+                readOnly = true,
+                modifier = Modifier.menuAnchor(),
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = Color.LightGray,
+                    focusedBorderColor = Color(0xFF2C5590)
+                ),
+                shape = RoundedCornerShape(8.dp),
+                textStyle = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option, style = MaterialTheme.typography.bodySmall) },
+                        onClick = {
+                            onOptionSelected(option)
+                            expanded = false
+                        }
+                    )
+                }
             }
         }
     }
@@ -178,11 +297,10 @@ fun MissionDetailFormCard(mission: Mission) {
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Header: Like the 'Client Information Form' header
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF2C5590)) // Custom blue from user screenshot
+                    .background(Color(0xFF2C5590))
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Row(
@@ -211,16 +329,15 @@ fun MissionDetailFormCard(mission: Mission) {
                 }
             }
 
-            // Form Body
             Column(modifier = Modifier.padding(16.dp)) {
                 FormField(label = "Mission City", value = mission.city, icon = Icons.Default.Place)
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.LightGray.copy(alpha = 0.5f))
                 
                 FormField(label = "Mission Type", value = mission.type, icon = Icons.Default.Info)
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.LightGray.copy(alpha = 0.5f))
                 
                 FormField(label = "Mission Name", value = mission.name)
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.LightGray.copy(alpha = 0.5f))
 
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1f)) {
@@ -242,7 +359,7 @@ fun MissionDetailFormCard(mission: Mission) {
                     ) {
                         Column {
                             Text(
-                                text = "NOTES",
+                                text = "REMARKS / NOTES",
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.Gray
@@ -301,7 +418,7 @@ fun ColiBadge(coli: String) {
 
     Column(horizontalAlignment = Alignment.End, modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "COST OF LIVING",
+            text = "COLI INDEX",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = Color.Gray
