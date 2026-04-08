@@ -64,6 +64,7 @@ android {
         val driveFolderId = project.findProperty("DRIVE_DOCUMENTS_FOLDER_ID") as? String ?: "13qNrVmJQeFgcC_Q90yyD3fhTZq8j0GXK"
         buildConfigField("String", "GOOGLE_DRIVE_API_KEY", "\"$driveApiKey\"")
         buildConfigField("String", "DRIVE_DOCUMENTS_FOLDER_ID", "\"$driveFolderId\"")
+        buildConfigField("String", "MISSIONS_BASE_URL", "\"https://nandija.vercel.app/\"")
     }
 
     compileOptions {

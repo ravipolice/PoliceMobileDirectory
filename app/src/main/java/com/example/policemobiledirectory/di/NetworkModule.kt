@@ -187,4 +187,28 @@ object NetworkModule {
     @Singleton
     fun provideUsefulLinksApiService(@Named("UsefulLinksRetrofit") retrofit: Retrofit): UsefulLinksApiService =
         retrofit.create(UsefulLinksApiService::class.java)
+
+    // --- Missions Dashboard ---
+
+    @Provides
+    @Singleton
+    @Named("MissionsRetrofit")
+    fun provideMissionsRetrofit(loggingInterceptor: HttpLoggingInterceptor): Retrofit {
+        val okHttpClient = OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+        
+        return Retrofit.Builder()
+            .baseUrl(BuildConfig.MISSIONS_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideMissionsApiService(@Named("MissionsRetrofit") retrofit: Retrofit): com.example.policemobiledirectory.api.MissionsApiService =
+        retrofit.create(com.example.policemobiledirectory.api.MissionsApiService::class.java)
 }

@@ -1,0 +1,78 @@
+﻿To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon JVM discovery is an incubating feature.
+Daemon will be stopped at the end of the build 
+Configuration on demand is an incubating feature.
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preUserDebugBuild UP-TO-DATE
+> Task :app:generateUserDebugBuildConfig UP-TO-DATE
+> Task :app:checkUserDebugAarMetadata UP-TO-DATE
+> Task :app:processUserDebugNavigationResources UP-TO-DATE
+> Task :app:compileUserDebugNavigationResources UP-TO-DATE
+> Task :app:generateUserDebugResValues UP-TO-DATE
+> Task :app:processUserDebugGoogleServices UP-TO-DATE
+> Task :app:mapUserDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateUserDebugResources UP-TO-DATE
+> Task :app:mergeUserDebugResources UP-TO-DATE
+> Task :app:packageUserDebugResources UP-TO-DATE
+> Task :app:parseUserDebugLocalResources UP-TO-DATE
+> Task :app:createUserDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksUserDebug UP-TO-DATE
+> Task :app:processUserDebugMainManifest UP-TO-DATE
+> Task :app:processUserDebugManifest UP-TO-DATE
+> Task :app:processUserDebugManifestForPackage UP-TO-DATE
+> Task :app:processUserDebugResources UP-TO-DATE
+
+> Task :app:kspUserDebugKotlin
+./gradlew : e: file:///C:/User
+s/ravip/AndroidStudioProjects/
+PoliceMobileDirectory/app/src/
+user/java/com/example/policemo
+biledirectory/ui/components/Co
+mmonEmployeeForm.kt:1842:2 
+Expecting '}'
+At line:1 char:1
++ ./gradlew 
+:app:compileUserDebugKotlin 
+--no-daemon > build_log.txt 
+2>& ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+    + CategoryInfo          : 
+    NotSpecified: (e: file:/  
+  //C:/U...2 Expecting '}':   
+ String) [], RemoteExcepti    
+on
+    + FullyQualifiedErrorId : 
+    NativeCommandError
+ 
+
+> Task :app:kspUserDebugKotlin FAILED
+
+FAILURE: Build failed with an 
+exception.
+
+* What went wrong:
+Execution failed for task 
+':app:kspUserDebugKotlin'.
+> A failure occurred while 
+executing org.jetbrains.kotlin
+.compilerRunner.GradleCompiler
+RunnerWithWorkers$GradleKotlin
+CompilerWorkAction
+   > Compilation error. See 
+log for more details
+
+* Try:
+> Run with --stacktrace 
+option to get the stack trace.
+> Run with --info or --debug 
+option to get more log output.
+> Run with --scan to get full 
+insights.
+> Get more help at 
+https://help.gradle.org.
+
+BUILD FAILED in 20s
+18 actionable tasks: 1 executed, 17 up-to-date
