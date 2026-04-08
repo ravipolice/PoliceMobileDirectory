@@ -73,14 +73,6 @@ fun MissionsDashboardScreen(
                 imageVector = Icons.Default.Language,
                 contentDescription = null,
                 modifier = Modifier.size(80.dp),
-                休憩 = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f) // Wait, wrong prop name
-            )
-            
-            // Corrected Icon call
-            Icon(
-                imageVector = Icons.Default.Language,
-                contentDescription = null,
-                modifier = Modifier.size(80.dp),
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
             )
 
