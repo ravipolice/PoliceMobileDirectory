@@ -91,6 +91,7 @@ fun CLLeaveScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Casual Leave", fontWeight = FontWeight.Bold) },
@@ -269,6 +270,7 @@ fun ELLeaveScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Earned Leave", fontWeight = FontWeight.Bold) },
@@ -419,6 +421,7 @@ fun HPLLeaveScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Half Pay Leave", fontWeight = FontWeight.Bold) },
@@ -518,6 +521,7 @@ fun WeeklyOffScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Weekly Off", fontWeight = FontWeight.Bold) },
@@ -618,6 +622,7 @@ fun MCLLeaveScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Menstrual CL", fontWeight = FontWeight.Bold) },
@@ -731,6 +736,7 @@ fun CCLLeaveScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Child Care Leave", fontWeight = FontWeight.Bold) },
@@ -829,6 +835,7 @@ fun OtherLeaveScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Other Leaves", fontWeight = FontWeight.Bold) },

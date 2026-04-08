@@ -6,11 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.model.LeaveBalance
 import com.example.policemobiledirectory.model.LeaveEntry
+import com.example.policemobiledirectory.model.LeaveCreditLog
+import com.example.policemobiledirectory.model.LeaveStatistics
 import com.example.policemobiledirectory.repository.LeaveRepository
 import com.example.policemobiledirectory.utils.LeaveBalanceCalculator
 import com.example.policemobiledirectory.utils.LeaveCreditScheduler
 import com.example.policemobiledirectory.utils.LeaveValidationEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,8 +39,8 @@ class LeaveViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<LeaveUiState>(LeaveUiState.Idle)
     val uiState: StateFlow<LeaveUiState> = _uiState.asStateFlow()
 
-    private val _statistics = MutableStateFlow<com.example.policemobiledirectory.model.LeaveStatistics?>(null)
-    val statistics: StateFlow<com.example.policemobiledirectory.model.LeaveStatistics?> = _statistics.asStateFlow()
+    private val _statistics = MutableStateFlow<LeaveStatistics?>(null)
+    val statistics: StateFlow<LeaveStatistics?> = _statistics.asStateFlow()
 
     // Per-type entry flows
     private val _clEntries = MutableStateFlow<List<LeaveEntry>>(emptyList())
@@ -61,8 +64,23 @@ class LeaveViewModel @Inject constructor(
     private val _otherEntries = MutableStateFlow<List<LeaveEntry>>(emptyList())
     val otherEntries: StateFlow<List<LeaveEntry>> = _otherEntries.asStateFlow()
 
+    private val _creditLogs = MutableStateFlow<List<LeaveCreditLog>>(emptyList())
+    val creditLogs: StateFlow<List<LeaveCreditLog>> = _creditLogs.asStateFlow()
+
+    private val _isDrivePermissionGranted = MutableStateFlow(false)
+    val isDrivePermissionGranted: StateFlow<Boolean> = _isDrivePermissionGranted.asStateFlow()
+
+    private var refreshJob: Job? = null
+
     fun refreshData(employee: Employee) {
-        viewModelScope.launch {
+        if (employee.kgid.isBlank()) {
+            Log.e(TAG, "refreshData: Profile for ${employee.name} is incomplete (Missing KGID)")
+            _uiState.value = LeaveUiState.Error("Profile incomplete: Please update your KGID in My Profile")
+            return
+        }
+        
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             _uiState.value = LeaveUiState.Loading
             try {
                 val currentBalance = leaveRepository.getLeaveBalance(employee.kgid)
@@ -80,16 +98,24 @@ class LeaveViewModel @Inject constructor(
                     val stats = leaveRepository.getLeaveStatistics(employee.kgid, currentYear)
                     _statistics.value = stats
 
-                    leaveRepository.getLeaveEntries(employee.kgid).collect { all ->
-                        _entries.value = all
-                        _clEntries.value = all.filter { it.leaveType == "CL" && !it.isMcl }
-                        _elEntries.value = all.filter { it.leaveType == "EL" }
-                        _hplEntries.value = all.filter { it.leaveType == "HPL" }
-                        _woEntries.value = all.filter { it.leaveType == "WO" }
-                        _cclEntries.value = all.filter { it.leaveType == "CCL" }
-                        _mclEntries.value = all.filter { it.isMcl || it.leaveType == "MCL" }
-                        _otherEntries.value = all.filter { it.leaveType in listOf("ML", "PL", "LWA") }
-                        _uiState.value = LeaveUiState.Success
+                    launch {
+                        leaveRepository.getLeaveEntries(employee.kgid).collect { all ->
+                            _entries.value = all
+                            _clEntries.value = all.filter { it.leaveType == "CL" && !it.isMcl }
+                            _elEntries.value = all.filter { it.leaveType == "EL" }
+                            _hplEntries.value = all.filter { it.leaveType == "HPL" }
+                            _woEntries.value = all.filter { it.leaveType == "WO" }
+                            _cclEntries.value = all.filter { it.leaveType == "CCL" }
+                            _mclEntries.value = all.filter { it.isMcl || it.leaveType == "MCL" }
+                            _otherEntries.value = all.filter { it.leaveType in listOf("ML", "PL", "LWA") }
+                            _uiState.value = LeaveUiState.Success
+                        }
+                    }
+
+                    launch {
+                        leaveRepository.getCreditLogs(employee.kgid).collect { logs ->
+                            _creditLogs.value = logs
+                        }
                     }
                 } else {
                     _uiState.value = LeaveUiState.Error("Failed to fetch leave balance")
@@ -215,6 +241,26 @@ class LeaveViewModel @Inject constructor(
     }
 
     /**
+     * Update HPL manual balance (starting balance). Recalculates current HPL balance.
+     */
+    fun updateHplManualBalance(employee: Employee, newManualBalance: Double) {
+        viewModelScope.launch {
+            try {
+                val currentBalance = _balance.value ?: return@launch
+                val totalHplTaken = _hplEntries.value.sumOf { it.totalDays }
+                val updatedBalance = LeaveBalanceCalculator.updateHplManualBalance(
+                    currentBalance, newManualBalance, totalHplTaken
+                )
+                leaveRepository.updateHplManualBalance(updatedBalance)
+                _balance.value = updatedBalance
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating HPL manual balance", e)
+                _uiState.value = LeaveUiState.Error("Failed to update HPL balance: ${e.message}")
+            }
+        }
+    }
+
+    /**
      * Update CL annual limit (10 or 15 days).
      */
     fun updateClLimit(employee: Employee, newLimit: Int) {
@@ -232,6 +278,59 @@ class LeaveViewModel @Inject constructor(
         }
     }
 
+    fun checkDrivePermission() {
+        _isDrivePermissionGranted.value = leaveRepository.hasDrivePermission()
+    }
+
+    fun backupData(employee: Employee) {
+        viewModelScope.launch {
+            _uiState.value = LeaveUiState.Loading
+            val result = leaveRepository.manualBackup(employee.kgid)
+            handleSyncResult(result, isBackup = true)
+        }
+    }
+
+    fun restoreData(employee: Employee) {
+        viewModelScope.launch {
+            _uiState.value = LeaveUiState.Loading
+            val result = leaveRepository.manualRestore(employee.kgid)
+            if (result is com.example.policemobiledirectory.utils.GoogleDriveSyncManager.SyncResult.Success) {
+                refreshData(employee)
+            }
+            handleSyncResult(result, isBackup = false)
+        }
+    }
+
+    private fun handleSyncResult(result: com.example.policemobiledirectory.utils.GoogleDriveSyncManager.SyncResult, isBackup: Boolean) {
+        val op = if (isBackup) "Backup" else "Restore"
+        when (result) {
+            is com.example.policemobiledirectory.utils.GoogleDriveSyncManager.SyncResult.Success -> {
+                _uiState.value = if (isBackup) LeaveUiState.BackupSuccess else LeaveUiState.RestoreSuccess
+                checkDrivePermission()
+            }
+            is com.example.policemobiledirectory.utils.GoogleDriveSyncManager.SyncResult.AccountMismatch -> {
+                _uiState.value = LeaveUiState.Error("Account mismatch: Sync account set to ${result.expected}, but you are signed into ${result.actual}. Please switch Google accounts.")
+            }
+            is com.example.policemobiledirectory.utils.GoogleDriveSyncManager.SyncResult.NotGmail -> {
+                _uiState.value = LeaveUiState.Error("Drive backup requires a @gmail.com address in your profile.")
+            }
+            is com.example.policemobiledirectory.utils.GoogleDriveSyncManager.SyncResult.PermissionDenied -> {
+                _uiState.value = LeaveUiState.Error("Drive permission required. Please grant permission in the menu.")
+                _isDrivePermissionGranted.value = false
+            }
+            is com.example.policemobiledirectory.utils.GoogleDriveSyncManager.SyncResult.NoGoogleAccount -> {
+                _uiState.value = LeaveUiState.Error("No Google account found. Please sign in to use $op.")
+            }
+            is com.example.policemobiledirectory.utils.GoogleDriveSyncManager.SyncResult.NoBackupFound -> {
+                _uiState.value = LeaveUiState.Error("No backup found on Drive for this KGID.")
+            }
+            is com.example.policemobiledirectory.utils.GoogleDriveSyncManager.SyncResult.Error -> {
+                _uiState.value = LeaveUiState.Error("$op failed: Check your internet connection or Drive quota.")
+                Log.e(TAG, "$op exception", result.exception)
+            }
+        }
+    }
+
     fun resetUiState() {
         _uiState.value = LeaveUiState.Idle
     }
@@ -241,5 +340,7 @@ sealed class LeaveUiState {
     object Idle : LeaveUiState()
     object Loading : LeaveUiState()
     object Success : LeaveUiState()
+    object BackupSuccess : LeaveUiState()
+    object RestoreSuccess : LeaveUiState()
     data class Error(val message: String) : LeaveUiState()
 }

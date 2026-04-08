@@ -1,17 +1,23 @@
 package com.example.policemobiledirectory.viewmodel
 
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.policemobiledirectory.data.local.PendingRegistrationEntity
 import com.example.policemobiledirectory.data.local.SessionManager
 import com.example.policemobiledirectory.data.mapper.toEmployee
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.repository.EmployeeRepository
+import com.example.policemobiledirectory.repository.ImageRepository
+import com.example.policemobiledirectory.repository.PendingRegistrationRepository
 import com.example.policemobiledirectory.repository.RepoResult
 import com.example.policemobiledirectory.ui.screens.GoogleSignInUiEvent
 import com.example.policemobiledirectory.utils.OperationStatus
+import com.example.policemobiledirectory.utils.PinHasher
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -31,9 +37,13 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val employeeRepo: EmployeeRepository,
-    private val sessionManager: SessionManager,
+    private val pendingRepo: PendingRegistrationRepository,
+    private val imageRepo: ImageRepository,
+    val sessionManager: SessionManager,
     private val auth: FirebaseAuth
 ) : ViewModel() {
+
+    private val firestore = FirebaseFirestore.getInstance()
 
     // Authentication State
     private val _currentUser = MutableStateFlow<Employee?>(null)
@@ -50,6 +60,59 @@ class AuthViewModel @Inject constructor(
 
     private val _googleSignInUiEvent = MutableStateFlow<GoogleSignInUiEvent>(GoogleSignInUiEvent.Idle)
     val googleSignInUiEvent: StateFlow<GoogleSignInUiEvent> = _googleSignInUiEvent.asStateFlow()
+
+    private val _isGoogleAccountPickerLoading = MutableStateFlow(false)
+    val isGoogleAccountPickerLoading: StateFlow<Boolean> = _isGoogleAccountPickerLoading.asStateFlow()
+
+    fun setGoogleAccountPickerLoading(loading: Boolean) {
+        _isGoogleAccountPickerLoading.value = loading
+    }
+
+    // Google Drive Permission State
+    private val _hasAppDataAccess = MutableStateFlow(false)
+    val hasAppDataAccess: StateFlow<Boolean> = _hasAppDataAccess.asStateFlow()
+
+    private val _hasDriveFileAccess = MutableStateFlow(false)
+    val hasDriveFileAccess: StateFlow<Boolean> = _hasDriveFileAccess.asStateFlow()
+
+    private val _hasSpreadsheetsAccess = MutableStateFlow(false)
+    val hasSpreadsheetsAccess: StateFlow<Boolean> = _hasSpreadsheetsAccess.asStateFlow()
+
+    val driveAccountEmail: StateFlow<String?> = sessionManager.driveAccountEmail
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    // Combined status for Navigation Drawer display
+    val hasFullDriveAccess = combine(
+        _hasAppDataAccess, _hasDriveFileAccess, _hasSpreadsheetsAccess
+    ) { appData, driveFile, sheets -> appData && driveFile && sheets }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun checkGoogleDriveAccess(context: android.content.Context) {
+        val account = com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(context)
+        if (account == null) {
+            _hasAppDataAccess.value = false
+            _hasDriveFileAccess.value = false
+            _hasSpreadsheetsAccess.value = false
+            return
+        }
+        
+        _hasAppDataAccess.value = com.google.android.gms.auth.api.signin.GoogleSignIn.hasPermissions(
+            account, com.google.android.gms.common.api.Scope("https://www.googleapis.com/auth/drive.appdata")
+        )
+        _hasDriveFileAccess.value = com.google.android.gms.auth.api.signin.GoogleSignIn.hasPermissions(
+            account, com.google.android.gms.common.api.Scope("https://www.googleapis.com/auth/drive.file")
+        )
+        _hasSpreadsheetsAccess.value = com.google.android.gms.auth.api.signin.GoogleSignIn.hasPermissions(
+            account, com.google.android.gms.common.api.Scope("https://www.googleapis.com/auth/spreadsheets")
+        )
+        
+        Log.d("Auth", "Drive Permissions: AppData=${_hasAppDataAccess.value}, File=${_hasDriveFileAccess.value}, Sheets=${_hasSpreadsheetsAccess.value}")
+    }
+
+    fun saveDriveAccountEmail(email: String) {
+        viewModelScope.launch {
+            sessionManager.saveDriveAccountEmail(email)
+        }
+    }
 
     // OTP/PIN State
     private val _otpUiState = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
@@ -68,6 +131,10 @@ class AuthViewModel @Inject constructor(
     private val otpValidityDuration = 5 * 60 * 1000L
     private val _remainingTime = MutableStateFlow(0L)
     val remainingTime: StateFlow<Long> = _remainingTime
+
+    // Registration State
+    private val _pendingStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
+    val pendingStatus: StateFlow<OperationStatus<String>> = _pendingStatus.asStateFlow()
 
     init {
         Log.d("AuthViewModel", "🟢 AuthViewModel initialized")
@@ -89,77 +156,52 @@ class AuthViewModel @Inject constructor(
             }
         }
 
-        // Restore current user session from Room or Firestore
+        // Restore current user session from Room or Firestore (Robust Combine Flow)
         viewModelScope.launch {
-            sessionManager.userEmail.collect { email ->
-                if (_isLoggedIn.value == false && email.isBlank()) {
-                    Log.d("Session", "🔒 Logout in progress, skipping session restore")
+            combine(
+                sessionManager.isLoggedIn,
+                sessionManager.isAdmin,
+                sessionManager.userEmail
+            ) { loggedIn, admin, email ->
+                Triple(loggedIn, admin, email)
+            }.collect { (loggedIn, admin, email) ->
+                Log.d("Session", "🔄 Auth Session Sync: isLoggedIn=$loggedIn, isAdmin=$admin, email=$email")
+
+                if (!loggedIn || email.isBlank()) {
+                    if (_isLoggedIn.value) {
+                        Log.d("Session", "🔒 Clearing session in memory")
+                        _isLoggedIn.value = false
+                        _isAdmin.value = false
+                        _currentUser.value = null
+                    }
                     return@collect
                 }
 
-                if (email.isNotBlank()) {
-                    Log.d("Session", "🔁 Restoring session for $email")
-
-                    // Try Room first
+                // Restore profile if needed
+                if (_currentUser.value?.email != email) {
+                    Log.d("Session", "🔁 Restoring profile for $email")
                     val localUser = employeeRepo.getEmployeeByEmail(email)
                     if (localUser != null) {
-                        if (!localUser.isApproved) {
-                            Log.w("Session", "⚠️ User access disabled. Forcing logout.")
-                            sessionManager.clearSession()
-                            _isLoggedIn.value = false
-                            return@collect
-                        }
-                        // 🔴 Live check before confirming login to prevent "landing"
-                        val liveApproved = employeeRepo.checkIsApprovedFromFirestore(email)
-                        if (liveApproved == false) {
-                            Log.w("Session", "🔴 Firestore says user is DISABLED. Forcing logout.")
-                            sessionManager.clearSession()
-                            _isLoggedIn.value = false
-                            _currentUser.value = null
-                            _isAdmin.value = false
-                            return@collect
-                        }
-
                         _currentUser.value = localUser.toEmployee()
                         _isAdmin.value = localUser.isAdmin
                         _isLoggedIn.value = true
-                        Log.d("Session", "✅ Loaded user ${localUser.name} (Admin=${localUser.isAdmin})")
                     } else {
-                        // Fallback to Firestore if Room is empty
+                        // Fallback to Firestore lookup
                         when (val remoteResult = employeeRepo.getUserByEmail(email)) {
                             is RepoResult.Success -> {
                                 remoteResult.data?.let { user ->
-                                    if (!user.isApproved) {
-                                        Log.w("Session", "⚠️ Remote user access disabled. Forcing logout.")
-                                        sessionManager.clearSession()
-                                        _isLoggedIn.value = false
-                                        return@let
-                                    }
                                     _currentUser.value = user
                                     _isAdmin.value = user.isAdmin
                                     _isLoggedIn.value = true
-                                    Log.d("Session", "✅ Loaded remote user ${user.name}")
-                                } ?: run {
-                                    Log.w("Session", "⚠️ No matching user found for $email — resetting session")
-                                    sessionManager.clearSession()
-                                    _isLoggedIn.value = false
                                 }
-                            }
-                            is RepoResult.Error -> {
-                                Log.e("Session", "❌ Error loading user: ${remoteResult.message}")
-                                sessionManager.clearSession()
-                                _isLoggedIn.value = false
                             }
                             else -> Unit
                         }
                     }
                 } else {
-                    Log.d("Session", "🔒 No stored email — user not logged in")
-                    if (_currentUser.value != null || _isLoggedIn.value == true) {
-                        _currentUser.value = null
-                        _isAdmin.value = false
-                        _isLoggedIn.value = false
-                    }
+                    // Just sync flags if email already matches
+                    _isAdmin.value = admin
+                    _isLoggedIn.value = true
                 }
             }
         }
@@ -220,54 +262,82 @@ class AuthViewModel @Inject constructor(
     fun handleGoogleSignIn(email: String, googleIdToken: String) {
         viewModelScope.launch {
             _googleSignInUiEvent.value = GoogleSignInUiEvent.Loading
+            Log.d("LoginFlow", "🚀 STARTING Google Sign-In for: '$email'")
             try {
                 val credential = GoogleAuthProvider.getCredential(googleIdToken, null)
                 val authResult = auth.signInWithCredential(credential).await()
                 
-                if (authResult.user != null) {
+                val firebaseUser = authResult.user
+                if (firebaseUser != null) {
+                    Log.d("LoginFlow", "✅ Firebase Auth Success: UID=${firebaseUser.uid}, Email=${firebaseUser.email}")
+                    
                     // Check if user exists in our database
+                    Log.d("LoginFlow", "📡 Querying database for: '$email'...")
                     when (val result = employeeRepo.getUserByEmail(email)) {
                         is RepoResult.Success -> {
                             val user = result.data
                             if (user != null) {
+                                Log.d("LoginFlow", "✅ User found in database: ${user.kgid}, Approved=${user.isApproved}, Admin=${user.isAdmin}")
                                 // User exists -> Login
                                 if (!user.isApproved) {
+                                    Log.w("LoginFlow", "❌ User access is DISABLED")
                                     _googleSignInUiEvent.value = GoogleSignInUiEvent.Error("Your app access has been disabled. Please contact an admin.")
                                     auth.signOut()
                                     return@launch
                                 }
+                                Log.d("LoginFlow", "🎯 Login Successful!")
                                 sessionManager.saveLogin(user.email, user.isAdmin)
                                 _currentUser.value = user
                                 _isLoggedIn.value = true
                                 _googleSignInUiEvent.value = GoogleSignInUiEvent.SignInSuccess(user)
                             } else {
-                                // User fetch success but null -> Registration Required
-                                val name = authResult.user?.displayName
-                                _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email, name)
+                                Log.w("LoginFlow", "❓ User NOT found in database. Checking pending...")
+                                // User fetch success but null -> Check Pending/Rejected
+                                checkPendingRegistration(email, firebaseUser.displayName)
                             }
                         }
                         is RepoResult.Error -> {
-                            // If error is "User not found" or similar, go to registration
-                            // Otherwise, might be network error. 
-                            // For user experience, if we can't find them, we usually prompt reg 
-                            // OR show check connection. 
-                            // Let's assume registration required if not found, but log error.
-                            Log.w("GoogleSignIn", "User lookup failed or not found: ${result.message}")
-                            val name = authResult.user?.displayName
-                            _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email, name)
+                            Log.e("LoginFlow", "❌ User lookup FAILED: ${result.message}")
+                            checkPendingRegistration(email, firebaseUser.displayName)
                         }
                         else -> {
+                            Log.e("LoginFlow", "❌ Unknown repository state")
                             _googleSignInUiEvent.value = GoogleSignInUiEvent.Error("Unknown state during user lookup")
                         }
                     }
                 } else {
+                    Log.e("LoginFlow", "❌ Firebase user is NULL after success")
                     _googleSignInUiEvent.value = GoogleSignInUiEvent.Error("Sign-in failed: Firebase user is null.")
                 }
             } catch (e: Exception) {
-                Log.e("GoogleSignIn", "❌ Failed", e)
+                Log.e("LoginFlow", "❌ Exception during Google Sign-In", e)
                 _googleSignInUiEvent.value = GoogleSignInUiEvent.Error(e.localizedMessage ?: "Unknown error")
                 logout()
             }
+        }
+    }
+
+    private suspend fun checkPendingRegistration(email: String, name: String?) {
+        try {
+            val pending = pendingRepo.getPendingByEmail(email)
+            if (pending != null) {
+                when (pending.status.lowercase()) {
+                    "rejected" -> {
+                        _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRejected(
+                            email,
+                            pending.rejectionReason ?: "No reason provided"
+                        )
+                    }
+                    else -> {
+                        _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationPending(email)
+                    }
+                }
+            } else {
+                _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email, name)
+            }
+        } catch (e: Exception) {
+            Log.e("GoogleSignIn", "❌ Pending check failed", e)
+            _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email, name)
         }
     }
 
@@ -411,6 +481,114 @@ class AuthViewModel @Inject constructor(
     }
 
     // =========================================================
+    // REGISTRATION METHODS
+    // =========================================================
+
+    fun registerNewUser(entity: PendingRegistrationEntity) {
+        // Prevent duplicate submissions
+        if (_pendingStatus.value is OperationStatus.Loading) return
+        _pendingStatus.value = OperationStatus.Loading
+
+        viewModelScope.launch {
+            try {
+                // 1️⃣ Check active employees first (User has read access!)
+                val activeDuplicateReason = try {
+                    val activeKgidCount = firestore.collection("employees")
+                        .whereEqualTo("kgid", entity.kgid)
+                        .limit(1)
+                        .get()
+                        .await()
+                        .size()
+                    if (activeKgidCount > 0) "User with this KGID is already registered and active. Please login."
+                    else {
+                        val activeEmailCount = firestore.collection("employees")
+                            .whereEqualTo("email", entity.email)
+                            .limit(1)
+                            .get()
+                            .await()
+                            .size()
+                        if (activeEmailCount > 0) "User with this Email is already registered and active. Please login." else null
+                    }
+                } catch (e: Exception) {
+                    Log.w("RegisterUser", "Active employee check failed: ${e.message}")
+                    null
+                }
+
+                if (activeDuplicateReason != null) {
+                    _pendingStatus.value = OperationStatus.Error(activeDuplicateReason)
+                    return@launch
+                }
+
+                // 2️⃣ Prepare safe PendingRegistration object
+                var finalPin = entity.pin
+                if (finalPin.length == 6 && !finalPin.contains(":")) {
+                    finalPin = PinHasher.hashPassword(finalPin)
+                }
+
+                val pending = entity.copy(
+                    pin = finalPin,
+                    isApproved = false,
+                    firebaseUid = entity.firebaseUid.takeIf { it.isNotBlank() } ?: "",
+                    status = "pending",
+                    rejectionReason = null,
+                    photoUrlFromGoogle = null
+                )
+
+                // 3️⃣ Submit to Firestore + Room
+                pendingRepo.addPendingRegistration(pending).collect { result ->
+                    when (result) {
+                        is RepoResult.Loading ->
+                            _pendingStatus.value = OperationStatus.Loading
+
+                        is RepoResult.Success -> {
+                            _pendingStatus.value =
+                                OperationStatus.Success("Registration submitted for admin approval.")
+                        }
+
+                        is RepoResult.Error -> {
+                            val msg = result.message ?: "Registration failed."
+                            val finalMsg = if (msg.contains("PERMISSION_DENIED", ignoreCase = true) || msg.contains("permission", ignoreCase = true)) {
+                                "Registration failed: This KGID/Email is already pending approval."
+                            } else msg
+                            
+                            _pendingStatus.value =
+                                OperationStatus.Error(finalMsg)
+                        }
+                    }
+                }
+
+            } catch (e: Exception) {
+                Log.e("RegisterUser", "❌ Registration failed", e)
+                _pendingStatus.value =
+                    OperationStatus.Error(e.localizedMessage ?: "Unexpected error")
+            }
+        }
+    }
+
+    fun resetPendingStatus() {
+        _pendingStatus.value = OperationStatus.Idle
+    }
+
+    /**
+     * Upload photo for registration
+     */
+    suspend fun uploadOfficerImageSuspend(uri: Uri, kgid: String): RepoResult<String> {
+        return try {
+            val result = imageRepo.uploadOfficerImage(uri, kgid)
+                .filter { it is OperationStatus.Success || it is OperationStatus.Error }
+                .first()
+                
+            when (result) {
+                is OperationStatus.Success -> RepoResult.Success(result.data)
+                is OperationStatus.Error -> RepoResult.Error(null, result.message)
+                else -> RepoResult.Error(null, "Upload failed")
+            }
+        } catch (e: Exception) {
+            RepoResult.Error(e)
+        }
+    }
+
+    // =========================================================
     // SESSION MANAGEMENT
     // =========================================================
 
@@ -491,14 +669,10 @@ class AuthViewModel @Inject constructor(
             return
         }
 
-        if (user.isAnonymous || user.email.isNullOrBlank()) {
-            Log.w("AuthCheck", "⚠️ Anonymous Firebase session detected — signing out.")
-            try {
-                auth.signOut()
-                FirebaseAuth.getInstance().signOut()
-            } catch (e: Exception) {
-                Log.e("AuthCheck", "❌ Failed to sign out anonymous user: ${e.message}")
-            }
+        if (user.isAnonymous) {
+            Log.d("AuthCheck", "✅ Valid Anonymous Firebase session (PIN Login)")
+        } else if (user.email.isNullOrBlank()) {
+            Log.w("AuthCheck", "⚠️ Firebase user has no email — checking session consistency.")
         } else {
             Log.d("AuthCheck", "✅ Valid Firebase user: ${user.email}")
         }
@@ -531,6 +705,80 @@ class AuthViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.e("AdminCheck", "❌ Error checking admin status: ${e.message}")
+            }
+        }
+    }
+
+    fun checkUserRegistrationDiagnostics(email: String) {
+        viewModelScope.launch {
+            val normalizedEmail = email.trim().lowercase()
+            Log.d("DIAGNOSTIC", "════════════════════════════════════════════════")
+            Log.d("DIAGNOSTIC", "🔍 STARTING REGISTRATION DIAGNOSTICS FOR: $normalizedEmail")
+            Log.d("DIAGNOSTIC", "════════════════════════════════════════════════")
+
+            try {
+                // 1. Check Auth State
+                val currentUser = auth.currentUser
+                Log.d("DIAGNOSTIC", "👤 Current Auth UID: ${currentUser?.uid}")
+                Log.d("DIAGNOSTIC", "👤 Current Auth Email: ${currentUser?.email}")
+                Log.d("DIAGNOSTIC", "👤 Is Anonymous: ${currentUser?.isAnonymous}")
+
+                // 2. Check Employees Collection
+                Log.d("DIAGNOSTIC", "📡 Checking 'employees' collection...")
+                val empQuery = firestore.collection("employees").whereEqualTo("email", normalizedEmail).get().await()
+                if (!empQuery.isEmpty) {
+                    val doc = empQuery.documents.first()
+                    Log.d("DIAGNOSTIC", "✅ FOUND in 'employees' (Field Search)")
+                    Log.d("DIAGNOSTIC", "   Doc ID: ${doc.id}")
+                    Log.d("DIAGNOSTIC", "   isApproved: ${doc.getBoolean("isApproved")}")
+                    Log.d("DIAGNOSTIC", "   firebaseUid: ${doc.getString("firebaseUid")}")
+                } else {
+                    Log.d("DIAGNOSTIC", "❌ NOT FOUND in 'employees' by field 'email'")
+                }
+
+                // 3. Check Pending Registrations
+                Log.d("DIAGNOSTIC", "📡 Checking 'pending_registrations' collection...")
+                val pendingQuery = firestore.collection("pending_registrations").whereEqualTo("email", normalizedEmail).get().await()
+                if (!pendingQuery.isEmpty) {
+                    val doc = pendingQuery.documents.first()
+                    Log.d("DIAGNOSTIC", "✅ FOUND in 'pending_registrations'")
+                    Log.d("DIAGNOSTIC", "   Status: ${doc.getString("status")}")
+                    Log.d("DIAGNOSTIC", "   isApproved: ${doc.getBoolean("isApproved")}")
+                } else {
+                    Log.d("DIAGNOSTIC", "❌ NOT FOUND in 'pending_registrations'")
+                }
+
+                // 4. Check Admins Collection
+                Log.d("DIAGNOSTIC", "📡 Checking 'admins' collection...")
+                // Path A: Email Field
+                val adminEmailField = firestore.collection("admins").whereEqualTo("email", normalizedEmail).get().await()
+                if (!adminEmailField.isEmpty) {
+                    Log.d("DIAGNOSTIC", "✅ FOUND in 'admins' by email field")
+                }
+
+                // Path B: Email as ID
+                val adminEmailId = firestore.collection("admins").document(normalizedEmail).get().await()
+                if (adminEmailId.exists()) {
+                    Log.d("DIAGNOSTIC", "✅ FOUND in 'admins' by Document ID (Email)")
+                }
+
+                // Path C: UID as ID
+                if (currentUser != null) {
+                    val adminUidId = firestore.collection("admins").document(currentUser.uid).get().await()
+                    if (adminUidId.exists()) {
+                        Log.d("DIAGNOSTIC", "✅ FOUND in 'admins' by Document ID (UID: ${currentUser.uid})")
+                    }
+                }
+
+                Log.d("DIAGNOSTIC", "════════════════════════════════════════════════")
+                Log.d("DIAGNOSTIC", "🏁 DIAGNOSTICS COMPLETE")
+                Log.d("DIAGNOSTIC", "════════════════════════════════════════════════")
+
+            } catch (e: Exception) {
+                Log.e("DIAGNOSTIC", "❌ DIAGNOSTIC FAILED: ${e.message}", e)
+                if (e.message?.contains("PERMISSION_DENIED") == true) {
+                    Log.e("DIAGNOSTIC", "🚨 CRITICAL: Firestore Rules are BLOCKING the diagnostic read!")
+                }
             }
         }
     }

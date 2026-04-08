@@ -62,7 +62,12 @@ abstract class BaseConstantsViewModel(
     val syncError: StateFlow<String?> = _syncError.asStateFlow()
 
     init {
-        // Refresh constants if needed on init
+        // Always refresh units on init so admin rank/scope changes are immediate
+        viewModelScope.launch {
+            repository.refreshUnitsOnly()
+            updateLocalState()
+        }
+        // Full refresh only if cache is stale (>1hr)
         if (repository.shouldRefreshCache()) {
             refreshConstants()
         }

@@ -53,7 +53,7 @@ import com.example.policemobiledirectory.utils.SearchEngine
 open class EmployeeViewModel @Inject constructor(
     private val employeeRepo: EmployeeRepository,
     private val pendingRepo: PendingRegistrationRepository,
-    private val sessionManager: SessionManager,
+    val sessionManager: SessionManager,
     private val constantsRepository: ConstantsRepository,
     private val imageRepo: ImageRepository,
     private val syncRepository: SyncRepository,
@@ -154,9 +154,9 @@ open class EmployeeViewModel @Inject constructor(
 
 
     private val searchFiltersFlow = combine(
-        _debouncedSearchQuery, // Use debounced query
+        _searchQuery, // Use immediate query
         _searchFilter,
-        _selectedUnit, // Added Unit
+        _selectedUnit,
         _selectedDistrict,
         _selectedStation,
         _selectedRank
@@ -502,9 +502,6 @@ open class EmployeeViewModel @Inject constructor(
                                 _isAdmin.value = refreshed.isAdmin
                             }
 
-                            // ✅ Refresh admin status to ensure it's up to date
-                            checkIfAdmin()
-
                             _authStatus.value = OperationStatus.Success(user)
                             Log.d("Login", "✅ Logged in as ${user.name}, Admin=${user.isAdmin}")
                         } else {
@@ -556,11 +553,17 @@ open class EmployeeViewModel @Inject constructor(
                     } else {
                         Log.w("GoogleSignIn", "🆕 User NOT found in database. Checking for pending registration...")
                         
-                        // Check if there's a pending registration for this email
                         val pending = pendingRepo.getPendingByEmail(email)
                         if (pending != null) {
-                            Log.d("GoogleSignIn", "⏳ Registration found but status is ${pending.status}. Informing user.")
-                            _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationPending(email)
+                            Log.d("GoogleSignIn", "⏳ Registration found with status: ${pending.status}")
+                            if (pending.status.lowercase() == "rejected") {
+                                _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRejected(
+                                    email, 
+                                    pending.rejectionReason ?: "No reason provided"
+                                )
+                            } else {
+                                _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationPending(email)
+                            }
                         } else {
                             Log.w("GoogleSignIn", "🆕 No record found. Redirecting to Registration.")
                             _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email, authResult.user?.displayName)
@@ -905,6 +908,10 @@ open class EmployeeViewModel @Inject constructor(
                     val list = result.data ?: emptyList()
                     _employees.value = list
                     _employeeStatus.value = OperationStatus.Success(list)
+                    // ✅ Intelligent Rating: Increment event count on successful data load
+                    if (list.isNotEmpty()) {
+                        sessionManager.incrementSuccessfulEventsCount()
+                    }
                 }
                 is RepoResult.Error -> _employeeStatus.value = OperationStatus.Error(result.message ?: "Failed to load employees")
                 else -> _employeeStatus.value = OperationStatus.Error("Failed to load employees")
@@ -928,15 +935,27 @@ open class EmployeeViewModel @Inject constructor(
         if (currentKgid != null) {
             try {
                 // First try local DB (faster)
-                val localEntity = employeeRepo.getLocalEmployeeByKgid(currentKgid)
+                val localEntity = try {
+                    employeeRepo.getLocalEmployeeByKgid(currentKgid)
+                } catch (e: Exception) {
+                    Log.e("EmployeeViewModel", "❌ DB Error local check: ${e.message}")
+                    null
+                }
+                
                 if (localEntity != null) {
                     _currentUser.value = localEntity.toEmployee()
-                    Log.d("EmployeeViewModel", "✅ Refreshed current user from local: ${localEntity.name}, metalNumber=${localEntity.metalNumber}")
+                    Log.d("EmployeeViewModel", "✅ Refreshed current user from local: ${localEntity.name}")
                 }
                 
                 // Then refresh from Firestore to get latest data
-                val firestoreDoc = firestore.collection("employees").document(currentKgid).get().await()
-                val firestoreEmp = firestoreDoc.toObject(Employee::class.java)
+                val firestoreDoc = try {
+                    firestore.collection("employees").document(currentKgid).get().await()
+                } catch (e: Exception) {
+                    Log.e("EmployeeViewModel", "❌ Firestore Permission Denied or Network error: ${e.message}")
+                    null // Prevent crash if permission denied
+                }
+                
+                val firestoreEmp = firestoreDoc?.toObject(Employee::class.java)
                 if (firestoreEmp != null) {
                     val finalEmp = firestoreEmp.copy(kgid = currentKgid)
                     _currentUser.value = finalEmp
@@ -1005,8 +1024,13 @@ open class EmployeeViewModel @Inject constructor(
 
         try {
             // First sync from Firebase to Room
-            officerRepo.syncAllOfficers()
+            val syncResult = officerRepo.syncAllOfficers()
             lastOfficerSyncTime = currentTime
+            
+            if (syncResult is RepoResult.Error) {
+                 _officerStatus.value = OperationStatus.Error(syncResult.message ?: "Failed to sync officers")
+                 // Continue to collect from Room even if sync failed (offline support)
+            }
             
             // Then observe Room via Repo
             officerRepo.getOfficers().collect { result ->
@@ -1202,64 +1226,31 @@ open class EmployeeViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
-                // 1️⃣ Check for duplicate registration directly in Firestore
-                val duplicateReason = try {
-                    // A. Check pending_registrations by KGID
-                    val pendingKgidCount = firestore.collection("pending_registrations")
-                        .whereEqualTo("status", "pending")
-                        .whereEqualTo("kgid", entity.kgid)
-                        .limit(1)
-                        .get()
-                        .await()
-                        .size()
-                    
-                    if (pendingKgidCount > 0) {
-                        "A registration for this KGID already exists and is pending approval."
-                    } else {
-                        // B. Check pending_registrations by Email
-                        val pendingEmailCount = firestore.collection("pending_registrations")
-                            .whereEqualTo("status", "pending")
-                            .whereEqualTo("email", entity.email)
-                            .limit(1)
-                            .get()
-                            .await()
-                            .size()
-                        
-                        if (pendingEmailCount > 0) {
-                            "A registration for this Email already exists and is pending approval."
-                        } else {
-                            // C. Check active employees by KGID
-                            val activeKgidCount = firestore.collection("employees")
-                                .whereEqualTo("kgid", entity.kgid)
-                                .limit(1)
-                                .get()
-                                .await()
-                                .size()
-                            
-                            if (activeKgidCount > 0) {
-                                "User with this KGID is already registered and active. Please login."
-                            } else {
-                                // D. Check active employees by Email
-                                val activeEmailCount = firestore.collection("employees")
-                                    .whereEqualTo("email", entity.email)
-                                    .limit(1)
-                                    .get()
-                                    .await()
-                                    .size()
-                                
-                                if (activeEmailCount > 0) {
-                                    "User with this Email is already registered and active. Please login."
-                                } else null
-                            }
-                        }
-                    }
+                // 1️⃣ Check active employees first (User has read access!)
+                val activeDuplicateReason = try {
+                     val activeKgidCount = firestore.collection("employees")
+                         .whereEqualTo("kgid", entity.kgid)
+                         .limit(1)
+                         .get()
+                         .await()
+                         .size()
+                     if (activeKgidCount > 0) "User with this KGID is already registered and active. Please login."
+                     else {
+                         val activeEmailCount = firestore.collection("employees")
+                             .whereEqualTo("email", entity.email)
+                             .limit(1)
+                             .get()
+                             .await()
+                             .size()
+                         if (activeEmailCount > 0) "User with this Email is already registered and active. Please login." else null
+                     }
                 } catch (e: Exception) {
-                    Log.w("RegisterUser", "Duplicate check failed, proceeding: ${e.message}")
-                    null // Allow registration if check fails (fallback to server-side constraints if any)
+                     Log.w("RegisterUser", "Active employee check failed: ${e.message}")
+                     null
                 }
 
-                if (duplicateReason != null) {
-                    _pendingStatus.value = OperationStatus.Error(duplicateReason)
+                if (activeDuplicateReason != null) {
+                    _pendingStatus.value = OperationStatus.Error(activeDuplicateReason)
                     return@launch
                 }
 
@@ -1279,6 +1270,7 @@ open class EmployeeViewModel @Inject constructor(
                 )
 
                 // 3️⃣ Submit to Firestore + Room
+                // Uniqueness of duplicate pending registrations natively enforced because we will use kgid as the document ID in the repository
                 pendingRepo.addPendingRegistration(pending).collect { result ->
                     when (result) {
                         is RepoResult.Loading ->
@@ -1287,12 +1279,16 @@ open class EmployeeViewModel @Inject constructor(
                         is RepoResult.Success -> {
                             _pendingStatus.value =
                                 OperationStatus.Success("Registration submitted for admin approval.")
-                                // Notification logic removed for User App
                         }
 
                         is RepoResult.Error -> {
+                            val msg = result.message ?: "Registration failed."
+                            val finalMsg = if (msg.contains("PERMISSION_DENIED", ignoreCase = true) || msg.contains("permission", ignoreCase = true)) {
+                                "Registration failed: This KGID/Email is already pending approval."
+                            } else msg
+                            
                             _pendingStatus.value =
-                                OperationStatus.Error(result.message ?: "Registration failed.")
+                                OperationStatus.Error(finalMsg)
                         }
                     }
                 }

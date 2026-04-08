@@ -38,10 +38,14 @@ import kotlin.math.roundToInt
  * 2️⃣ Updating Firestore with the public Drive URL
  * 3️⃣ Deleting officer images from Drive when employee is removed
  */
-class ImageRepository(
-    private val context: Context,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+
+class ImageRepository @Inject constructor(
+    @ApplicationContext private val context: Context
 ) {
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
 
     // Security helper for Apps Script auth token
     private val securityConfig = com.example.policemobiledirectory.utils.SecurityConfig()

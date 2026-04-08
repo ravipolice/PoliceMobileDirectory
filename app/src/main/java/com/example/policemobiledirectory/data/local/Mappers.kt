@@ -24,14 +24,18 @@ fun PendingRegistrationEntity.toEmployee(overridePhotoUrl: String? = null): Empl
         photoUrlFromGoogle = this.photoUrlFromGoogle,
         firebaseUid = this.firebaseUid,
         isApproved = true,
-        isAdmin = false,
-        createdAt = Date(this.submittedAt), // Convert Long to Date
-        updatedAt = Date(), // Current time as updated
-        landline = null, // Not present in registration
-        landline2 = null,
-        isManualStation = this.isManualStation,
+        isAdmin = this.isAdmin ?: false,
+        createdAt = this.submittedAt ?: Date(), 
+        updatedAt = Date(),
+        landline = this.landline,
+        landline2 = this.landline2,
+        isManualStation = this.isManualStation ?: false,
+        isManualSubSection = this.isManualSubSection ?: false,
         gender = this.gender,
-        serviceStartDate = this.serviceStartDate
+        serviceStartDate = this.serviceStartDate,
+        dateOfBirth = this.dateOfBirth,
+        subSection = this.subSection,
+        dutyRole = this.dutyRole
     )
 }
 
@@ -52,14 +56,20 @@ fun EmployeeEntity.toEmployee(): Employee {
         photoUrlFromGoogle = this.photoUrlFromGoogle,
         fcmToken = this.fcmToken,
         firebaseUid = this.firebaseUid,
-        isAdmin = this.isAdmin,
-        isApproved = this.isApproved,
+        isAdmin = this.isAdmin ?: false,
+        isApproved = this.isApproved ?: true,
         createdAt = this.createdAt,
         updatedAt = this.updatedAt,
         unit = this.unit,
-        isManualStation = this.isManualStation,
+        isManualStation = this.isManualStation ?: false,
+        isManualSubSection = this.isManualSubSection ?: false,
         gender = this.gender,
-        serviceStartDate = this.serviceStartDate
+        serviceStartDate = this.serviceStartDate,
+        dateOfBirth = this.dateOfBirth,
+        subSection = this.subSection,
+        dutyRole = this.dutyRole,
+        landline = this.landline,
+        landline2 = this.landline2
     )
 }
 
@@ -86,8 +96,14 @@ fun Employee.toEntity(): EmployeeEntity {
         isApproved = this.isApproved,
         unit = this.unit,
         searchBlob = this.searchBlob,
+        landline = this.landline,
+        landline2 = this.landline2,
         isManualStation = this.isManualStation,
+        isManualSubSection = this.isManualSubSection,
         gender = this.gender,
-        serviceStartDate = this.serviceStartDate
+        serviceStartDate = this.serviceStartDate,
+        dateOfBirth = this.dateOfBirth,
+        subSection = this.subSection,
+        dutyRole = this.dutyRole
     )
 }

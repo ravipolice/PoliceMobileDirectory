@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -83,27 +84,26 @@ fun UploadDocumentScreen(
     if (!isAdmin) {
         // Non-admin users should not access upload UI
         Scaffold(
-            contentWindowInsets = WindowInsets(0.dp),
             topBar = {
                 TopAppBar(
-                    windowInsets = WindowInsets(0.dp),
                     title = { Text("Upload Document") },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        scrolledContainerColor = MaterialTheme.colorScheme.primary,
                         titleContentColor = androidx.compose.ui.graphics.Color.White,
                         navigationIconContentColor = androidx.compose.ui.graphics.Color.White
                     ),
                     navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(
-                                imageVector = Icons.Filled.CloudUpload,
-                                contentDescription = "Back",
-                                tint = MaterialTheme.colorScheme.onPrimary
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack, // Changed for consistency
+                                contentDescription = "Back"
                             )
                         }
                     }
                 )
-            }
+            },
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { paddingValues ->
             Box(
                 modifier = Modifier
@@ -118,27 +118,26 @@ fun UploadDocumentScreen(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
-                windowInsets = WindowInsets(0.dp),
                 title = { Text("Upload Document") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = androidx.compose.ui.graphics.Color.White,
                     navigationIconContentColor = androidx.compose.ui.graphics.Color.White
                 ),
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
-                            imageVector = Icons.Filled.CloudUpload,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack, // Changed for consistency
+                            contentDescription = "Back"
                         )
                     }
                 }
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Box(
             modifier = Modifier

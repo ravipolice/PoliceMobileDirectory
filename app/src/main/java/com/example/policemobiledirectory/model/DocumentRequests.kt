@@ -43,6 +43,9 @@ data class DocumentDeleteRequest(
     @SerializedName("title")
     val title: String,
     
+    @SerializedName("url")
+    val url: String? = null,
+    
     @SerializedName("userEmail")
     val userEmail: String? = null
 )

@@ -145,10 +145,8 @@ fun AddUsefulLinkScreen(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
-                windowInsets = WindowInsets(0.dp),
                 title = { Text("Add New Link") },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
@@ -161,7 +159,8 @@ fun AddUsefulLinkScreen(
                     navigationIconContentColor = Color.White
                 )
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Column(
             modifier = Modifier

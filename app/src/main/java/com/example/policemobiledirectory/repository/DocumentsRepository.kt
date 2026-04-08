@@ -18,6 +18,16 @@ class DocumentsRepository @Inject constructor(
     private fun token() = securityConfig.getSecretToken()
     private val gson = Gson()
 
+    private val deletingUrls = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
+    fun markAsDeleting(url: String) {
+        deletingUrls.add(url)
+    }
+
+    fun clearDeletionMarker(url: String) {
+        deletingUrls.remove(url)
+    }
+
     suspend fun fetchDocuments(): List<Document> {
         val response: Response<ResponseBody> = api.getDocumentsRaw(
             token = token(),
@@ -36,8 +46,13 @@ class DocumentsRepository @Inject constructor(
         try {
             val listType = object : TypeToken<List<Document>>() {}.type
             val docs = gson.fromJson<List<Document>>(bodyStr, listType)
-            // Filter by isValid AND !isDeleted for consistency
-            return docs.filter { it.isValid && !it.isDeleted }
+            // Filter by isValid AND !isDeleted for consistency AND optimistic deletion markers
+            return docs.filter { doc -> 
+                doc.isValid && !doc.isDeleted && run {
+                    val url = doc.resolvedUrl
+                    url == null || !deletingUrls.contains(url)
+                }
+            }
         } catch (e: Exception) {
             android.util.Log.w("DocumentsRepository", "Failed to parse as array: ${e.message}")
         }
@@ -60,7 +75,12 @@ class DocumentsRepository @Inject constructor(
             throw IllegalStateException(err)
         }
 
-        return obj.data?.filter { it.isValid && !it.isDeleted } ?: emptyList()
+        return obj.data?.filter { doc -> 
+            doc.isValid && !doc.isDeleted && run {
+                val url = doc.resolvedUrl
+                url == null || !deletingUrls.contains(url)
+            }
+        } ?: emptyList()
     }
 
     suspend fun uploadDocument(request: DocumentUploadRequest) =

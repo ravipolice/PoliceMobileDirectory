@@ -54,6 +54,7 @@ object Routes {
     const val LEAVE_OTHER = "leave_other"
     const val LEAVE_EDIT = "leave_edit/{entryId}"
     const val LEAVE_MANAGER_ADMIN = "leave_manager_admin"
+    const val LEAVE_RULES = "leave_rules"
 
     fun leaveEditRoute(entryId: String) = "leave_edit/$entryId"
 

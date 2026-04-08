@@ -16,8 +16,12 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LeaveManagerAdminViewModel @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val employeeRepo: com.example.policemobiledirectory.repository.EmployeeRepository
 ) : ViewModel() {
+
+    private var refreshJob: kotlinx.coroutines.Job? = null
+
 
     private val _pendingUsers = MutableStateFlow<List<Map<String, Any>>>(emptyList())
     val pendingUsers: StateFlow<List<Map<String, Any>>> = _pendingUsers.asStateFlow()
@@ -37,23 +41,26 @@ class LeaveManagerAdminViewModel @Inject constructor(
         refreshDepartments()
     }
 
-    fun refreshPendingUsers() = viewModelScope.launch {
-        try {
-            _status.value = OperationStatus.Loading
-            val snapshot = firestore.collection("users")
-                .whereEqualTo("status", "pending")
-                .get()
-                .await()
-            
-            _pendingUsers.value = snapshot.documents.map { doc ->
-                val data = doc.data?.toMutableMap() ?: mutableMapOf()
-                data["id"] = doc.id
-                data
-            }.sortedByDescending { (it["createdAt"] as? Number)?.toLong() ?: 0L }
-            _status.value = OperationStatus.Idle
-        } catch (e: Exception) {
-            Log.e("LMAdminVM", "Error fetching pending users", e)
-            _status.value = OperationStatus.Error(e.message ?: "Failed to fetch users")
+    fun refreshPendingUsers() {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
+            try {
+                _status.value = OperationStatus.Loading
+                val snapshot = firestore.collection("users")
+                    .whereEqualTo("status", "pending")
+                    .get()
+                    .await()
+                
+                _pendingUsers.value = snapshot.documents.map { doc ->
+                    val data = doc.data?.toMutableMap() ?: mutableMapOf()
+                    data["id"] = doc.id
+                    data
+                }.sortedByDescending { (it["createdAt"] as? Number)?.toLong() ?: 0L }
+                _status.value = OperationStatus.Idle
+            } catch (e: Exception) {
+                Log.e("LMAdminVM", "Error fetching pending users", e)
+                _status.value = OperationStatus.Error(e.message ?: "Failed to fetch users")
+            }
         }
     }
 

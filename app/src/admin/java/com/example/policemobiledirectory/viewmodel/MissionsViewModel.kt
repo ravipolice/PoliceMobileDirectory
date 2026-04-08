@@ -127,4 +127,20 @@ class MissionsViewModel @Inject constructor(
         }
         _uiState.value = _uiState.value.copy(filteredMissions = filtered)
     }
+
+    fun updateMission(mission: Mission) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            val result = repository.updateMission(mission)
+            result.onSuccess {
+                fetchMissions(forceRefresh = true) // Refresh list to get updated row
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "Update Failed: ${error.message}"
+                )
+            }
+        }
+    }
 }
+

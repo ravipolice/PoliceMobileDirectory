@@ -43,6 +43,13 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalConfiguration
 import android.app.DownloadManager
+import com.example.policemobiledirectory.ui.components.GoogleDriveNoticeDialog
+import com.example.policemobiledirectory.ui.components.GoogleDriveDisclaimerBanner
+import com.example.policemobiledirectory.ui.components.ErrorSection
+import com.example.policemobiledirectory.ui.components.EmptySection
+import com.example.policemobiledirectory.ui.components.convertDriveUrlToDirectImageUrl
+import com.example.policemobiledirectory.ui.components.downloadFile
+import com.example.policemobiledirectory.ui.components.uriToBase64Compressed
 
 enum class ViewMode {
     Grid, List
@@ -65,18 +72,34 @@ fun GalleryScreen(
 
     var showUploadDialog by remember { mutableStateOf(false) }
     var fullScreenImage by remember { mutableStateOf<String?>(null) }
-    var deleteDialogImageTitle by remember { mutableStateOf<String?>(null) }
+    var deleteDialogImage by remember { mutableStateOf<GalleryImage?>(null) }
     var viewMode by remember { mutableStateOf(ViewMode.Grid) } // Grid or List view
     var columnsPerRow by remember { mutableStateOf(4) } // 1, 2, 4, 6, 8 images per row
 
-    // Get the current back stack entry to detect when screen comes back into focus
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+    var showDriveNotice by remember { mutableStateOf(false) }
+    val prefs = remember { context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
     
     // 🔹 Fetch gallery images on initial composition
     LaunchedEffect(Unit) {
+        val hasSeenNotice = prefs.getBoolean("seen_gallery_drive_notice", false)
+        if (!hasSeenNotice) {
+            showDriveNotice = true
+        }
         android.util.Log.d("GalleryScreen", "🔄 LaunchedEffect(Unit) - Fetching gallery images on initial load")
         viewModel.fetchGalleryImages()
+    }
+    
+    // Get the current back stack entry to detect when screen comes back into focus
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    if (showDriveNotice) {
+        GoogleDriveNoticeDialog(
+            onDismiss = {
+                showDriveNotice = false
+                prefs.edit().putBoolean("seen_gallery_drive_notice", true).apply()
+            }
+        )
     }
     
     // 🔹 Fetch gallery images when coming back to this screen
@@ -131,7 +154,6 @@ fun GalleryScreen(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
                 title = { Text("Gallery") },
@@ -145,6 +167,7 @@ fun GalleryScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = androidx.compose.ui.graphics.Color.White,
                     navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
                     actionIconContentColor = androidx.compose.ui.graphics.Color.White
@@ -176,7 +199,8 @@ fun GalleryScreen(
                     Icon(Icons.Default.Add, contentDescription = "Upload Image")
                 }
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Surface(
             modifier = Modifier
@@ -213,7 +237,7 @@ fun GalleryScreen(
 
                                 LazyVerticalGrid(
                                     columns = GridCells.Fixed(columnsPerRow),
-                                    contentPadding = PaddingValues(8.dp),
+                                    contentPadding = PaddingValues(top = 8.dp, start = 8.dp, end = 8.dp, bottom = 60.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
@@ -223,7 +247,8 @@ fun GalleryScreen(
                                             image = image,
                                             isAdmin = isAdmin,
                                             onClick = { fullScreenImage = image.resolvedUrl ?: image.displayUrl },
-                                            onDelete = { deleteDialogImageTitle = image.resolvedTitle }
+                                            onDelete = { deleteDialogImage = image },
+                                            onImageError = { url -> viewModel.markImageAsBroken(url) }
                                         )
                                     }
                                 }
@@ -231,7 +256,7 @@ fun GalleryScreen(
 
                             ViewMode.List -> {
                                 LazyColumn(
-                                    contentPadding = PaddingValues(8.dp),
+                                    contentPadding = PaddingValues(top = 8.dp, start = 8.dp, end = 8.dp, bottom = 60.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     // ✅ Filter out invalid images before displaying
@@ -240,7 +265,8 @@ fun GalleryScreen(
                                             image = image,
                                             isAdmin = isAdmin,
                                             onClick = { fullScreenImage = image.resolvedUrl ?: image.displayUrl },
-                                            onDelete = { deleteDialogImageTitle = image.resolvedTitle }
+                                            onDelete = { deleteDialogImage = image },
+                                            onImageError = { url -> viewModel.markImageAsBroken(url) }
                                         )
                                     }
                                 }
@@ -342,17 +368,22 @@ fun GalleryScreen(
             }
 
             // 🗑️ Delete confirmation dialog
-            if (deleteDialogImageTitle != null) {
+            if (deleteDialogImage != null) {
                 AlertDialog(
-                    onDismissRequest = { deleteDialogImageTitle = null },
+                    onDismissRequest = { deleteDialogImage = null },
                     title = { Text("Delete Image?") },
                     text = { Text("This will permanently remove the image from gallery.") },
                     confirmButton = {
                         TextButton(
                             onClick = {
-                                deleteDialogImageTitle?.let { title ->
-                                    viewModel.deleteGalleryImage(title)
-                                    deleteDialogImageTitle = null
+                                deleteDialogImage?.let { image ->
+                                    val title = image.resolvedTitle
+                                    val url = image.resolvedUrl ?: image.displayUrl
+                                    val source = image.source
+                                    if (url != null) {
+                                        viewModel.deleteGalleryImage(title, url, source)
+                                    }
+                                    deleteDialogImage = null
                                 }
                             }
                         ) {
@@ -360,7 +391,7 @@ fun GalleryScreen(
                         }
                     },
                     dismissButton = {
-                        TextButton(onClick = { deleteDialogImageTitle = null }) {
+                        TextButton(onClick = { deleteDialogImage = null }) {
                             Text("Cancel")
                         }
                     }
@@ -615,7 +646,8 @@ fun GalleryImageItem(
         image: GalleryImage,
         isAdmin: Boolean = false,
         onClick: () -> Unit,
-        onDelete: () -> Unit
+        onDelete: () -> Unit,
+        onImageError: (String) -> Unit = {}
     ) {
         // ✅ Use displayUrl and convert Drive URL to direct image URL for display
         val displayUrl = image.displayUrl
@@ -643,7 +675,10 @@ fun GalleryImageItem(
                             model = imageUrl,
                             contentDescription = "Gallery Image",
                             modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                            contentScale = ContentScale.Crop,
+                            onError = {
+                                onImageError(image.resolvedUrl ?: image.displayUrl ?: "")
+                            }
                         )
                     } else {
                         // Show placeholder when URL is invalid
@@ -733,7 +768,8 @@ fun GalleryImageListItem(
         image: GalleryImage,
         isAdmin: Boolean = false,
         onClick: () -> Unit,
-        onDelete: () -> Unit
+        onDelete: () -> Unit,
+        onImageError: (String) -> Unit = {}
     ) {
         // ✅ Use displayUrl and convert Drive URL to direct image URL for display
         val displayUrl = image.displayUrl
@@ -760,10 +796,12 @@ fun GalleryImageListItem(
                     AsyncImage(
                         model = imageUrl,
                         contentDescription = "Gallery Image",
-                        modifier = Modifier
-                            .size(80.dp)
+                        modifier = Modifier.size(80.dp)
                             .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
+                        onError = {
+                            onImageError(image.resolvedUrl ?: image.displayUrl ?: "")
+                        }
                     )
                 } else {
                     // Show placeholder when URL is invalid

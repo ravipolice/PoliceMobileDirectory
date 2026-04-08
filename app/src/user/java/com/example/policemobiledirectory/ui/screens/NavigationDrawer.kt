@@ -9,6 +9,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AdminPanelSettings
@@ -16,9 +19,12 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.EventNote
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,21 +36,23 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.example.policemobiledirectory.R
 import com.example.policemobiledirectory.navigation.Routes
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.AuthViewModel
+import com.example.policemobiledirectory.viewmodel.SettingsViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -54,13 +62,36 @@ fun NavigationDrawer(
     navController: NavController,
     drawerState: DrawerState,
     scope: CoroutineScope,
-    viewModel: EmployeeViewModel = hiltViewModel(),
-    onLogout: () -> Unit
+    viewModel: AuthViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
+    onLogout: () -> Unit,
+    onDrivePermissionRequest: () -> Unit
 ) {
     val context = LocalContext.current
-    val currentUser by viewModel.currentUser.collectAsState()
-    val isAdmin by viewModel.isAdmin.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    val isAdmin by viewModel.isAdmin.collectAsStateWithLifecycle()
+    val hasFullDriveAccess by viewModel.hasFullDriveAccess.collectAsStateWithLifecycle()
+    val hasAppData by viewModel.hasAppDataAccess.collectAsStateWithLifecycle()
+    val hasDriveFile by viewModel.hasDriveFileAccess.collectAsStateWithLifecycle()
+    val hasSpreadsheets by viewModel.hasSpreadsheetsAccess.collectAsStateWithLifecycle()
+    
     val currentRoute = navController.currentDestination?.route
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.checkGoogleDriveAccess(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(currentUser) {
+        viewModel.checkGoogleDriveAccess(context)
+    }
+
 
 
 
@@ -69,8 +100,9 @@ fun NavigationDrawer(
             .width(280.dp),
         drawerShape = RectangleShape,
         drawerContainerColor = MaterialTheme.colorScheme.surface,
-        windowInsets = WindowInsets(0, 0, 0, 0) // Draw completely edge-to-edge
+        windowInsets = WindowInsets(0, 0, 0, 0)
     ) {
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -80,21 +112,28 @@ fun NavigationDrawer(
             // ============================================================
             // 🔹 TOP SECTION: PROFILE CARD
             // ============================================================
-            Surface(
-                color = MaterialTheme.colorScheme.primary,
-                tonalElevation = 3.dp,
-                modifier = Modifier.fillMaxWidth()
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                            )
+                        )
+                    )
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
-                        .padding(vertical = 12.dp, horizontal = 12.dp),
+                        .padding(top = 24.dp, bottom = 20.dp, start = 16.dp, end = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Profile Image with Blood Group in top right corner
                     Box(
-                        modifier = Modifier.size(90.dp),
+                        modifier = Modifier.size(96.dp),
                         contentAlignment = Alignment.TopEnd
                     ) {
                         val painter = rememberAsyncImagePainter(
@@ -111,8 +150,9 @@ fun NavigationDrawer(
                             painter = painter,
                             contentDescription = "Profile photo",
                             modifier = Modifier
-                                .size(90.dp)
+                                .fillMaxSize()
                                 .clip(CircleShape)
+                                .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
                         )
                         
                         // Blood Group badge in top right corner
@@ -145,9 +185,10 @@ fun NavigationDrawer(
                             Surface(
                                 color = MaterialTheme.colorScheme.error,
                                 shape = CircleShape,
+                                border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White),
                                 modifier = Modifier
                                     .size(28.dp)
-                                    .offset(x = 4.dp, y = (-4).dp)
+                                    .offset(x = 2.dp, y = (-2).dp)
                             ) {
                                 Box(
                                     contentAlignment = Alignment.Center,
@@ -166,60 +207,104 @@ fun NavigationDrawer(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     
                     // Name + Rank
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    ) {
-                        Text(
-                            text = buildAnnotatedString {
-                                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                                    append(currentUser?.name ?: "")
-                                }
-                                currentUser?.displayRank?.takeIf { it.isNotBlank() }?.let { rank ->
-                                    withStyle(style = SpanStyle(fontWeight = FontWeight.Normal, fontSize = 16.sp)) {
-                                        append(" $rank")
-                                    }
-                                }
-                            },
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                color = Color.White
-                            ),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    
-                    // KGID (larger)
                     Text(
-                        text = currentUser?.kgid?.let { "KGID: $it" } ?: "",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(alpha = 0.95f),
-                            fontSize = 16.sp
-                        )
+                        text = buildAnnotatedString {
+                            withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold)) {
+                                append(currentUser?.name ?: "")
+                            }
+                            currentUser?.displayRank?.takeIf { it.isNotBlank() }?.let { rank ->
+                                append("  ")
+                                withStyle(SpanStyle(fontSize = 16.sp, fontWeight = FontWeight.Normal, color = Color.White.copy(alpha = 0.9f))) {
+                                    append(rank)
+                                }
+                            }
+                        },
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            color = Color.White
+                        ),
+                        textAlign = TextAlign.Center
                     )
                     
-                    // Station (larger)
-                    currentUser?.station?.takeIf { it.isNotBlank() }?.let { station ->
-                        Text(
-                            text = station,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = Color.White.copy(alpha = 0.9f),
-                                fontSize = 16.sp
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Compact Metadata Row 1: KGID
+                    currentUser?.kgid?.takeIf { it.isNotBlank() }?.let { kgid ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Badge,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
                             )
-                        )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "KGID: $kgid",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = Color.White.copy(alpha = 0.95f)
+                                )
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
                     
-                    // Email (larger)
-                    Text(
-                        text = currentUser?.email ?: "",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(alpha = 0.9f),
-                            fontSize = 16.sp
-                        )
-                    )
+                    // Compact Metadata Row 2: Station
+                    currentUser?.station?.takeIf { it.isNotBlank() }?.let { station ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = station,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = Color.White.copy(alpha = 0.95f)
+                                ),
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                    
+                    // Compact Metadata Row 3: Email
+                    currentUser?.email?.takeIf { it.isNotBlank() }?.let { email ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Email,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = email,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = Color.White.copy(alpha = 0.95f)
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
             }
 
@@ -255,13 +340,29 @@ fun NavigationDrawer(
 
 
                 DrawerItem(
-                    icon = Icons.Default.EventNote,
-                    text = "Leave Register (Coming Soon)",
-                    selected = currentRoute == Routes.LEAVE_DASHBOARD,
+                    icon = Icons.Default.Description,
+                    text = "Documents",
+                    selected = currentRoute == Routes.DOCUMENTS,
                     onClick = {
                         scope.launch {
                             drawerState.close()
-                            navController.navigate(Routes.LEAVE_DASHBOARD) {
+                            navController.navigate(Routes.DOCUMENTS) {
+                                launchSingleTop = true
+                                restoreState = true
+                                popUpTo(Routes.EMPLOYEE_LIST) { inclusive = false }
+                            }
+                        }
+                    }
+                )
+
+                DrawerItem(
+                    icon = Icons.Default.Payments,
+                    text = "Payslip Keeper",
+                    selected = currentRoute == "payslip_upload",
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate("payslip_upload") {
                                 launchSingleTop = true
                                 restoreState = true
                                 popUpTo(Routes.EMPLOYEE_LIST) { inclusive = false }
@@ -272,7 +373,7 @@ fun NavigationDrawer(
 
                 DrawerItem(
                     icon = Icons.Default.Translate,
-                    text = "Nudi Converter (Coming Soon)",
+                    text = "Nudi Converter",
                     selected = currentRoute == Routes.NUDI_CONVERTER,
                     onClick = {
                         scope.launch {
@@ -400,6 +501,33 @@ fun NavigationDrawer(
                         }
                     )
                 }
+
+                val driveStatusText = when {
+                    hasFullDriveAccess -> "Google Drive Access: Full"
+                    hasAppData || hasDriveFile || hasSpreadsheets -> "Google Drive: Partial Access"
+                    else -> "Grant Google Drive Access"
+                }
+                
+                val driveStatusColor = when {
+                    hasFullDriveAccess -> if (androidx.compose.foundation.isSystemInDarkTheme()) Color(0xFF81C784) else Color(0xFF2E7D32)
+                    hasAppData || hasDriveFile || hasSpreadsheets -> Color(0xFFFFA000) // Amber for partial
+                    else -> MaterialTheme.colorScheme.error
+                }
+
+                DrawerItem(
+                    icon = Icons.Default.AccountCircle,
+                    text = driveStatusText,
+                    textColor = driveStatusColor,
+                    onClick = {
+                        if (!hasFullDriveAccess) {
+                            scope.launch {
+                                drawerState.close()
+                                onDrivePermissionRequest()
+                            }
+                        }
+                    }
+                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                 DrawerItem(
                     icon = Icons.AutoMirrored.Filled.Logout,

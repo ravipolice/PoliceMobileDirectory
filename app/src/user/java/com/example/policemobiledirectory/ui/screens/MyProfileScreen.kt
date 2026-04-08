@@ -20,19 +20,21 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.ui.unit.dp
+import com.example.policemobiledirectory.viewmodel.AuthViewModel
+import com.example.policemobiledirectory.viewmodel.EmployeeListViewModel
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 
 @Composable
 fun MyProfileEditScreen(
     navController: NavController? = null,
+    authViewModel: AuthViewModel = hiltViewModel(),
+    employeeListViewModel: EmployeeListViewModel = hiltViewModel(),
     employeeViewModel: EmployeeViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val currentEmployee by employeeViewModel.currentUser.collectAsState()
+    val currentEmployee by authViewModel.currentUser.collectAsState()
     val saveStatus by employeeViewModel.saveStatus.collectAsState()
-    val photoUploadStatus by employeeViewModel.uploadStatus.collectAsState()
-    val isLoading = saveStatus is com.example.policemobiledirectory.repository.RepoResult.Loading || 
-                    photoUploadStatus is com.example.policemobiledirectory.utils.OperationStatus.Loading
+    val isLoading = saveStatus is com.example.policemobiledirectory.repository.RepoResult.Loading
 
     // Handle back button to navigate to home screen
     BackHandler(enabled = navController != null) {
@@ -46,7 +48,7 @@ fun MyProfileEditScreen(
     // Show feedback messages
     LaunchedEffect(saveStatus) {
         when (val status = saveStatus) {
-            is RepoResult.Success -> {
+            is RepoResult.Success<*> -> {
                 Toast.makeText(
                     context,
                     "Profile updated successfully",
@@ -54,8 +56,8 @@ fun MyProfileEditScreen(
                 ).show()
                 employeeViewModel.resetSaveStatus() // Reset status
                 // ✅ Refresh current user to show updated data (including metal number)
-                employeeViewModel.refreshCurrentUser()
-                employeeViewModel.refreshEmployees()
+                authViewModel.loadSession()
+                employeeListViewModel.refreshEmployees()
                 // ✅ Navigate back after successful save
                 navController?.popBackStack()
             }
@@ -69,12 +71,6 @@ fun MyProfileEditScreen(
             }
             else -> {}
         }
-    }
-    
-    // Also log photo upload status changes
-    LaunchedEffect(photoUploadStatus) {
-        android.util.Log.e("MyProfileScreen", "📸📸📸 photoUploadStatus CHANGED: $photoUploadStatus")
-        android.util.Log.e("MyProfileScreen", "photoUploadStatus type: ${photoUploadStatus.javaClass.simpleName}")
     }
 
     // Check if profile is outdated (older than 90 days)
@@ -102,25 +98,44 @@ fun MyProfileEditScreen(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                androidx.compose.foundation.layout.Row(
+                androidx.compose.foundation.layout.Column(
                     modifier = androidx.compose.ui.Modifier
                         .padding(16.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                        .fillMaxWidth()
                 ) {
-                    androidx.compose.material.icons.Icons.Default.Warning.let { icon ->
-                        androidx.compose.material3.Icon(
-                            imageVector = icon,
-                            contentDescription = "Warning",
-                            tint = androidx.compose.material3.MaterialTheme.colorScheme.error
+                    androidx.compose.foundation.layout.Row(
+                        modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material.icons.Icons.Default.Warning.let { icon ->
+                            androidx.compose.material3.Icon(
+                                imageVector = icon,
+                                contentDescription = "Warning",
+                                tint = androidx.compose.material3.MaterialTheme.colorScheme.error
+                            )
+                        }
+                        androidx.compose.foundation.layout.Spacer(modifier = androidx.compose.ui.Modifier.width(16.dp))
+                        androidx.compose.material3.Text(
+                            text = "Please verify your profile details. It has been over 3 months since the last update.",
+                            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onErrorContainer
                         )
                     }
-                    androidx.compose.foundation.layout.Spacer(modifier = androidx.compose.ui.Modifier.width(16.dp))
-                    androidx.compose.material3.Text(
-                        text = "Please verify your profile details. It has been over 3 months since the last update.",
-                        style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                        color = androidx.compose.material3.MaterialTheme.colorScheme.onErrorContainer
-                    )
+                    androidx.compose.foundation.layout.Spacer(modifier = androidx.compose.ui.Modifier.height(12.dp))
+                    androidx.compose.material3.Button(
+                        onClick = {
+                            if (currentEmployee != null) {
+                                // Save with current data to trigger ServerTimestamp update
+                                employeeViewModel.saveEmployee(currentEmployee!!, null)
+                            }
+                        },
+                        modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = androidx.compose.material3.MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        androidx.compose.material3.Text("My Details Are Correct", color = androidx.compose.ui.graphics.Color.White)
+                    }
                 }
             }
         }

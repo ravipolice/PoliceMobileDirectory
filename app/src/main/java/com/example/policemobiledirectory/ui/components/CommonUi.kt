@@ -275,7 +275,7 @@ fun GoogleDriveNoticeDialog(onDismiss: () -> Unit) {
             }
         },
         text = {
-            Text("Data for this page is being loaded from Google Drive. You may experience a small delay while files are fetched.")
+            Text("Data for this page is being loaded from Google Drive and Firebase Firestore. You may experience a small delay while files are fetched.")
         }
     )
 }
@@ -302,7 +302,7 @@ fun GoogleDriveDisclaimerBanner() {
             )
             Spacer(Modifier.width(12.dp))
             Text(
-                text = "Note: Fetched from Google Drive; loading may take a few moments.",
+                text = "Note: Fetched from Google Drive & Firebase; loading may take a few moments.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,

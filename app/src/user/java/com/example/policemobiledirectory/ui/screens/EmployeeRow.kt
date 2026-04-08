@@ -27,14 +27,14 @@ import com.example.policemobiledirectory.R
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.ui.theme.*
 import com.example.policemobiledirectory.utils.IntentUtils
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.EmployeeListViewModel
 
 @Composable
 fun EmployeeRow(
     employee: Employee,
     isAdmin: Boolean,
     navController: NavController,
-    viewModel: EmployeeViewModel
+    viewModel: EmployeeListViewModel
 ) {
     val context = LocalContext.current
 

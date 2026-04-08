@@ -294,14 +294,14 @@ open class EmployeeRepository @Inject constructor(
             // Step 1 — Local lookup (Room)
             val localEmployee = employeeDao.getEmployeeByEmail(normalizedEmail)
             if (localEmployee != null) {
-                if (!localEmployee.isApproved) {
-                    emit(RepoResult.Error(null, "Your app access has been disabled. Please contact an admin."))
-                    return@flow
-                }
-                
                 val storedHash = localEmployee.pin
                 if (!storedHash.isNullOrEmpty() && PinHasher.verifyPin(pin, storedHash)) {
                     Log.d(TAG, "LoginFlow: offline login success for $email")
+                    
+                    if (!localEmployee.isApproved) {
+                        emit(RepoResult.Error(null, "Your app access has been disabled. Please contact an admin."))
+                        return@flow
+                    }
                     
                     // ✅ Sign in anonymously and update firebaseUid even for offline login
                     try {
@@ -314,20 +314,36 @@ open class EmployeeRepository @Inject constructor(
                                 try {
                                     val docRef = employeesCollection.document(kgid)
                                     val currentDoc = docRef.get().await()
+                                    
+                                    val isApproved = currentDoc.getBoolean("isApproved") ?: true
+                                    val liveIsAdmin = currentDoc.getBoolean("isAdmin") ?: false
+                                    
+                                    if (!isApproved) {
+                                        Log.w(TAG, "🔴 Live check: User access disabled for $email")
+                                        employeeDao.insertEmployee(localEmployee.copy(isApproved = false))
+                                        emit(RepoResult.Error(null, "Your app access has been disabled. Please contact an admin."))
+                                        return@flow
+                                    }
+
                                     val currentFirebaseUid = currentDoc.getString("firebaseUid")
                                     if (currentFirebaseUid != firebaseUid) {
                                         docRef.update("firebaseUid", firebaseUid).await()
                                         Log.d(TAG, "✅ Updated firebaseUid in Firestore (offline login): $firebaseUid")
                                     }
+                                    
+                                    // Update local cache with latest info
+                                    val updatedEmployee = localEmployee.copy(
+                                        firebaseUid = firebaseUid,
+                                        isApproved = true,
+                                        isAdmin = liveIsAdmin
+                                    )
+                                    employeeDao.insertEmployee(updatedEmployee)
+                                    emit(RepoResult.Success(updatedEmployee.toEmployee()))
+                                    return@flow
                                 } catch (e: Exception) {
                                     Log.w(TAG, "⚠️ Failed to update firebaseUid in Firestore (offline): ${e.message}")
                                 }
                             }
-                            
-                            // Update local cache with firebaseUid
-                            val updatedEmployee = localEmployee.copy(firebaseUid = firebaseUid)
-                            employeeDao.insertEmployee(updatedEmployee)
-                            emit(RepoResult.Success(updatedEmployee.toEmployee()))
                         } else {
                             emit(RepoResult.Success(localEmployee.toEmployee()))
                         }
@@ -369,21 +385,7 @@ open class EmployeeRepository @Inject constructor(
             }
 
             val doc = snapshot.documents.first()
-            val isApproved = doc.getBoolean("isApproved") ?: true
-            if (!isApproved) {
-                emit(RepoResult.Error(null, "Your app access has been disabled. Please contact an admin."))
-                return@flow
-            }
             
-            // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
-            val docKgid = doc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc.id
-            var remoteEmployee = doc.toObject(Employee::class.java)?.copy(kgid = docKgid)
-            
-            // ✅ Enforce isAdmin if from admins collection
-            if (isAdminCollection) {
-                remoteEmployee = remoteEmployee?.copy(isAdmin = true)
-            }
-
             // read pin hash directly from document (defensive if Employee POJO doesn't contain it)
             val remotePinHash = doc.getString(FIELD_PIN_HASH).orEmpty()
 
@@ -398,10 +400,30 @@ open class EmployeeRepository @Inject constructor(
                 return@flow
             }
 
+            val isApproved = doc.getBoolean("isApproved") ?: true
+            if (!isApproved) {
+                emit(RepoResult.Error(null, "Your app access has been disabled. Please contact an admin."))
+                return@flow
+            }
+            
+            // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
+            val docKgid = doc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc.id
+            var remoteEmployee = doc.toObject(Employee::class.java)?.copy(
+                kgid = docKgid,
+                isAdmin = doc.getBoolean("isAdmin") ?: false,
+                isApproved = doc.getBoolean("isApproved") ?: true
+            )
+            
+            // ✅ Enforce isAdmin if from admins collection
+            if (isAdminCollection) {
+                remoteEmployee = remoteEmployee?.copy(isAdmin = true)
+            }
+
             try {
-                val authResult = FirebaseAuth.getInstance().signInAnonymously().await()
+                val authResult = auth.signInAnonymously().await()
                 val firebaseUid = authResult.user?.uid
                 Log.d(TAG, "🔥 Firebase anonymous login success (PIN login), UID: $firebaseUid")
+                Log.d(TAG, "🔥 Auth State: ${auth.currentUser?.uid ?: "NULL"}")
                 
                 // ✅ Update firebaseUid in Firestore if it's different
                 if (firebaseUid != null) {
@@ -418,7 +440,8 @@ open class EmployeeRepository @Inject constructor(
 
                     // ✅ Synchronize admin UID for Firestore rules
                     if (isAdminCollection || remoteEmployee?.isAdmin == true) {
-                        syncAdminUid(normalizedEmail, firebaseUid)
+                        val docKgid = doc.getString("kgid")?.takeIf { it.isNotBlank() } ?: doc.id
+                        syncAdminUid(normalizedEmail, firebaseUid, docKgid)
                     }
                 }
             } catch (e: Exception) {
@@ -685,7 +708,8 @@ open class EmployeeRepository @Inject constructor(
 
                     // ✅ Synchronize admin UID for Firestore rules
                     if (emp.isAdmin) {
-                        syncAdminUid(normalizedEmail, firebaseUid)
+                        val kgid = emp.kgid ?: ""
+                        syncAdminUid(normalizedEmail, firebaseUid, kgid)
                     }
                 }
             } catch (e: Exception) {
@@ -878,6 +902,36 @@ open class EmployeeRepository @Inject constructor(
                 finalEmp.unit?.let {
                     updateMap["unit"] = it
                 }
+
+                // ✅ DUTY ROLE / SUBSECTION - Parallel fields for parity
+                finalEmp.subSection?.let {
+                    updateMap["subSection"] = it
+                }
+                
+                val bestDutyRole = finalEmp.dutyRole ?: finalEmp.subSection
+                bestDutyRole?.let {
+                    updateMap["dutyRole"] = it
+                }
+
+                // ✅ LANDLINE FIELDS
+                finalEmp.landline?.let {
+                    updateMap["landline"] = it
+                }
+                finalEmp.landline2?.let {
+                    updateMap["landline2"] = it
+                }
+
+                // ✅ DATE OF BIRTH
+                finalEmp.dateOfBirth?.let {
+                    updateMap["dateOfBirth"] = it
+                }
+
+                // ✅ MANUAL STATION/SUBSECTION FLAGS
+                updateMap["isManualStation"] = finalEmp.isManualStation
+                updateMap["isManualSubSection"] = finalEmp.isManualSubSection
+                
+                // ✅ HIDDEN STATUS (Parity with Hide/Unhide feature)
+                updateMap["isHidden"] = finalEmp.isHidden
                 
                 // Only update firebaseUid if it was missing
                 if (firebaseUidToUse != null && (existingFirebaseUid == null || existingFirebaseUid.isEmpty())) {
@@ -1209,30 +1263,51 @@ open class EmployeeRepository @Inject constructor(
     // PENDING REGISTRATIONS
     // -------------------------------------------------------------------
     fun getPendingRegistrations(): Flow<List<PendingRegistrationEntity>> = flow {
-        val snapshot = employeesCollection.whereEqualTo("rank", RANK_PENDING).get().await()
-        val pending = snapshot.documents.mapNotNull { doc ->
-            // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
-            val docKgid = doc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc.id
-            val emp = doc.toObject(Employee::class.java)?.copy(kgid = docKgid)
-            emp?.let {
-                if (it.kgid.isNullOrBlank() || it.email.isNullOrBlank()) return@mapNotNull null
-                PendingRegistrationEntity(
-                    kgid = it.kgid,
-                    name = it.name ?: "",
-                    email = it.email ?: "",
-                    mobile1 = it.mobile1 ?: "",
-                    mobile2 = it.mobile2 ?: "",
-                    station = it.station ?: "",
-                    district = it.district ?: "",
-                    bloodGroup = it.bloodGroup ?: "",
-                    photoUrl = it.photoUrl ?: "",
-                    firebaseUid = it.firebaseUid ?: "",
-                    submittedAt = it.createdAt?.time ?: System.currentTimeMillis(),
-                    isManualStation = it.isManualStation
+        try {
+            val snapshot = employeesCollection.whereEqualTo("rank", RANK_PENDING).get().await()
+            val pending = snapshot.documents.mapNotNull { doc ->
+                // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
+                val docKgid = doc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc.id
+                val emp = doc.toObject(Employee::class.java)?.copy(
+                    kgid = docKgid,
+                    isAdmin = doc.getBoolean("isAdmin") ?: false,
+                    isApproved = doc.getBoolean("isApproved") ?: true,
+                    isHidden = doc.getBoolean("isHidden") ?: false
                 )
+                emp?.let {
+                    if (it.kgid.isNullOrBlank() || it.email.isNullOrBlank()) return@mapNotNull null
+                    PendingRegistrationEntity(
+                        kgid = it.kgid,
+                        firestoreId = doc.id, // ✅ CRITICAL FIX: Set firestoreId from doc.id
+                        name = it.name ?: "",
+                        email = it.email ?: "",
+                        mobile1 = it.mobile1 ?: "",
+                        mobile2 = it.mobile2 ?: "",
+                        station = it.station ?: "",
+                        district = it.district ?: "",
+                        bloodGroup = it.bloodGroup ?: "",
+                        photoUrl = it.photoUrl ?: "",
+                        firebaseUid = it.firebaseUid ?: "",
+                        submittedAt = it.createdAt ?: java.util.Date(),
+                        createdAt = it.createdAt,
+                        isManualStation = it.isManualStation,
+                        isManualSubSection = it.isManualSubSection,
+                        gender = it.gender ?: "Male",
+                        serviceStartDate = it.serviceStartDate,
+                        dateOfBirth = it.dateOfBirth,
+                        subSection = it.subSection,
+                        rank = it.rank ?: RANK_PENDING,
+                        metalNumber = it.metalNumber,
+                        landline = it.landline,
+                        landline2 = it.landline2
+                    )
+                }
             }
+            emit(pending)
+        } catch (e: Exception) {
+            Log.e(TAG, "getPendingRegistrations failed: ${e.message}")
+            emit(emptyList())
         }
-        emit(pending)
     }.flowOn(ioDispatcher)
 
     fun approvePendingRegistration(entity: PendingRegistrationEntity): Flow<RepoResult<Boolean>> = flow {
@@ -1319,19 +1394,68 @@ open class EmployeeRepository @Inject constructor(
      * Ensures the 'admins' collection contains a document with ID = firebaseUid.
      * This is required for the Firestore security rule 'isUidAdmin()' to work.
      */
-    private suspend fun syncAdminUid(email: String, firebaseUid: String) {
+    suspend fun syncAdminUid(email: String, firebaseUid: String, kgid: String? = null) {
         try {
-            val adminData = mapOf(
-                "email" to email,
+            val normalizedEmail = email.trim().lowercase()
+            var finalKgid = kgid
+            
+            // ✅ If KGID is missing (e.g. fresh install), try to find it in Firestore
+            if (finalKgid.isNullOrBlank()) {
+                val snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, normalizedEmail).limit(1).get().await()
+                finalKgid = snapshot.documents.firstOrNull()?.id
+            }
+
+            val adminData = mutableMapOf(
+                "email" to normalizedEmail,
                 "isActive" to true,
                 "uid" to firebaseUid,
                 "updatedAt" to System.currentTimeMillis()
             )
+            
+            if (!finalKgid.isNullOrBlank()) {
+                adminData["kgid"] = finalKgid
+                
+                // ✅ NEW: Direct UID mapping for security rules (Simplified Handshake)
+                // This allows security rules to check for exists(/databases/$(database)/documents/uids/$(request.auth.uid))
+                try {
+                    firestore.collection("uids").document(firebaseUid).set(
+                        mapOf(
+                            "kgid" to finalKgid,
+                            "email" to normalizedEmail,
+                            "isAdmin" to true,
+                            "updatedAt" to System.currentTimeMillis()
+                        ), 
+                        SetOptions.merge()
+                    ).await()
+                    Log.d(TAG, "✅ Direct UID mapping created for $finalKgid")
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ Failed to create UID mapping: ${e.message}")
+                }
+            }
+            
             // Use firebaseUid as the document ID so rules can find it easily
             firestore.collection("admins").document(firebaseUid).set(adminData, SetOptions.merge()).await()
-            Log.d(TAG, "✅ Synchronized admin UID ($firebaseUid) for $email in 'admins' collection")
+            Log.d(TAG, "✅ Synchronized admin UID ($firebaseUid) for $normalizedEmail (KGID: ${finalKgid ?: "N/A"})")
         } catch (e: Exception) {
             Log.w(TAG, "⚠️ Failed to sync admin UID: ${e.message}")
+        }
+    }
+
+    /**
+     * Forcefully checks if an email is in the 'admins' collection in Firestore.
+     */
+    suspend fun isAdminInFirestore(email: String): Boolean = withContext(ioDispatcher) {
+        try {
+            val normalizedEmail = email.trim().lowercase()
+            val snapshot = firestore.collection("admins")
+                .whereEqualTo("email", normalizedEmail)
+                .limit(1)
+                .get()
+                .await()
+            !snapshot.isEmpty
+        } catch (e: Exception) {
+            Log.w(TAG, "isAdminInFirestore check failed for $email: ${e.message}")
+            false
         }
     }
 
@@ -1352,7 +1476,9 @@ open class EmployeeRepository @Inject constructor(
         val normalizedEmail = email.trim().lowercase()
         val rawEmail = email.trim()
 
-        // Primary: local Room (try normalized first)
+        Log.d(TAG, "🔍 getEmployeeByEmail (Admin): Searching for '$normalizedEmail' (raw: '$rawEmail')")
+
+        // 1. Primary: local Room (try normalized first)
         var local = employeeDao.getEmployeeByEmail(normalizedEmail)
         
         // If not found locally, try raw email (for legacy case-sensitive data)
@@ -1360,57 +1486,116 @@ open class EmployeeRepository @Inject constructor(
             local = employeeDao.getEmployeeByEmail(rawEmail)
         }
         
-        if (local != null) return@withContext local
-
-        // Fallback: Firestore (try normalized first)
-        var snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, normalizedEmail).limit(1).get().await()
-        
-        // If not found in Firestore with lowercase, try raw email (legacy data support)
-        if (snapshot.isEmpty && normalizedEmail != rawEmail) {
-            Log.d(TAG, "getEmployeeByEmail: User not found with lowercase '$normalizedEmail', trying raw '$rawEmail'")
-            snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, rawEmail).limit(1).get().await()
-        }
-
-        // ✅ Fallback to 'admins' collection if still not found
-        // ✅ Fallback to 'admins' collection if still not found
-        var isAdminCollection = false
-        if (snapshot.isEmpty) {
-             Log.d(TAG, "getEmployeeByEmail: User not found in 'employees', checking 'admins'")
-             try {
-                 snapshot = firestore.collection("admins").whereEqualTo("email", normalizedEmail).limit(1).get().await()
-                 if (!snapshot.isEmpty) {
-                     isAdminCollection = true
-                 }
-             } catch (e: Exception) {
-                 Log.w(TAG, "getEmployeeByEmail: Failed to check admins collection (likely permission denied for new user). Treating as not found. Error: ${e.message}")
-                 // Swallow error and keep snapshot empty -> returns null -> triggers registration
-             }
-        }
-
-        val doc = snapshot.documents.firstOrNull()
-        // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
-        val docKgid = doc?.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc?.id ?: ""
-        
-        var remote = doc?.toObject(Employee::class.java)?.copy(kgid = docKgid)
-        if (isAdminCollection && remote != null) {
-            remote = remote.copy(isAdmin = true)
-            
-            // ✅ Ensure current UID is synchronized as admin (for rules)
-            val currentAuthUid = auth.currentUser?.uid
-            if (currentAuthUid != null) {
-                syncAdminUid(normalizedEmail, currentAuthUid)
+        if (local != null) {
+            Log.d(TAG, "✅ Found locally: ${local.kgid} (Approved=${local.isApproved})")
+            if (local.isApproved) {
+                return@withContext local
+            } else {
+                Log.d(TAG, "⚠️ Local cache says disabled. Forcing network check for admin override.")
             }
         }
 
-        if (remote != null && doc != null) {
-            val entity = buildEmployeeEntityFromDoc(doc, pinHash = doc.getString(FIELD_PIN_HASH).orEmpty())
-            
-            // If from admin collection, ensure entity is marked as admin
-            val finalEntity = if (isAdminCollection) entity.copy(isAdmin = true) else entity
-            
-            employeeDao.insertEmployee(finalEntity)
-            return@withContext finalEntity
+        // 2. Fallback: Firestore
+        val currentUser = auth.currentUser
+        Log.d(TAG, "📡 Fetching from Firestore (Admin)... Current Auth UID: ${currentUser?.uid}, Email: ${currentUser?.email}")
+
+        var snapshot = try {
+            employeesCollection.whereEqualTo(FIELD_EMAIL, normalizedEmail).limit(1).get().await()
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ Firestore query failed (normalized) for $normalizedEmail: ${e.message}")
+            null
         }
+
+        // If not found in Firestore with lowercase, try raw email (legacy data support)
+        if ((snapshot == null || snapshot.isEmpty) && normalizedEmail != rawEmail) {
+            Log.d(TAG, "🔄 Not found with lowercase '$normalizedEmail', trying raw '$rawEmail'")
+            snapshot = try {
+                employeesCollection.whereEqualTo(FIELD_EMAIL, rawEmail).limit(1).get().await()
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Firestore query failed (raw): ${e.message}")
+                null
+            }
+        }
+
+        var isAdminCollection = false
+        var finalDoc = snapshot?.documents?.firstOrNull()
+
+        // --- 🆕 3. ALWAYS CHECK ADMINS COLLECTION AS FINAL FALLBACK ---
+        try {
+            // A. Check by email (where email is a FIELD)
+            val adminSnapshot = firestore.collection("admins").whereEqualTo(FIELD_EMAIL, normalizedEmail).limit(1).get().await()
+            if (!adminSnapshot.isEmpty) {
+                isAdminCollection = true
+                if (finalDoc == null) {
+                    Log.d(TAG, "✅ Found user in 'admins' collection by email field")
+                    finalDoc = adminSnapshot.documents.first()
+                }
+            } else {
+                // B. Check by normalized email (as DOCUMENT ID)
+                val adminDocByEmail = firestore.collection("admins").document(normalizedEmail).get().await()
+                if (adminDocByEmail.exists()) {
+                    Log.d(TAG, "✅ Found user in 'admins' collection by Email ID: $normalizedEmail")
+                    isAdminCollection = true
+                    if (finalDoc == null) {
+                        finalDoc = adminDocByEmail
+                    }
+                } else if (currentUser != null) {
+                    // C. Check by UID (as DOCUMENT ID)
+                    val adminDocByUid = firestore.collection("admins").document(currentUser.uid).get().await()
+                    if (adminDocByUid.exists()) {
+                        Log.d(TAG, "✅ Found user in 'admins' collection by UID ID: ${currentUser.uid}")
+                        isAdminCollection = true
+                        if (finalDoc == null) {
+                            finalDoc = adminDocByUid
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ Failed to check admins collection: ${e.message}")
+        }
+
+        if (finalDoc != null) {
+            // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
+            val docKgid = finalDoc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: finalDoc.id
+            
+            var remote = finalDoc.toObject(Employee::class.java)?.copy(kgid = docKgid)
+            if (isAdminCollection && remote != null) {
+                // Admins are always approved and have admin rights
+                remote = remote.copy(isAdmin = true, isApproved = true)
+                
+                // ✅ Ensure current UID is synchronized as admin (for rules)
+                if (currentUser != null) {
+                    syncAdminUid(normalizedEmail, currentUser.uid, docKgid)
+                }
+            }
+
+            var entity = buildEmployeeEntityFromDoc(finalDoc, pinHash = finalDoc.getString(FIELD_PIN_HASH).orEmpty())
+            
+            // If from admin collection, ensure entity is marked as admin and approved
+            if (isAdminCollection) {
+                entity = entity.copy(isAdmin = true, isApproved = true)
+            }
+            
+            Log.d(TAG, "🎯 Successfully mapped user: ${entity.kgid} (Admin=${entity.isAdmin})")
+            employeeDao.insertEmployee(entity)
+            return@withContext entity
+        } else if (isAdminCollection && currentUser != null) {
+             // Create an ad-hoc entity for the admin if they aren't in employees
+             Log.d(TAG, "🛠️ Creating ad-hoc Admin entity for ${currentUser.uid}")
+             val adminEntity = EmployeeEntity(
+                 kgid = "ADMIN_" + currentUser.uid,
+                 name = "Administrator",
+                 email = normalizedEmail,
+                 isAdmin = true,
+                 isApproved = true,
+                 firebaseUid = currentUser.uid
+             )
+             employeeDao.insertEmployee(adminEntity)
+             return@withContext adminEntity
+        }
+        
+        Log.w(TAG, "❌ No record found in Firestore for $email")
         return@withContext null
     }
 
@@ -1547,7 +1732,12 @@ open class EmployeeRepository @Inject constructor(
         // ✅ CRITICAL FIX: Always use document ID as kgid if field is missing
         val docKgid = doc.id // Document ID (e.g., "1953036")
         
-        val emp = doc.toObject(Employee::class.java)
+        val emp = try { 
+            doc.toObject(Employee::class.java) 
+        } catch (e: Exception) {
+            Log.w("EmployeeRepo", "toObject failed for ${doc.id}, falling back to manual: ${e.message}")
+            null 
+        }
         return if (emp != null) {
             // Ensure kgid is set - use document ID if field is missing/empty
             val finalKgid = if (emp.kgid.isNotBlank()) emp.kgid else docKgid
@@ -1633,9 +1823,10 @@ open class EmployeeRepository @Inject constructor(
 
     private fun mapEmployeeFromResponse(data: Map<*, *>): Employee {
         fun str(key: String): String = data[key]?.toString().orEmpty()
-        fun bool(key: String): Boolean = when (val value = data[key]) {
+        fun bool(key: String, defaultIfMissing: Boolean = false): Boolean = when (val value = data[key]) {
             is Boolean -> value
-            else -> value?.toString()?.toBoolean() ?: false
+            null -> defaultIfMissing
+            else -> value.toString().toBoolean()
         }
 
         return Employee(
@@ -1767,8 +1958,6 @@ open class EmployeeRepository @Inject constructor(
                 try {
                     // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
                     val kgid = doc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: doc.id
-                    val emp = doc.toObject(Employee::class.java)?.copy(kgid = kgid)
-                    
                     // Skip deleted employees
                     val isDeleted = doc.getBoolean("isDeleted") ?: false
                     if (isDeleted) {
@@ -1776,18 +1965,18 @@ open class EmployeeRepository @Inject constructor(
                         return@mapNotNull null
                     }
                     
-                    // ✅ Log employee details for debugging (only first 10 to avoid log spam)
-                    if (processedCount < 10) {
-                        val isApproved = doc.getBoolean("isApproved") ?: false
-                        Log.d(TAG, "📋 Employee: kgid=$kgid, name=${emp?.name}, isApproved=$isApproved")
+                    // ✅ Build entity using safe mapper (handles both toObject and manual fallback)
+                    val entity = buildEmployeeEntityFromDoc(doc, pinHash = doc.getString(FIELD_PIN_HASH).orEmpty())
+                    
+                    // ✅ Log employee details for debugging (only first 5 to avoid log spam)
+                    if (processedCount < 5) {
+                        Log.d(TAG, "📋 Synced Employee: kgid=${entity.kgid}, name=${entity.name}")
                     }
                     processedCount++
                     
-                    emp?.let { 
-                        buildEmployeeEntityFromDoc(doc, pinHash = doc.getString(FIELD_PIN_HASH).orEmpty()) 
-                    }
+                    entity
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error parsing employee document ${doc.id}: ${e.message}")
+                    Log.e(TAG, "Critical error parsing employee document ${doc.id}: ${e.message}")
                     null
                 }
             }

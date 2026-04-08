@@ -32,11 +32,23 @@ fun LeaveManagerAdminScreen(
     val pendingUsers by viewModel.pendingUsers.collectAsState()
     val departments by viewModel.departments.collectAsState()
     val status by viewModel.status.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(status) {
+        val state = status
+        if (state is OperationStatus.Error) {
+            snackbarHostState.showSnackbar(state.message)
+        } else if (state is OperationStatus.Success<*>) {
+            val msg = state.data as? String ?: "Operation successful"
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Leave Manager Admin", fontWeight = FontWeight.Bold) },
+                title = { Text("Leave Register", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -44,11 +56,13 @@ fun LeaveManagerAdminScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             TabRow(selectedTabIndex = selectedTab) {

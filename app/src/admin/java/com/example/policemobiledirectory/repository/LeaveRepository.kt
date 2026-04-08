@@ -1,58 +1,60 @@
 package com.example.policemobiledirectory.repository
 
 import android.util.Log
+import com.example.policemobiledirectory.data.local.*
 import com.example.policemobiledirectory.model.LeaveBalance
 import com.example.policemobiledirectory.model.LeaveEntry
 import com.example.policemobiledirectory.model.LeaveCreditLog
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
+import com.example.policemobiledirectory.model.LeaveStatistics
+import com.example.policemobiledirectory.utils.GoogleDriveSyncManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class LeaveRepository @Inject constructor(
-    private val firestore: FirebaseFirestore
+    private val leaveDao: LeaveDao,
+    private val driveSyncManager: GoogleDriveSyncManager
 ) {
     private val TAG = "LeaveRepository"
-    private val leaveCollection = firestore.collection("leaveBalances")
-
-    private fun getEntriesCollection(kgid: String) =
-        leaveCollection.document(kgid).collection("entries")
-
-    private fun getLogsCollection(kgid: String) =
-        leaveCollection.document(kgid).collection("logs")
 
     suspend fun getLeaveBalance(kgid: String): LeaveBalance? {
-        if (kgid.isBlank()) {
-            Log.e(TAG, "getLeaveBalance: KGID is blank")
-            return null
-        }
+        if (kgid.isBlank()) return null
         return try {
-            Log.d(TAG, "Fetching leave balance for KGID: $kgid")
-            val doc = leaveCollection.document(kgid).get().await()
-            if (doc.exists()) {
-                Log.d(TAG, "Leave balance found for KGID: $kgid")
-                doc.toObject(LeaveBalance::class.java)
+            Log.d(TAG, "Fetching local leave balance for KGID: $kgid")
+            val localBalance = leaveDao.getBalance(kgid)
+            if (localBalance != null) {
+                localBalance.toDomain()
             } else {
-                Log.d(TAG, "No leave balance found, creating new for KGID: $kgid")
-                val newBalance = LeaveBalance(kgid = kgid)
-                leaveCollection.document(kgid).set(newBalance).await()
-                Log.d(TAG, "New leave balance created for KGID: $kgid")
-                newBalance
+                // Try restore from Google Drive if local is empty
+                Log.d(TAG, "Local balance empty, attempting GDrive restore for KGID: $kgid")
+                val result = driveSyncManager.downloadBackup()
+                if (result is GoogleDriveSyncManager.SyncResult.Success && result.data?.balance?.kgid == kgid) {
+                    Log.d(TAG, "Successfully restored from GDrive")
+                    restoreFromBackup(result.data!!)
+                    result.data.balance
+                } else {
+                    Log.d(TAG, "No backup found or error, creating new balance")
+                    val newBalance = LeaveBalance(kgid = kgid)
+                    saveLeaveBalance(newBalance)
+                    newBalance
+                }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching leave balance for KGID: $kgid. Reason: ${e.message}", e)
+            Log.e(TAG, "Error getting leave balance", e)
             null
         }
     }
 
     suspend fun saveLeaveBalance(balance: LeaveBalance) {
         try {
-            leaveCollection.document(balance.kgid).set(balance).await()
-            Log.d(TAG, "Leave balance saved for KGID: ${balance.kgid}")
+            leaveDao.insertBalance(balance.toEntity())
+            triggerSync(balance.kgid)
+            Log.d(TAG, "Leave balance saved locally")
         } catch (e: Exception) {
             Log.e(TAG, "Error saving leave balance", e)
             throw e
@@ -60,38 +62,21 @@ class LeaveRepository @Inject constructor(
     }
 
     suspend fun saveLeaveEntry(balance: LeaveBalance, entry: LeaveEntry) {
-        val kgid = balance.kgid
-        Log.d(TAG, "Saving leave entry for KGID: $kgid, type=${entry.leaveType}, days=${entry.totalDays}")
         try {
-            firestore.runTransaction { transaction ->
-                val balanceRef = leaveCollection.document(kgid)
-                val entryRef = if (entry.id.isEmpty()) {
-                    getEntriesCollection(kgid).document()
-                } else {
-                    getEntriesCollection(kgid).document(entry.id)
-                }
-                val finalEntry = entry.copy(id = entryRef.id)
-                transaction.set(balanceRef, balance)
-                transaction.set(entryRef, finalEntry)
-            }.await()
-            Log.d(TAG, "Leave entry saved successfully for KGID: $kgid")
+            leaveDao.saveEntryWithBalance(balance.toEntity(), entry.toEntity())
+            triggerSync(balance.kgid)
+            Log.d(TAG, "Leave entry and balance saved locally")
         } catch (e: Exception) {
-            Log.e(TAG, "Error saving leave entry for KGID: $kgid", e)
+            Log.e(TAG, "Error saving leave entry", e)
             throw e
         }
     }
 
     suspend fun updateLeaveEntry(balance: LeaveBalance, entry: LeaveEntry) {
-        val kgid = balance.kgid
-        Log.d(TAG, "Updating leave entry ${entry.id} for KGID: $kgid")
         try {
-            firestore.runTransaction { transaction ->
-                val balanceRef = leaveCollection.document(kgid)
-                val entryRef = getEntriesCollection(kgid).document(entry.id)
-                transaction.set(balanceRef, balance)
-                transaction.set(entryRef, entry)
-            }.await()
-            Log.d(TAG, "Leave entry updated successfully")
+            leaveDao.saveEntryWithBalance(balance.toEntity(), entry.toEntity())
+            triggerSync(balance.kgid)
+            Log.d(TAG, "Leave entry updated locally")
         } catch (e: Exception) {
             Log.e(TAG, "Error updating leave entry", e)
             throw e
@@ -99,16 +84,10 @@ class LeaveRepository @Inject constructor(
     }
 
     suspend fun deleteLeaveEntry(balance: LeaveBalance, entry: LeaveEntry) {
-        val kgid = balance.kgid
-        Log.d(TAG, "Deleting leave entry ${entry.id} for KGID: $kgid")
         try {
-            firestore.runTransaction { transaction ->
-                val balanceRef = leaveCollection.document(kgid)
-                val entryRef = getEntriesCollection(kgid).document(entry.id)
-                transaction.set(balanceRef, balance)
-                transaction.delete(entryRef)
-            }.await()
-            Log.d(TAG, "Leave entry deleted successfully")
+            leaveDao.deleteEntryWithBalance(balance.toEntity(), entry.toEntity())
+            triggerSync(balance.kgid)
+            Log.d(TAG, "Leave entry deleted locally")
         } catch (e: Exception) {
             Log.e(TAG, "Error deleting leave entry", e)
             throw e
@@ -116,124 +95,155 @@ class LeaveRepository @Inject constructor(
     }
 
     suspend fun saveCreditUpdate(balance: LeaveBalance, logs: List<LeaveCreditLog>) {
-        val kgid = balance.kgid
-        firestore.runTransaction { transaction ->
-            val balanceRef = leaveCollection.document(kgid)
-            transaction.set(balanceRef, balance)
-            logs.forEach { log ->
-                val logRef = getLogsCollection(kgid).document()
-                transaction.set(logRef, log.copy(id = logRef.id))
-            }
-        }.await()
-    }
-
-    fun getLeaveEntries(kgid: String): Flow<List<LeaveEntry>> = flow {
-        if (kgid.isBlank()) {
-            Log.e(TAG, "getLeaveEntries: KGID is blank")
-            emit(emptyList())
-            return@flow
-        }
         try {
-            val snapshot = getEntriesCollection(kgid)
-                .orderBy("dateFrom", Query.Direction.DESCENDING)
-                .get()
-                .await()
-            emit(snapshot.toObjects(LeaveEntry::class.java))
+            leaveDao.insertBalance(balance.toEntity())
+            leaveDao.insertCreditLogs(logs.map { it.toEntity() })
+            triggerSync(balance.kgid)
+            Log.d(TAG, "Credit update and logs saved locally")
         } catch (e: Exception) {
-            Log.e(TAG, "Error fetching leave entries for KGID: $kgid. Reason: ${e.message}", e)
-            emit(emptyList())
+            Log.e(TAG, "Error saving credit update", e)
+            throw e
         }
     }
 
-    fun getEntriesByType(kgid: String, leaveType: String): Flow<List<LeaveEntry>> = flow {
-        try {
-            val snapshot = getEntriesCollection(kgid)
-                .whereEqualTo("leaveType", leaveType)
-                .orderBy("dateFrom", Query.Direction.DESCENDING)
-                .get()
-                .await()
-            emit(snapshot.toObjects(LeaveEntry::class.java))
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching $leaveType entries", e)
-            emit(emptyList())
+    fun getCreditLogs(kgid: String): Flow<List<LeaveCreditLog>> {
+        return leaveDao.getCreditLogs(kgid).map { entities ->
+            entities.map { it.toDomain() }
         }
     }
 
-    fun getMclEntries(kgid: String): Flow<List<LeaveEntry>> = flow {
-        try {
-            val snapshot = getEntriesCollection(kgid)
-                .whereEqualTo("isMcl", true)
-                .orderBy("dateFrom", Query.Direction.DESCENDING)
-                .get()
-                .await()
-            emit(snapshot.toObjects(LeaveEntry::class.java))
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching MCL entries", e)
-            emit(emptyList())
+    fun getLeaveEntries(kgid: String): Flow<List<LeaveEntry>> {
+        return leaveDao.getAllEntries(kgid).map { entities ->
+            entities.map { it.toDomain() }
         }
     }
 
     suspend fun getWoCountForMonth(kgid: String, year: Int, month: Int): Int {
         return try {
-            val snapshot = getEntriesCollection(kgid)
-                .whereEqualTo("leaveType", "WO")
-                .whereEqualTo("year", year)
-                .whereEqualTo("month", month)
-                .get()
-                .await()
-            snapshot.size()
+            leaveDao.getWoEntries(kgid, year, month).size
         } catch (e: Exception) {
             Log.e(TAG, "Error fetching WO count", e)
             0
         }
     }
 
-    suspend fun getLeaveStatistics(kgid: String, year: Int): com.example.policemobiledirectory.model.LeaveStatistics? {
-        if (kgid.isBlank()) {
-            Log.e(TAG, "getLeaveStatistics: KGID is blank")
-            return null
+    suspend fun manualBackup(kgid: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            Log.d(TAG, "Starting manual backup for KGID: $kgid")
+            val balance = leaveDao.getBalance(kgid)?.toDomain()
+            val entries = leaveDao.getAllEntries(kgid).first().map { it.toDomain() }
+            val logs = leaveDao.getCreditLogs(kgid).first().map { it.toDomain() }
+            
+            val result = driveSyncManager.uploadBackup(balance, entries, logs)
+            val success = result is GoogleDriveSyncManager.SyncResult.Success
+            if (success) {
+                Log.d(TAG, "Manual backup successful for KGID: $kgid")
+            } else {
+                Log.e(TAG, "Manual backup failed: $result")
+            }
+            success
+        } catch (e: Exception) {
+            Log.e(TAG, "Manual backup failed with exception", e)
+            false
         }
-        return try {
-            val balance = getLeaveBalance(kgid) ?: return null
-            val snapshot = getEntriesCollection(kgid)
-                .whereEqualTo("year", year)
-                .get()
-                .await()
+    }
 
-            val entries = snapshot.toObjects(LeaveEntry::class.java)
+    suspend fun manualRestore(kgid: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            Log.d(TAG, "Starting manual restore for KGID: $kgid")
+            val result = driveSyncManager.downloadBackup()
+            if (result is GoogleDriveSyncManager.SyncResult.Success && result.data?.balance?.kgid == kgid) {
+                restoreFromBackup(result.data!!)
+                Log.d(TAG, "Manual restore successful for KGID: $kgid")
+                true
+            } else {
+                Log.w(TAG, "Manual restore failed: result is $result")
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Manual restore failed with exception", e)
+            false
+        }
+    }
 
-            val totalTaken = entries.filter { it.elEntryType != "upcoming" }.sumOf { it.totalDays }.toInt()
-            val totalRemaining = (balance.clRemaining + balance.elBalance + balance.hplBalance).toInt()
+    private suspend fun triggerSync(kgid: String, retryCount: Int = 1) {
+        withContext(Dispatchers.IO) {
+            try {
+                val balance = leaveDao.getBalance(kgid)?.toDomain()
+                val entries = leaveDao.getAllEntries(kgid).first().map { it.toDomain() }
+                val logs = leaveDao.getCreditLogs(kgid).first().map { it.toDomain() }
+                
+                val result = driveSyncManager.uploadBackup(balance, entries, logs)
+                val success = result is GoogleDriveSyncManager.SyncResult.Success
+                if (!success && retryCount > 0) {
+                    Log.w(TAG, "Background sync failed for $kgid, retrying ($retryCount left)...")
+                    kotlinx.coroutines.delay(3000)
+                    triggerSync(kgid, retryCount - 1)
+                } else if (!success) {
+                    Log.e(TAG, "Background sync failed for $kgid after retries")
+                } else {
+                    Log.d(TAG, "Background sync successful for $kgid")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Background sync exception for $kgid: ${e.message}")
+                if (retryCount > 0) {
+                    kotlinx.coroutines.delay(3000)
+                    triggerSync(kgid, retryCount - 1)
+                }
+            }
+        }
+    }
 
-            val typeBreakdown = entries
-                .filter { it.elEntryType != "upcoming" }
+    private suspend fun restoreFromBackup(backup: GoogleDriveSyncManager.LeaveBackupData) {
+        backup.balance?.let { balance ->
+            leaveDao.restoreAllData(
+                balance.toEntity(),
+                backup.entries.map { it.toEntity() },
+                backup.creditLogs.map { it.toEntity() }
+            )
+            Log.d(TAG, "Restore from backup completed for KGID: ${balance.kgid}")
+        }
+    }
+
+    suspend fun getLeaveStatistics(kgid: String, year: Int): LeaveStatistics? = withContext(Dispatchers.IO) {
+        if (kgid.isBlank()) return@withContext null
+        try {
+            val balance = getLeaveBalance(kgid) ?: return@withContext null
+            val entries = leaveDao.getEntriesForStats(kgid, year)
+                .map { it.toDomain() }
+
+            val totalTaken = entries.sumOf { it.totalDays }
+            val totalRemaining = balance.clRemaining + balance.elBalance + balance.hplBalance
+
+            val leaveTypeBreakdown = entries
                 .groupBy { it.leaveType }
-                .mapValues { (_, list) -> list.sumOf { it.totalDays }.toInt() }
+                .mapValues { (_, list) -> list.sumOf { it.totalDays } }
 
-            val mostUsedType = typeBreakdown.maxByOrNull { it.value }?.key ?: ""
+            val mostUsedType = leaveTypeBreakdown.maxByOrNull { it.value }?.key ?: ""
 
             val monthlyBreakdown = entries
-                .filter { it.elEntryType != "upcoming" }
                 .groupBy { it.month }
-                .mapValues { (_, list) -> list.sumOf { it.totalDays }.toInt() }
+                .mapValues { (_, list) -> list.sumOf { it.totalDays } }
 
-            val averagePerMonth = if (entries.isNotEmpty()) {
-                totalTaken.toDouble() / monthlyBreakdown.keys.size.coerceAtLeast(1)
+            val averagePerMonth = if (monthlyBreakdown.isNotEmpty()) {
+                totalTaken / monthlyBreakdown.size
             } else 0.0
 
-            val totalAvailable = balance.clAnnualLimit + balance.elBalance + balance.hplBalance
+            val totalAvailable = (balance.clAnnualLimit + balance.elBalance + balance.hplBalance)
             val utilizationPercentage = if (totalAvailable > 0) {
                 (totalTaken.toFloat() / totalAvailable.toFloat()) * 100f
             } else 0f
 
-            com.example.policemobiledirectory.model.LeaveStatistics(
+            LeaveStatistics(
+                kgid = kgid,
+                year = year,
                 totalTaken = totalTaken,
                 totalRemaining = totalRemaining,
                 mostUsedType = mostUsedType,
                 averagePerMonth = averagePerMonth,
                 utilizationPercentage = utilizationPercentage,
                 monthlyBreakdown = monthlyBreakdown,
-                leaveTypeBreakdown = typeBreakdown
+                leaveTypeBreakdown = leaveTypeBreakdown
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error calculating leave statistics", e)
@@ -241,16 +251,7 @@ class LeaveRepository @Inject constructor(
         }
     }
 
-    suspend fun getMonthlyLeaveData(kgid: String, year: Int): Map<Int, List<LeaveEntry>> {
-        return try {
-            val snapshot = getEntriesCollection(kgid)
-                .whereEqualTo("year", year)
-                .get()
-                .await()
-            snapshot.toObjects(LeaveEntry::class.java).groupBy { it.month }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error fetching monthly leave data", e)
-            emptyMap()
-        }
+    fun hasDrivePermission(): Boolean {
+        return driveSyncManager.hasDrivePermission()
     }
 }

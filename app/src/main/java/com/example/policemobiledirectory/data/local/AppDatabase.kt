@@ -14,9 +14,12 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         OfficerEntity::class,
         PendingRegistrationEntity::class,
         AppIconEntity::class,
-        NotificationEntity::class // ✅ Added NotificationEntity
+        NotificationEntity::class,
+        LeaveEntryEntity::class,
+        LeaveBalanceEntity::class,
+        LeaveCreditLogEntity::class
     ],
-    version = 12,
+    version = 20,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -27,6 +30,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun pendingRegistrationDao(): PendingRegistrationDao
     abstract fun appIconDao(): AppIconDao
     abstract fun notificationDao(): NotificationDao
+    abstract fun leaveDao(): LeaveDao
 
     companion object {
         @Volatile
@@ -234,6 +238,192 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // ✅ Migration 12 → 13: Add LeaveBalance and LeaveEntry tables
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS leave_balances (
+                        kgid TEXT PRIMARY KEY NOT NULL,
+                        clYear INTEGER NOT NULL DEFAULT 0,
+                        clAnnualLimit INTEGER NOT NULL DEFAULT 15,
+                        clRemaining REAL NOT NULL DEFAULT 15.0,
+                        elManualBalance REAL NOT NULL DEFAULT 0.0,
+                        elBalance REAL NOT NULL DEFAULT 0.0,
+                        hplBalance REAL NOT NULL DEFAULT 0.0,
+                        cclUsed REAL NOT NULL DEFAULT 0.0,
+                        maternityUsedCount INTEGER NOT NULL DEFAULT 0,
+                        paternityUsedCount INTEGER NOT NULL DEFAULT 0,
+                        mclUsedThisMonth INTEGER NOT NULL DEFAULT 0,
+                        woUsedThisMonth INTEGER NOT NULL DEFAULT 0,
+                        mclLastUsedMonth INTEGER NOT NULL DEFAULT 0,
+                        mclLastUsedYear INTEGER NOT NULL DEFAULT 0,
+                        lastResetYear INTEGER NOT NULL DEFAULT 0,
+                        lastCreditDate TEXT NOT NULL DEFAULT '',
+                        lastElHplCreditDate TEXT NOT NULL DEFAULT ''
+                    )
+                    """.trimIndent()
+                )
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS leave_entries (
+                        localId INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        id TEXT NOT NULL,
+                        kgid TEXT NOT NULL,
+                        dateFrom INTEGER,
+                        dateTo INTEGER,
+                        totalDays REAL NOT NULL,
+                        leaveType TEXT NOT NULL,
+                        remark TEXT,
+                        createdAt INTEGER,
+                        year INTEGER NOT NULL,
+                        month INTEGER NOT NULL,
+                        isHalfDay INTEGER NOT NULL,
+                        isMcl INTEGER NOT NULL,
+                        elEntryType TEXT NOT NULL,
+                        hasMedicalCertificate INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        // ✅ Migration 13 → 14: Add LeaveCreditLog table
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS leave_credit_logs (
+                        localId INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        id TEXT NOT NULL,
+                        kgid TEXT NOT NULL,
+                        type TEXT NOT NULL,
+                        amount INTEGER NOT NULL,
+                        date INTEGER,
+                        year INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        // ✅ Migration 14 → 15: Add hplManualBalance to leave_balances
+        private val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                try {
+                    database.execSQL("ALTER TABLE leave_balances ADD COLUMN hplManualBalance REAL NOT NULL DEFAULT 0.0")
+                } catch (e: Exception) {
+                    // Column might already exist
+                }
+            }
+        }
+
+        // ✅ Migration 15 → 16: Handle submittedAt type change (no SQL needed, INTEGER column matches)
+        private val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(database: SupportSQLiteDatabase) {}
+        }
+        
+        // ✅ Migration 16 → 17: Add isAdmin, dutyRole and missing schema drift columns to pending_registrations
+        private val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. New fields for Web Admin Sync
+                try {
+                    db.execSQL("ALTER TABLE pending_registrations ADD COLUMN isAdmin INTEGER NOT NULL DEFAULT 0")
+                } catch (e: Exception) {}
+                try {
+                    db.execSQL("ALTER TABLE pending_registrations ADD COLUMN dutyRole TEXT")
+                } catch (e: Exception) {}
+                
+                // 2. Schema Drift Fixes (Missing columns in previous migrations)
+                try {
+                    db.execSQL("ALTER TABLE pending_registrations ADD COLUMN landline TEXT")
+                } catch (e: Exception) {}
+                try {
+                    db.execSQL("ALTER TABLE pending_registrations ADD COLUMN viewedByAdmin INTEGER NOT NULL DEFAULT 0")
+                } catch (e: Exception) {}
+                try {
+                    db.execSQL("ALTER TABLE pending_registrations ADD COLUMN rejectionReason TEXT")
+                } catch (e: Exception) {}
+                try {
+                    db.execSQL("ALTER TABLE pending_registrations ADD COLUMN createdAt INTEGER")
+                } catch (e: Exception) {}
+            }
+        }
+
+        // ✅ Migration 17 → 18: Sync employees table with Web Admin / Pending features
+        private val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                try {
+                    db.execSQL("ALTER TABLE employees ADD COLUMN dutyRole TEXT")
+                } catch (e: Exception) {}
+                try {
+                    db.execSQL("ALTER TABLE employees ADD COLUMN subSection TEXT")
+                } catch (e: Exception) {}
+                try {
+                    db.execSQL("ALTER TABLE employees ADD COLUMN isManualSubSection INTEGER NOT NULL DEFAULT 0")
+                } catch (e: Exception) {}
+                try {
+                    db.execSQL("ALTER TABLE employees ADD COLUMN isAdmin INTEGER NOT NULL DEFAULT 0")
+                } catch (e: Exception) {}
+                try {
+                    db.execSQL("ALTER TABLE employees ADD COLUMN landline2 TEXT")
+                } catch (e: Exception) {}
+            }
+        }
+
+        // ✅ Migration 18 → 19: Comprehensive Schema Healing
+        private val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Healing 'pending_registrations' table
+                val pendingColumns = listOf(
+                    "gender" to "TEXT NOT NULL DEFAULT 'Male'",
+                    "isManualStation" to "INTEGER NOT NULL DEFAULT 0",
+                    "isManualSubSection" to "INTEGER NOT NULL DEFAULT 0",
+                    "isAdmin" to "INTEGER NOT NULL DEFAULT 0",
+                    "viewedByAdmin" to "INTEGER NOT NULL DEFAULT 0",
+                    "dutyRole" to "TEXT",
+                    "subSection" to "TEXT",
+                    "landline" to "TEXT",
+                    "landline2" to "TEXT",
+                    "dateOfBirth" to "INTEGER",
+                    "serviceStartDate" to "INTEGER",
+                    "rejectionReason" to "TEXT",
+                    "photoUrlFromGoogle" to "TEXT",
+                    "unit" to "TEXT"
+                )
+                
+                pendingColumns.forEach { (name, type) ->
+                    try {
+                        db.execSQL("ALTER TABLE pending_registrations ADD COLUMN $name $type")
+                    } catch (e: Exception) {
+                        // Column might already exist
+                    }
+                }
+
+                // Healing 'employees' table
+                val employeeColumns = listOf(
+                    "dutyRole" to "TEXT",
+                    "subSection" to "TEXT",
+                    "isManualSubSection" to "INTEGER NOT NULL DEFAULT 0",
+                    "isManualStation" to "INTEGER NOT NULL DEFAULT 0",
+                    "isAdmin" to "INTEGER NOT NULL DEFAULT 0",
+                    "landline" to "TEXT",
+                    "landline2" to "TEXT",
+                    "gender" to "TEXT NOT NULL DEFAULT 'Male'",
+                    "dateOfBirth" to "INTEGER",
+                    "serviceStartDate" to "INTEGER"
+                )
+
+                employeeColumns.forEach { (name, type) ->
+                    try {
+                        db.execSQL("ALTER TABLE employees ADD COLUMN $name $type")
+                    } catch (e: Exception) {
+                        // Column might already exist
+                    }
+                }
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase =
             INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -241,7 +431,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "employee_directory_db"
                 )
-                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12) // ✅ Keep user data on update
+                    .addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19) // ✅ Keep user data on update
                     .fallbackToDestructiveMigration() // ✅ Wipe data if migration fails
                     .build()
                 INSTANCE = instance

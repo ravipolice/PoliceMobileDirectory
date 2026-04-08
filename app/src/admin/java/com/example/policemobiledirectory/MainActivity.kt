@@ -1,6 +1,7 @@
 package com.example.policemobiledirectory
 
 import android.Manifest
+
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -9,6 +10,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -23,8 +25,14 @@ import com.example.policemobiledirectory.navigation.AppNavGraph
 import com.example.policemobiledirectory.navigation.Routes
 import com.example.policemobiledirectory.services.MyFirebaseMessagingService
 import com.example.policemobiledirectory.ui.theme.PMDTheme
+import com.example.policemobiledirectory.viewmodel.AuthViewModel
+import com.example.policemobiledirectory.viewmodel.SettingsViewModel
+import com.example.policemobiledirectory.viewmodel.PendingRegistrationViewModel
+import com.example.policemobiledirectory.viewmodel.NotificationViewModel
+import com.example.policemobiledirectory.viewmodel.EmployeeListViewModel
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.Scope
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessaging
@@ -48,13 +56,42 @@ import kotlinx.coroutines.flow.collectLatest
 import com.example.policemobiledirectory.model.Employee
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.example.policemobiledirectory.utils.ReviewHelper
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: EmployeeViewModel by viewModels()
+    private val authViewModel: AuthViewModel by viewModels()
+    private val settingsViewModel: SettingsViewModel by viewModels()
+    private val pendingViewModel: PendingRegistrationViewModel by viewModels()
+    private val notificationViewModel: NotificationViewModel by viewModels()
+    private val employeeListViewModel: EmployeeListViewModel by viewModels()
+    private val employeeViewModel: EmployeeViewModel by viewModels()
     private var wasLoggedOut = false
     private lateinit var googleSignInClient: GoogleSignInClient
+
+    @Inject
+    lateinit var reviewHelper: ReviewHelper
+
+    // ✅ Dedicated Drive Permission Launcher
+    private val drivePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            if (account != null) {
+                Log.d("Auth", "✅ Drive Permissions granted for: ${account.email}")
+                account.email?.let { email: String -> 
+                    authViewModel.saveDriveAccountEmail(email) 
+                }
+                Toast.makeText(this, "Drive Permission Granted", Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: ApiException) {
+            Log.e("Auth", "❌ Drive Permission failed: ${e.statusCode}")
+        }
+    }
 
     private val legacyGoogleSignInLauncher: ActivityResultLauncher<Intent> =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -71,15 +108,34 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        // ✅ TEST LOG - This should ALWAYS appear when app starts
-        Log.e("TEST_LOG", "═══════════════════════════════════════")
-        Log.e("TEST_LOG", "🚀🚀🚀 MAINACTIVITY ONCREATE CALLED 🚀🚀🚀")
-        Log.e("TEST_LOG", "═══════════════════════════════════════")
-        android.util.Log.e("TEST_LOG2", "Android Log test - MainActivity started")
-        System.out.println("SYSOUT: MainActivity onCreate called")
+        // 🚀 REAL-TIME IDENTITY MONITORING
+        FirebaseAuth.getInstance().addAuthStateListener { firebaseAuth ->
+            val user = firebaseAuth.currentUser
+            Log.e("TEST_LOG", "🔔 AUTH STATE CHANGE: UID=${user?.uid}, Email=${user?.email}")
+            if (user != null) {
+                authViewModel.loadSession()
+            }
+        }
 
+        // ✅ TEST LOG - This should ALWAYS appear when app starts
+        Log.e("TEST_LOG", "🚀🚀🚀 MAINACTIVITY ONCREATE CALLED 🚀🚀🚀")
+        val fbUser = FirebaseAuth.getInstance().currentUser
+        Log.e("TEST_LOG", "👤 IDENTITY UID: ${fbUser?.uid}")
+        Log.e("TEST_LOG", "📧 IDENTITY EMAIL: ${fbUser?.email}")
+
+        // ✅ CRITICAL: If Firebase session is gone but we think we are logged in, FORCE LOGOUT
+        if (fbUser == null) {
+            Log.e("TEST_LOG", "❌ FIREBASE SESSION NULL - Forcing reset")
+            lifecycleScope.launch {
+                // Give Hilt a tiny bit of time to initialize if needed
+                delay(100) 
+                authViewModel.logout()
+            }
+        }
+        
         // 🚫 1️⃣ Clean up any leftover anonymous Firebase sessions
         val auth = FirebaseAuth.getInstance()
         val currentUser = auth.currentUser
@@ -91,6 +147,11 @@ class MainActivity : ComponentActivity() {
         // ✅ Initialize Legacy Google Sign-In
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
+            .requestScopes(
+                Scope("https://www.googleapis.com/auth/drive.appdata"),
+                Scope("https://www.googleapis.com/auth/drive.file"),
+                Scope("https://www.googleapis.com/auth/spreadsheets")
+            )
             .requestIdToken(getString(com.example.policemobiledirectory.R.string.default_web_client_id))
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
@@ -99,18 +160,22 @@ class MainActivity : ComponentActivity() {
         setupContent()
         askNotificationPermission()
         observeUserLoginForFCM()
+        
+        // ✅ Intelligent Rating: Track launch and try trigger
+        lifecycleScope.launch {
+            authViewModel.sessionManager.incrementLaunchCount()
+            delay(3000) // Delay to let app settle
+            reviewHelper.tryTriggerReview(this@MainActivity)
+        }
     }
 
-    /**
-     * ✅ Launch Google Sign-In (only called if user selects Google login)
-     */
     /**
      * ✅ Launch Google Sign-In (only called if user selects Google login)
      */
     private suspend fun launchGoogleSignIn() {
         val clientId = getString(com.example.policemobiledirectory.R.string.default_web_client_id)
         Log.d("Auth", "🚀 Launching Google Sign-In with Client ID: $clientId")
-        viewModel.setGoogleAccountPickerLoading(true)
+        authViewModel.setGoogleAccountPickerLoading(true)
 
         val credentialManager = CredentialManager.create(this)
         
@@ -147,7 +212,7 @@ class MainActivity : ComponentActivity() {
             Log.d("Auth", "✅ Google Sign-In success for email: $email")
             
             if (googleIdToken.isNotEmpty()) {
-                viewModel.handleGoogleSignIn(email, googleIdToken)
+                authViewModel.handleGoogleSignIn(email, googleIdToken)
                 wasLoggedOut = false
             } else {
                 Log.e("Auth", "❌ No ID token found in credential data. Trying legacy.")
@@ -167,7 +232,7 @@ class MainActivity : ComponentActivity() {
             Log.e("Auth", "❌ Google Sign-In unexpected error", e)
             launchLegacyGoogleSignIn()
         } finally {
-            viewModel.setGoogleAccountPickerLoading(false)
+            authViewModel.setGoogleAccountPickerLoading(false)
         }
     }
 
@@ -175,6 +240,15 @@ class MainActivity : ComponentActivity() {
         Log.d("Auth", "🚀 Launching Legacy Google Sign-In flow")
         val signInIntent = googleSignInClient.signInIntent
         legacyGoogleSignInLauncher.launch(signInIntent)
+    }
+
+    /**
+     * ✅ Request specialized DRIVE_APPDATA scope using legacy intent
+     */
+    private fun requestDrivePermission() {
+        Log.d("Auth", "🔑 Requesting specific Drive scope via legacy launcher")
+        val signInIntent = googleSignInClient.signInIntent
+        drivePermissionLauncher.launch(signInIntent)
     }
 
     private fun handleLegacySignInResult(completedTask: Task<GoogleSignInAccount>) {
@@ -185,7 +259,7 @@ class MainActivity : ComponentActivity() {
             
             if (idToken != null && email != null) {
                 Log.d("Auth", "✅ Legacy Google Sign-In success: $email")
-                viewModel.handleGoogleSignIn(email, idToken)
+                authViewModel.handleGoogleSignIn(email, idToken)
                 wasLoggedOut = false
             } else {
                 Log.e("Auth", "❌ Legacy Sign-In: ID Token or Email is null")
@@ -202,7 +276,7 @@ class MainActivity : ComponentActivity() {
             }
             Toast.makeText(this, errorMsg, Toast.LENGTH_LONG).show()
         } finally {
-            viewModel.setGoogleAccountPickerLoading(false)
+            authViewModel.setGoogleAccountPickerLoading(false)
         }
     }
 
@@ -211,8 +285,8 @@ class MainActivity : ComponentActivity() {
      */
     private fun setupContent() {
         setContent {
-            val isDarkTheme by viewModel.isDarkTheme.collectAsState()
-            val isLoggedIn by viewModel.isLoggedIn.collectAsState()
+            val isDarkTheme by settingsViewModel.isDarkTheme.collectAsState()
+            val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
             val navController = rememberNavController()
             val scope = rememberCoroutineScope()
 
@@ -224,7 +298,7 @@ class MainActivity : ComponentActivity() {
                 // ✅ Define logout action (manual only)
                 val logoutAction: () -> Unit = {
                     scope.launch(Dispatchers.Main) {
-                        viewModel.logout {
+                        authViewModel.logout {
                             // ✅ Clear Credential Manager state
                             val credentialManager = CredentialManager.create(this@MainActivity)
                             scope.launch(Dispatchers.Main) {
@@ -255,8 +329,8 @@ class MainActivity : ComponentActivity() {
                 // Use a key to track logout state and prevent auto-navigation after logout
                 var lastLoggedInState by remember { mutableStateOf(isLoggedIn) }
                 
-                LaunchedEffect(isLoggedIn, viewModel.currentUser.collectAsState().value) {
-                    val currentUser = viewModel.currentUser.value
+                LaunchedEffect(isLoggedIn, authViewModel.currentUser.collectAsState().value) {
+                    val currentUser = authViewModel.currentUser.value
                     
                     // ✅ If user just logged out, don't navigate
                     if (lastLoggedInState && !isLoggedIn) {
@@ -286,14 +360,14 @@ class MainActivity : ComponentActivity() {
                         if (currentRoute == Routes.SPLASH) return@LaunchedEffect
 
                         // ✅ Calculate target screen
-                        val isAdmin = viewModel.isAdmin.value
+                        val isAdmin = authViewModel.isAdmin.value
                         var targetRoute = Routes.EMPLOYEE_LIST
                         
                         if (isAdmin) {
                             // Fetch latest pending count
-                            viewModel.refreshPendingRegistrations()
+                            pendingViewModel.refreshPendingRegistrations()
                             delay(500) // Small delay for state to update
-                            if (viewModel.pendingApprovalsTotalCount.value > 0) {
+                            if (pendingViewModel.pendingRegistrations.value.size > 0) {
                                 targetRoute = Routes.PENDING_APPROVALS
                             }
                         }
@@ -312,15 +386,20 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // ✅ App Navigation
                 AppNavGraph(
                     navController = navController,
                     startDestination = startDestination,
-                    employeeViewModel = viewModel,
+                    authViewModel = authViewModel,
+                    employeeViewModel = employeeViewModel,
+                    settingsViewModel = settingsViewModel,
+                    pendingViewModel = pendingViewModel,
+                    notificationViewModel = notificationViewModel,
+                    employeeListViewModel = employeeListViewModel,
                     isDarkTheme = isDarkTheme,
                     onGoogleSignInClicked = { scope.launch(Dispatchers.Main) { launchGoogleSignIn() } },
-                    onThemeToggle = { viewModel.toggleTheme() },
-                    onLogout = logoutAction
+                    onThemeToggle = { settingsViewModel.toggleTheme() },
+                    onLogout = logoutAction,
+                    onDrivePermissionRequest = { requestDrivePermission() }
                 )
             }
         }
@@ -348,9 +427,9 @@ class MainActivity : ComponentActivity() {
      * ✅ Sync FCM Token whenever a new user logs in
      */
     private fun observeUserLoginForFCM() {
-        var previousUserUid: String? = viewModel.currentUser.value?.firebaseUid
+        var previousUserUid: String? = authViewModel.currentUser.value?.firebaseUid
         lifecycleScope.launch(Dispatchers.Main) {
-            viewModel.currentUser.collectLatest { employeeUser ->
+            authViewModel.currentUser.collectLatest { employeeUser ->
                 val currentUserUid = employeeUser?.firebaseUid
                 if (currentUserUid != null && currentUserUid != previousUserUid) {
                     MyFirebaseMessagingService.syncPendingToken(this@MainActivity)

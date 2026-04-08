@@ -2,19 +2,18 @@ package com.example.policemobiledirectory.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.policemobiledirectory.data.local.SessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * ViewModel responsible for UI settings:
- * - Theme (dark/light mode)
- * - Font scale
- */
 @HiltViewModel
-class SettingsViewModel @Inject constructor() : ViewModel() {
+class SettingsViewModel @Inject constructor(
+    val sessionManager: SessionManager
+) : ViewModel() {
 
     private val _isDarkTheme = MutableStateFlow(false)
     val isDarkTheme: StateFlow<Boolean> = _isDarkTheme.asStateFlow()
@@ -22,27 +21,41 @@ class SettingsViewModel @Inject constructor() : ViewModel() {
     private val _fontScale = MutableStateFlow(1.0f)
     val fontScale: StateFlow<Float> = _fontScale.asStateFlow()
 
-    fun toggleTheme() {
-        _isDarkTheme.value = !_isDarkTheme.value
+    init {
+        viewModelScope.launch {
+            sessionManager.isDarkTheme.collect {
+                _isDarkTheme.value = it
+            }
+        }
+        viewModelScope.launch {
+            sessionManager.fontScale.collect {
+                _fontScale.value = it
+            }
+        }
     }
 
-    fun setTheme(isDark: Boolean) {
-        _isDarkTheme.value = isDark
+    fun toggleTheme() {
+        viewModelScope.launch {
+            sessionManager.setDarkTheme(!_isDarkTheme.value)
+        }
     }
 
     fun adjustFontScale(increase: Boolean) {
         val step = 0.1f
         val current = _fontScale.value
-        _fontScale.value = when {
-            increase -> (current + step).coerceAtMost(1.8f)
-            else -> (current - step).coerceAtLeast(0.8f)
+        val newScale = if (increase) {
+            (current + step).coerceAtMost(1.8f)
+        } else {
+            (current - step).coerceAtLeast(0.8f)
+        }
+        viewModelScope.launch {
+            sessionManager.setFontScale(newScale)
         }
     }
 
     fun setFontScale(scale: Float) {
-        _fontScale.value = scale.coerceIn(0.8f, 1.8f)
+        viewModelScope.launch {
+            sessionManager.setFontScale(scale.coerceIn(0.8f, 1.8f))
+        }
     }
 }
-
-
-

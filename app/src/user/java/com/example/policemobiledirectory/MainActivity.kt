@@ -8,10 +8,11 @@ import android.widget.Toast
 
 import com.example.policemobiledirectory.utils.ToastUtil
 import androidx.activity.ComponentActivity
-import androidx.activity.enableEdgeToEdge
+
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -26,13 +27,15 @@ import com.example.policemobiledirectory.navigation.AppNavGraph
 import com.example.policemobiledirectory.navigation.Routes
 import com.example.policemobiledirectory.services.MyFirebaseMessagingService
 import com.example.policemobiledirectory.ui.theme.PMDTheme
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.AuthViewModel
+import com.example.policemobiledirectory.viewmodel.SettingsViewModel
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.Scope
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.tasks.Task
@@ -41,6 +44,8 @@ import android.content.Intent
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import com.example.policemobiledirectory.utils.ReviewHelper
+import javax.inject.Inject
 import android.content.pm.PackageManager
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -52,8 +57,12 @@ import kotlinx.coroutines.delay
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: EmployeeViewModel by viewModels()
+    private val authViewModel: AuthViewModel by viewModels()
+    private val settingsViewModel: SettingsViewModel by viewModels()
     private var wasLoggedOut = false
+
+    @Inject
+    lateinit var reviewHelper: ReviewHelper
 
     // ✅ Permission launcher for notifications (Android 13+)
     private val requestPermissionLauncher = registerForActivityResult(
@@ -72,13 +81,33 @@ class MainActivity : ComponentActivity() {
         handleLegacySignInResult(task)
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+    // ✅ Dedicated Drive Permission Launcher
+    private val drivePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            if (account != null) {
+                Log.d("Auth", "✅ Drive Permissions granted for: ${account.email}")
+                account.email?.let { email: String ->
+                    authViewModel.saveDriveAccountEmail(email)
+                }
+                ToastUtil.showToast(this, "Drive Permission Granted")
+                authViewModel.checkGoogleDriveAccess(this)
+            }
+        } catch (e: ApiException) {
+            Log.e("Auth", "❌ Drive Permission failed: ${e.statusCode}")
+        }
+    }
 
-        // ✅ Status bar & top bar: same primary color
-        window.statusBarColor = android.graphics.Color.parseColor("#00BCD4")
-        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
+    override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+
+
+        // Status bar & top bar: seamless integration handled in PMDTheme via solid PrimaryTeal color
+
 
         // ✅ TEST LOG - This should ALWAYS appear when app starts
         Log.e("TEST_LOG", "═══════════════════════════════════════")
@@ -90,6 +119,11 @@ class MainActivity : ComponentActivity() {
         // ✅ Initialize Legacy Google Sign-In
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
+            .requestScopes(
+                Scope("https://www.googleapis.com/auth/drive.appdata"),
+                Scope("https://www.googleapis.com/auth/drive.file"),
+                Scope("https://www.googleapis.com/auth/spreadsheets")
+            )
             .requestIdToken(getString(com.example.policemobiledirectory.R.string.default_web_client_id))
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
@@ -106,6 +140,13 @@ class MainActivity : ComponentActivity() {
         setupContent()
         askNotificationPermission()
         observeUserLoginForFCM()
+        
+        // ✅ Intelligent Rating: Track launch and try trigger
+        lifecycleScope.launch {
+            settingsViewModel.sessionManager.incrementLaunchCount()
+            delay(3000) // Delay to let app settle
+            reviewHelper.tryTriggerReview(this@MainActivity)
+        }
     }
 
     /**
@@ -113,7 +154,7 @@ class MainActivity : ComponentActivity() {
      */
     private suspend fun launchGoogleSignIn() {
         Log.d("Auth", "Starting Google Sign-In process")
-        viewModel.setGoogleAccountPickerLoading(true)
+        authViewModel.setGoogleAccountPickerLoading(true)
 
         val credentialManager = CredentialManager.create(this)
         val googleIdOption = GetGoogleIdOption.Builder()
@@ -152,7 +193,7 @@ class MainActivity : ComponentActivity() {
             Log.v("Auth", "Token: ${googleIdToken.take(10)}...")
 
             if (googleIdToken.isNotEmpty()) {
-                viewModel.handleGoogleSignIn(email, googleIdToken)
+                authViewModel.handleGoogleSignIn(email, googleIdToken)
                 wasLoggedOut = false
             } else {
                 Log.e("Auth", "❌ No ID token found in credential data. Trying legacy.")
@@ -181,7 +222,7 @@ class MainActivity : ComponentActivity() {
             launchLegacyGoogleSignIn()
         } finally {
             Log.d("Auth", "Google Sign-In flow completed")
-            viewModel.setGoogleAccountPickerLoading(false)
+            authViewModel.setGoogleAccountPickerLoading(false)
         }
     }
 
@@ -189,6 +230,12 @@ class MainActivity : ComponentActivity() {
         Log.d("Auth", "🚀 Launching Legacy Google Sign-In flow")
         val signInIntent = googleSignInClient.signInIntent
         legacyGoogleSignInLauncher.launch(signInIntent)
+    }
+
+    private fun requestDrivePermission() {
+        Log.d("Auth", "🚀 Launching Drive Permission flow")
+        val signInIntent = googleSignInClient.signInIntent
+        drivePermissionLauncher.launch(signInIntent)
     }
 
     private fun handleLegacySignInResult(completedTask: Task<GoogleSignInAccount>) {
@@ -199,7 +246,7 @@ class MainActivity : ComponentActivity() {
             
             if (idToken != null && email != null) {
                 Log.d("Auth", "✅ Legacy Google Sign-In success: $email")
-                viewModel.handleGoogleSignIn(email, idToken)
+                authViewModel.handleGoogleSignIn(email, idToken)
                 wasLoggedOut = false
             } else {
                 Log.e("Auth", "❌ Legacy Sign-In: ID Token or Email is null")
@@ -216,7 +263,7 @@ class MainActivity : ComponentActivity() {
             }
             ToastUtil.showToast(this, errorMsg, Toast.LENGTH_LONG)
         } finally {
-            viewModel.setGoogleAccountPickerLoading(false)
+            authViewModel.setGoogleAccountPickerLoading(false)
         }
     }
 
@@ -225,8 +272,8 @@ class MainActivity : ComponentActivity() {
      */
     private fun setupContent() {
         setContent {
-            val isDarkTheme by viewModel.isDarkTheme.collectAsState()
-            val isLoggedIn by viewModel.isLoggedIn.collectAsState()
+            val isDarkTheme by settingsViewModel.isDarkTheme.collectAsState()
+            val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
             val navController = rememberNavController()
             val scope = rememberCoroutineScope()
 
@@ -238,7 +285,7 @@ class MainActivity : ComponentActivity() {
                 // ✅ Define logout action (manual only)
                 val logoutAction: () -> Unit = {
                     scope.launch {
-                        viewModel.logout {
+                        authViewModel.logout {
                             // ✅ Clear Google Sign-In session to force account picker next time
                             googleSignInClient.signOut().addOnCompleteListener {
                                 Log.d("Auth", "Google Sign-In signed out")
@@ -271,8 +318,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // ✅ Observe session changes for navigation
-                LaunchedEffect(isLoggedIn, viewModel.currentUser.collectAsState().value) {
-                    val currentUser = viewModel.currentUser.value
+                LaunchedEffect(isLoggedIn, authViewModel.currentUser.collectAsState().value) {
+                    val currentUser = authViewModel.currentUser.value
                     val currentRoute = navController.currentDestination?.route
 
                     // 1. Skip if still on Splash (Splash handles initial routing)
@@ -305,11 +352,13 @@ class MainActivity : ComponentActivity() {
                 AppNavGraph(
                     navController = navController,
                     startDestination = startDestination,
-                    employeeViewModel = viewModel,
+                    authViewModel = authViewModel,
+                    settingsViewModel = settingsViewModel,
                     isDarkTheme = isDarkTheme,
                     onGoogleSignInClicked = { lifecycleScope.launch { launchGoogleSignIn() } },
-                    onThemeToggle = { viewModel.toggleTheme() },
-                    onLogout = logoutAction
+                    onThemeToggle = { settingsViewModel.toggleTheme() },
+                    onLogout = logoutAction,
+                    onDrivePermissionRequest = { requestDrivePermission() }
                 )
             }
         }
@@ -337,9 +386,9 @@ class MainActivity : ComponentActivity() {
      * ✅ Sync FCM Token whenever a new user logs in
      */
     private fun observeUserLoginForFCM() {
-        var previousUserUid: String? = viewModel.currentUser.value?.firebaseUid
+        var previousUserUid: String? = authViewModel.currentUser.value?.firebaseUid
         lifecycleScope.launch {
-            viewModel.currentUser.collectLatest { employeeUser ->
+            authViewModel.currentUser.collectLatest { employeeUser ->
                 val currentUserUid = employeeUser?.firebaseUid
                 if (currentUserUid != null && currentUserUid != previousUserUid) {
                     MyFirebaseMessagingService.syncPendingToken(this@MainActivity)

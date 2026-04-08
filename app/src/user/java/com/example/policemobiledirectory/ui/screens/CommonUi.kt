@@ -35,6 +35,13 @@ fun CommonTopAppBar(title: String, navController: NavController) {
     val context = LocalContext.current
     TopAppBar(
         title = { Text(text = title) },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            scrolledContainerColor = MaterialTheme.colorScheme.primary,
+            titleContentColor = androidx.compose.ui.graphics.Color.White,
+            navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
+            actionIconContentColor = androidx.compose.ui.graphics.Color.White
+        ),
         navigationIcon = {
             if (navController.previousBackStackEntry != null) {
                 IconButton(onClick = { navController.navigateUp() }) {
@@ -49,15 +56,10 @@ fun CommonTopAppBar(title: String, navController: NavController) {
                 Icon(
                     imageVector = Icons.Default.Share,
                     contentDescription = "Share App",
-                    tint = Color.White
+                    tint = androidx.compose.ui.graphics.Color.White
                 )
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            titleContentColor = Color.White,
-            navigationIconContentColor = Color.White
-        )
+        }
     )
 }
 

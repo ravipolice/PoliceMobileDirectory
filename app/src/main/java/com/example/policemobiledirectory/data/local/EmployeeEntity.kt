@@ -42,8 +42,13 @@ data class EmployeeEntity(
     val isApproved: Boolean = true,
     val unit: String? = null,
     val searchBlob: String = "",
+    val landline: String? = null,
+    val landline2: String? = null,
     val isManualStation: Boolean = false,
+    val isManualSubSection: Boolean = false,
     val gender: String = "Male",
     val serviceStartDate: Date? = null,
-    val dateOfBirth: Date? = null
+    val dateOfBirth: Date? = null,
+    val subSection: String? = null,
+    val dutyRole: String? = null
 )

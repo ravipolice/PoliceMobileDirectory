@@ -25,25 +25,38 @@ data class Employee(
     val photoUrlFromGoogle: String? = null,
     val fcmToken: String? = null,
     val firebaseUid: String? = null,
+    
     @get:PropertyName("isAdmin")
-    val isAdmin: Boolean = false,      // BOOLEAN after migration
+    @set:PropertyName("isAdmin")
+    var isAdmin: Boolean = false,
+
     @get:PropertyName("isApproved")
-    val isApproved: Boolean = true,    // BOOLEAN after migration
+    @set:PropertyName("isApproved")
+    var isApproved: Boolean = true,
+
     @ServerTimestamp
-    val createdAt: Date? = null,       // TIMESTAMP after migration
+    val createdAt: Date? = null,
     @ServerTimestamp
-    val updatedAt: Date? = null,        // TIMESTAMP after migration
-    val unit: String? = null,           // Explicit Unit field (Hybrid Strategy)
+    val updatedAt: Date? = null,
+    val unit: String? = null,
     val landline: String? = null,
     val landline2: String? = null,
+    
     @get:PropertyName("isHidden")
-    val isHidden: Boolean = false,       // Added for Hide/Unhide feature
+    @set:PropertyName("isHidden")
+    var isHidden: Boolean = false,
+
     @get:PropertyName("isManualStation")
-    val isManualStation: Boolean = false, // Added for manual section tracking
+    @set:PropertyName("isManualStation")
+    var isManualStation: Boolean = false,
+
     @get:PropertyName("isManualSubSection")
-    val isManualSubSection: Boolean = false, // Added for manual duty role tracking
-    val gender: String = "Male",         // KCSR rule dependency
-    val serviceStartDate: Date? = null,   // For future calculations
+    @set:PropertyName("isManualSubSection")
+    var isManualSubSection: Boolean = false,
+
+    val dutyRole: String? = null,
+    val gender: String = "Male",
+    val serviceStartDate: Date? = null,
     @get:Exclude
     val searchBlob: String = ""
 ) {

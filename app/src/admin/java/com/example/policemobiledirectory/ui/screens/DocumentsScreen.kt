@@ -38,6 +38,12 @@ import kotlinx.coroutines.launch
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.material3.TopAppBar
+import com.example.policemobiledirectory.ui.components.GoogleDriveNoticeDialog
+import com.example.policemobiledirectory.ui.components.GoogleDriveDisclaimerBanner
+import com.example.policemobiledirectory.ui.components.ErrorSection
+import com.example.policemobiledirectory.ui.components.EmptySection
+import com.example.policemobiledirectory.ui.components.downloadFile
+import com.example.policemobiledirectory.ui.components.uriToBase64
 
 @Composable
 fun DocumentsScreen(
@@ -54,7 +60,7 @@ fun DocumentsScreen(
     val uploadStatus by viewModel.uploadStatus.collectAsState()
     val deleteStatus by viewModel.deleteStatus.collectAsState()
 
-    var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
+    var showDeleteConfirm by remember { mutableStateOf<Document?>(null) }
     var showUploadDialog by remember { mutableStateOf(false) }
 
     // 🔍 Preview state
@@ -66,6 +72,25 @@ fun DocumentsScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     
+    var showDriveNotice by remember { mutableStateOf(false) }
+    val prefs = remember { context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE) }
+    
+    LaunchedEffect(Unit) {
+        val hasSeenNotice = prefs.getBoolean("seen_documents_drive_notice", false)
+        if (!hasSeenNotice) {
+            showDriveNotice = true
+        }
+    }
+
+    if (showDriveNotice) {
+        GoogleDriveNoticeDialog(
+            onDismiss = {
+                showDriveNotice = false
+                prefs.edit().putBoolean("seen_documents_drive_notice", true).apply()
+            }
+        )
+    }
+
     LaunchedEffect(currentRoute) {
         // Only refresh if we're on the documents screen
         if (currentRoute == com.example.policemobiledirectory.navigation.Routes.DOCUMENTS) {
@@ -113,9 +138,9 @@ fun DocumentsScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                windowInsets = WindowInsets(0.dp),
                 title = { Text("Documents") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -124,6 +149,7 @@ fun DocumentsScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = androidx.compose.ui.graphics.Color.White,
                     navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
                     actionIconContentColor = androidx.compose.ui.graphics.Color.White
@@ -141,8 +167,7 @@ fun DocumentsScreen(
                     Icon(Icons.Default.UploadFile, contentDescription = "Upload")
                 }
             }
-        },
-        contentWindowInsets = WindowInsets(0.dp)
+        }
     ) { innerPadding ->
 
         Surface(
@@ -192,9 +217,9 @@ fun DocumentsScreen(
                                         doc = doc,
                                         isAdmin = isAdmin,
                                         onViewClick = {
+                                            previewTitle = doc.resolvedTitle
                                             val url = doc.resolvedUrl
                                             previewUrl = url
-                                            previewTitle = doc.resolvedTitle
 
                                             // Smarter MIME detection
                                             previewMimeType = when {
@@ -228,7 +253,7 @@ fun DocumentsScreen(
                                                 }
                                             } 
                                         },
-                                        onDeleteClick = { showDeleteConfirm = doc.resolvedTitle }
+                                        onDeleteClick = { showDeleteConfirm = doc }
                                     )
                                 }
                             }
@@ -245,7 +270,12 @@ fun DocumentsScreen(
                     confirmButton = {
                         TextButton(onClick = {
                             scope.launch {
-                                viewModel.deleteDocument(showDeleteConfirm!!)
+                                showDeleteConfirm?.let { doc ->
+                                    val url = doc.resolvedUrl
+                                    if (url != null) {
+                                        viewModel.deleteDocument(doc.resolvedTitle, url)
+                                    }
+                                }
                                 showDeleteConfirm = null
                             }
                         }) { Text("Delete") }
@@ -255,9 +285,10 @@ fun DocumentsScreen(
                     },
                     icon = { Icon(Icons.Default.Delete, contentDescription = null) },
                     title = { Text("Delete Document") },
-                    text = { Text("Are you sure you want to delete '${showDeleteConfirm}'?") }
+                    text = { Text("Are you sure you want to delete '${showDeleteConfirm?.resolvedTitle}'?") }
                 )
             }
+
 
             // 📤 Upload dialog (admin only)
             if (isAdmin && showUploadDialog) {
@@ -278,37 +309,28 @@ fun DocumentsScreen(
             }
 
             // 👀 Fullscreen preview dialog
-            if (previewUrl != null && previewMimeType != null) {
+            if (previewUrl != null && previewMimeType != null && previewTitle != null) {
                 FullscreenPreviewDialog(
-                    title = previewTitle ?: "Document",
+                    title = previewTitle!!,
                     url = previewUrl!!,
                     mimeType = previewMimeType!!,
                     onDismiss = {
                         previewUrl = null
                         previewMimeType = null
                         previewTitle = null
+                    },
+                    onDocumentBroken = { url ->
+                        viewModel.markDocumentAsBroken(url)
                     }
                 )
             }
 
             // 💡 Google Drive Fetching Disclaimer
             Box(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.BottomCenter
             ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-                    shape = RoundedCornerShape(8.dp),
-                    tonalElevation = 4.dp
-                ) {
-                    Text(
-                        text = "Note: Fetched from Google Drive; loading may take a few moments.",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-                }
+                GoogleDriveDisclaimerBanner()
             }
         }
     }
@@ -395,7 +417,8 @@ fun FullscreenPreviewDialog(
     title: String,
     url: String,
     mimeType: String,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onDocumentBroken: (String) -> Unit
 ) {
     val context = LocalContext.current
     var isLoading by remember { mutableStateOf(true) }
@@ -425,6 +448,12 @@ fun FullscreenPreviewDialog(
                         containerColor = MaterialTheme.colorScheme.primaryContainer
                     ),
                     actions = {
+                        IconButton(onClick = { 
+                            onDocumentBroken(url)
+                            onDismiss()
+                        }) {
+                            Icon(Icons.Default.LinkOff, contentDescription = "Mark as Broken")
+                        }
                         IconButton(onClick = { downloadFile(context, url, title) }) {
                             Icon(Icons.Default.FileDownload, contentDescription = "Download")
                         }

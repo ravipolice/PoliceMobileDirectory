@@ -56,8 +56,8 @@ fun AdminPanelScreen(
     val totalEmployeesCount = employees.size
     val totalOfficersCount = officers.size
     val approvedCount = employees.count { it.isApproved }
-    val unviewedPendingCount by viewModel.unviewedPendingCount.collectAsState()
-    val pendingCount = unviewedPendingCount
+    val pendingApprovalsTotalCount by viewModel.pendingApprovalsTotalCount.collectAsState()
+    val pendingCount = pendingApprovalsTotalCount
     
     // Breakdown Stats
     val empDistricts by viewModel.employeesByDistrict.collectAsState()
@@ -116,7 +116,7 @@ fun AdminPanelScreen(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { 
@@ -162,6 +162,7 @@ fun AdminPanelScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White
@@ -375,7 +376,7 @@ fun AdminUnifiedDashboard(
         }
         item(span = { GridItemSpan(2) }) {
             DashboardActionCardLarge(
-                title = "Leave Manager Admin",
+                title = "Leave Register",
                 icon = Icons.Default.AdminPanelSettings,
                 colorStart = Color(0xFF673AB7),
                 colorEnd = Color(0xFF9575CD),

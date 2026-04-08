@@ -40,4 +40,14 @@ object DatabaseModule {
     @Singleton
     fun provideOfficerDao(database: AppDatabase): com.example.policemobiledirectory.data.local.OfficerDao =
         database.officerDao()
+
+    @Provides
+    @Singleton
+    fun provideLeaveDao(database: AppDatabase): com.example.policemobiledirectory.data.local.LeaveDao =
+        database.leaveDao()
+
+    @Provides
+    @Singleton
+    fun provideAppIconDao(database: AppDatabase): com.example.policemobiledirectory.data.local.AppIconDao =
+        database.appIconDao()
 }

@@ -124,6 +124,25 @@ abstract class BaseConstantsRepository(
         }
     }
 
+    /**
+     * Refresh only unit mappings from Firestore (lightweight, called on every init).
+     * Unit config (ranks, scopes, sections) changes in admin must reflect immediately.
+     */
+    suspend fun refreshUnitsOnly(): Boolean = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+            if (auth.currentUser != null) {
+                fetchUnitsFromFirestore()
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Log.e("BaseConstantsRepo", "❌ Failed to refresh units: ${e.message}", e)
+            false
+        }
+    }
+
     protected suspend fun fetchUnitsFromFirestore() {
         try {
             val snapshot = firestore.collection("units")
@@ -151,7 +170,8 @@ abstract class BaseConstantsRepository(
                     stationKeyword = doc.getString("stationKeyword") ?: "",
                     hideFromRegistration = doc.getBoolean("hideFromRegistration") ?: false,
                     hiddenFields = (doc.get("hiddenFields") as? List<String>) ?: emptyList(),
-                    dutyRoles = (doc.get("dutyRoles") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+                    dutyRoles = (doc.get("dutyRoles") as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList(),
+                    identifierFilter = doc.getString("identifierFilter") ?: ""
                 )
             }.sortedBy { it.name }
 
@@ -165,7 +185,11 @@ abstract class BaseConstantsRepository(
                     scopes = model.scopes,
                     applicableRanks = model.applicableRanks,
                     stationKeyword = model.stationKeyword,
-                    mappedAreaType = "" // Default
+                    mappedAreaType = model.mappedAreaType,
+                    hideFromRegistration = model.hideFromRegistration,
+                    hiddenFields = model.hiddenFields,
+                    dutyRoles = model.dutyRoles,
+                    identifierFilter = model.identifierFilter
                 )
             }
 
@@ -353,18 +377,43 @@ abstract class BaseConstantsRepository(
 
     fun getUnits(): List<String> {
         val fullJson = prefs.getString(FULL_UNITS_CACHE_KEY, null)
-        if (!fullJson.isNullOrEmpty()) {
+        val units: List<String> = if (!fullJson.isNullOrEmpty()) {
             val full: List<UnitModel> = gson.fromJson(fullJson, object : TypeToken<List<UnitModel>>() {}.type)
-            return full.map { it.name }
+            full.map { it.name }
+        } else {
+            val json = prefs.getString(UNITS_CACHE_KEY, null)
+            if (json.isNullOrEmpty()) return Constants.defaultUnitsList
+            gson.fromJson(json, object : TypeToken<List<String>>() {}.type)
         }
-        val json = prefs.getString(UNITS_CACHE_KEY, null)
-        if (json.isNullOrEmpty()) return Constants.defaultUnitsList
-        return gson.fromJson(json, object : TypeToken<List<String>>() {}.type)
+
+        return units.sortedBy { unit ->
+            val index = Constants.defaultUnitsList.indexOf(unit)
+            if (index == -1) 9999 else index
+        }
     }
 
     fun getFullUnits(): List<UnitModel> {
-        val json = prefs.getString(FULL_UNITS_CACHE_KEY, null) ?: return emptyList()
-        return gson.fromJson(json, object : TypeToken<List<UnitModel>>() {}.type)
+        val json = prefs.getString(UNIT_MAPPINGS_CACHE_KEY, null) ?: return emptyList()
+        val mappings: Map<String, UnitMapping> = gson.fromJson(json, object : TypeToken<Map<String, UnitMapping>>() {}.type)
+        return mappings.values.map { mapping ->
+            UnitModel(
+                id = "", // Not needed for UI
+                name = mapping.unitName,
+                isActive = true,
+                mappingType = mapping.mappingType,
+                mappedDistricts = mapping.mappedDistricts,
+                isDistrictLevel = mapping.isDistrictLevel,
+                isHqLevel = mapping.isHqLevel,
+                scopes = mapping.scopes,
+                applicableRanks = mapping.applicableRanks,
+                stationKeyword = mapping.stationKeyword ?: "",
+                mappedAreaType = mapping.mappedAreaType ?: "",
+                hideFromRegistration = mapping.hideFromRegistration,
+                hiddenFields = mapping.hiddenFields,
+                dutyRoles = mapping.dutyRoles,
+                identifierFilter = mapping.identifierFilter ?: ""
+            )
+        }
     }
 
     fun getStationsByDistrict(): Map<String, List<String>> {
@@ -414,7 +463,9 @@ abstract class BaseConstantsRepository(
     fun isDistrictLevelUnit(unitName: String): Boolean {
         val json = prefs.getString(UNIT_MAPPINGS_CACHE_KEY, null) ?: return false
         val mappings: Map<String, UnitMapping> = gson.fromJson(json, object : TypeToken<Map<String, UnitMapping>>() {}.type)
-        return mappings[unitName]?.isDistrictLevel == true
+        val mapping = mappings[unitName] ?: return false
+        // Check isDistrictLevel boolean OR scopes containing "district" (the Firestore scope key)
+        return mapping.isDistrictLevel == true || mapping.scopes.contains("district")
     }
 
     suspend fun getSectionsForUnit(unitName: String): List<String> = withContext(Dispatchers.IO) {

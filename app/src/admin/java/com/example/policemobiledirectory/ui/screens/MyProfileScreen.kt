@@ -21,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import com.example.policemobiledirectory.utils.OperationStatus
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 
@@ -74,7 +75,13 @@ fun MyProfileEditScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         if (isProfileOutdated && currentEmployee != null) {
-            OutdatedProfileNotice()
+            OutdatedProfileNotice(
+                onConfirm = {
+                    if (currentEmployee != null) {
+                        viewModel.saveEmployee(currentEmployee!!, null)
+                    }
+                }
+            )
         }
     
         CommonEmployeeForm(
@@ -93,7 +100,7 @@ fun MyProfileEditScreen(
 }
 
 @Composable
-fun OutdatedProfileNotice() {
+fun OutdatedProfileNotice(onConfirm: () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.errorContainer
@@ -102,21 +109,35 @@ fun OutdatedProfileNotice() {
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(16.dp).fillMaxWidth()
         ) {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = "Warning",
-                tint = MaterialTheme.colorScheme.error
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = "Please verify your profile details. It has been over 3 months since the last update.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = "Warning",
+                    tint = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = "Please verify your profile details. It has been over 3 months since the last update.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onConfirm,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text("My Details Are Correct", color = Color.White)
+            }
         }
     }
 }

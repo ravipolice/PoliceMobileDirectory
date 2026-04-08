@@ -123,7 +123,7 @@ abstract class BaseMediaViewModel<T>(
     protected fun hideItem(identifier: String) {
         if (identifier.isBlank()) return
         if (hiddenItemIdentifiers.add(identifier)) {
-            applyFilterAndEmit(_items.value)
+            applyFilterAndEmit(cachedItems ?: _items.value)
         }
     }
 }

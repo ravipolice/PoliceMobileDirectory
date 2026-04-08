@@ -2,6 +2,7 @@ package com.example.policemobiledirectory.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.policemobiledirectory.navigation.Routes
 import com.example.policemobiledirectory.ui.theme.BottomNavStart
 import com.example.policemobiledirectory.ui.theme.BottomNavEnd
 import com.example.policemobiledirectory.ui.theme.CardShadow
@@ -38,6 +40,12 @@ fun BottomNavigationBar(
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val isLeaveManagerRoute = currentRoute?.startsWith("leave_") == true || currentRoute == Routes.APPLY_LEAVE
+    val navItems = if (isLeaveManagerRoute) {
+        bottomNavItems.filter { it.route == Routes.EMPLOYEE_LIST }
+    } else {
+        bottomNavItems
+    }
 
     NavigationBar(
         containerColor = BackgroundLight, // Light off-white background
@@ -50,7 +58,7 @@ fun BottomNavigationBar(
                 ambientColor = CardShadow.copy(alpha = 0.5f)
             )
     ) {
-        bottomNavItems.forEach { item ->
+        navItems.forEach { item ->
             val isSelected = currentRoute == item.route
 
             NavigationBarItem(

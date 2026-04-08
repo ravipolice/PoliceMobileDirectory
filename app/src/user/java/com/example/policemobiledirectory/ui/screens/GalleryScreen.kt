@@ -61,7 +61,6 @@ fun GalleryScreen(
 
     var showUploadDialog by remember { mutableStateOf(false) }
     var fullScreenImage by remember { mutableStateOf<String?>(null) }
-    var deleteDialogImageTitle by remember { mutableStateOf<String?>(null) }
     var viewMode by remember { mutableStateOf(ViewMode.Grid) } // Grid or List view
     var columnsPerRow by remember { mutableStateOf(4) } // 1, 2, 4, 6, 8 images per row
 
@@ -103,7 +102,6 @@ fun GalleryScreen(
 
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0),
         topBar = {
             TopAppBar(
                 title = { Text("Gallery") },
@@ -117,6 +115,7 @@ fun GalleryScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = ComposeColor.White,
                     navigationIconContentColor = ComposeColor.White,
                     actionIconContentColor = ComposeColor.White
@@ -145,6 +144,7 @@ fun GalleryScreen(
                 }
             )
         },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Surface(
             modifier = Modifier
@@ -181,7 +181,7 @@ fun GalleryScreen(
 
                                 LazyVerticalGrid(
                                     columns = GridCells.Fixed(columnsPerRow),
-                                    contentPadding = PaddingValues(8.dp),
+                                    contentPadding = PaddingValues(top = 8.dp, start = 8.dp, end = 8.dp, bottom = 60.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
@@ -197,7 +197,7 @@ fun GalleryScreen(
 
                             ViewMode.List -> {
                                 LazyColumn(
-                                    contentPadding = PaddingValues(8.dp),
+                                    contentPadding = PaddingValues(top = 8.dp, start = 8.dp, end = 8.dp, bottom = 60.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     items(galleryImages.filter { it.isValid }) { image ->

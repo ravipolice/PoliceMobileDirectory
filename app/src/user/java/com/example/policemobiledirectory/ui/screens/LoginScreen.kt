@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
@@ -42,12 +43,14 @@ import androidx.compose.ui.unit.sp
 import com.example.policemobiledirectory.R
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.utils.OperationStatus
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.AuthViewModel
+import com.example.policemobiledirectory.viewmodel.SettingsViewModel
 import com.example.policemobiledirectory.ui.screens.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    viewModel: EmployeeViewModel,
+    viewModel: AuthViewModel,
+    settingsViewModel: SettingsViewModel,
     onLoginSuccess: (Boolean) -> Unit,
     onRegisterNewUser: (String?, String?) -> Unit,
     onForgotPinClicked: () -> Unit,
@@ -66,6 +69,8 @@ fun LoginScreen(
     var showRegisterDialog by remember { mutableStateOf(false) }
     var emailToRegister by remember { mutableStateOf<String?>(null) }
     var nameToRegister by remember { mutableStateOf<String?>(null) }
+    var showRejectionDialog by remember { mutableStateOf(false) }
+    var rejectionReason by remember { mutableStateOf("") }
     val authStatus by viewModel.authStatus.collectAsState()
     val googleSignInEvent by viewModel.googleSignInUiEvent.collectAsState()
     val isAccountPickerLoading by viewModel.isGoogleAccountPickerLoading.collectAsState()
@@ -101,17 +106,15 @@ fun LoginScreen(
 
             is GoogleSignInUiEvent.SignInSuccess -> {
                 isLoading = false
-                if (viewModel.isLoggedIn.value) {
-                    ToastUtil.showToast(context, "Welcome ${event.user.name}")
-                    onLoginSuccess(viewModel.isAdmin.value)
-                }
+                ToastUtil.showToast(context, "Welcome ${event.user.name}")
+                onLoginSuccess(event.user.isAdmin)
             }
 
             is GoogleSignInUiEvent.RegistrationRequired -> {
                 isLoading = false
                 emailToRegister = event.email
                 nameToRegister = event.name
-                showRegisterDialog = true   // ✅ trigger dialog declaratively
+                onRegisterNewUser(event.email, event.name)
             }
 
             is GoogleSignInUiEvent.RegistrationPending -> {
@@ -121,6 +124,13 @@ fun LoginScreen(
                     "Registration for ${event.email} is pending approval. Please wait for an administrator to approve your account.",
                     Toast.LENGTH_LONG
                 )
+            }
+
+            is GoogleSignInUiEvent.RegistrationRejected -> {
+                isLoading = false
+                emailToRegister = event.email
+                rejectionReason = event.reason
+                showRejectionDialog = true
             }
 
             is GoogleSignInUiEvent.Error -> {
@@ -172,6 +182,56 @@ fun LoginScreen(
                     onGoogleSignInClicked() // 2️⃣ Re-trigger account picker
                 }) {
                     Text("Use another account")
+                }
+            }
+        )
+    }
+
+    // --- Registration Rejected Dialog ---
+    if (showRejectionDialog) {
+        AlertDialog(
+            onDismissRequest = { showRejectionDialog = false },
+            title = { 
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Default.Error,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Registration Rejected") 
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Your registration for $emailToRegister was rejected by an administrator.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "Reason: $rejectionReason",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    )
+                    Text(
+                        "You can register again by correcting the information above.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRejectionDialog = false
+                    onRegisterNewUser(emailToRegister!!, null)
+                }) {
+                    Text("Register Again")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRejectionDialog = false }) {
+                    Text("Dismiss")
                 }
             }
         )
@@ -260,6 +320,41 @@ fun LoginScreen(
                         .graphicsLayer(scaleX = scale, scaleY = scale)
                 )
                 Spacer(Modifier.height(24.dp))
+
+                // Google Sign-In/Register Button
+                Button(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onGoogleSignInClicked()
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_google_logo),
+                        contentDescription = "Google Logo"
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Sign in with Google/ Register")
+                }
+                Spacer(Modifier.height(16.dp))
+
+                // Divider
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Divider(modifier = Modifier.weight(1f))
+                    Text(" or ", modifier = Modifier.padding(horizontal = 8.dp))
+                    Divider(modifier = Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    text = "For Offline use",
+                    color = androidx.compose.ui.graphics.Color.White,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
 
                 // Expandable "Login with email and pin" button
                 var isEmailPinExpanded by remember { mutableStateOf(false) }
@@ -372,9 +467,87 @@ fun LoginScreen(
                         }
                     }
                 }
+                Spacer(Modifier.height(32.dp))
+                
+                // Developer Information
+                Text(
+                    text = "Developed By Ravikumar J, AHC, DAR Chikkaballapura",
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium)
+                )
+            }
+        }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+fun LoginScreenPreview() {
+    MaterialTheme {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.login_bg),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                alpha = 0.95f
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo),
+                    contentDescription = "App Logo",
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Fit
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "Police Mobile Directory",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 28.sp
+                    ),
+                    color = androidx.compose.ui.graphics.Color(0xFFF8D722)
+                )
+                
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "This app is exclusively for Karnataka State Police Department personnel.\nIf you are not a member of KSP, please uninstall the PMD app.",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    textAlign = TextAlign.Center,
+                    color = androidx.compose.ui.graphics.Color(0xFFFF0000),
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Spacer(Modifier.height(24.dp))
+
+                Button(
+                    onClick = {},
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_google_logo),
+                        contentDescription = "Google Logo"
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Sign in with Google/ Register")
+                }
                 Spacer(Modifier.height(16.dp))
 
-                // Divider
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -385,24 +558,43 @@ fun LoginScreen(
                 }
                 Spacer(Modifier.height(16.dp))
 
-                // Google Sign-In/Register Button
-                Button(
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onGoogleSignInClicked()
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_google_logo),
-                        contentDescription = "Google Logo"
+                Text(
+                    text = "For Offline use",
+                    color = androidx.compose.ui.graphics.Color.White,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = androidx.compose.ui.graphics.Color(0xFFE3F2FD)
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Sign in with Google/ Register")
+                ) {
+                    Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Login with email and pin",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.Filled.Visibility,
+                                contentDescription = "Expand"
+                            )
+                        }
+                    }
                 }
                 Spacer(Modifier.height(32.dp))
                 
-                // Developer Information
                 Text(
                     text = "Developed By Ravikumar J, AHC, DAR Chikkaballapura",
                     fontSize = 16.sp,

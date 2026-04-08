@@ -17,5 +17,6 @@ data class LeaveEntry(
     val month: Int = 0,
     val isHalfDay: Boolean = false,     // true if CL half-day (0.5 days)
     val isMcl: Boolean = false,         // true if Menstrual CL (MCL)
-    val elEntryType: String = "taken"   // "taken" | "upcoming" — for EL entries
+    val elEntryType: String = "taken",   // "taken" | "upcoming" — for EL entries
+    val hasMedicalCertificate: Boolean = false
 )

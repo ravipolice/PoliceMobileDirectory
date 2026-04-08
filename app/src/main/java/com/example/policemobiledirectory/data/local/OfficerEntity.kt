@@ -13,6 +13,7 @@ import androidx.room.*
         Index(value = ["district"]),
         Index(value = ["rank"]),
         Index(value = ["unit"]),
+        Index(value = ["subDivision"]),
         Index(value = ["searchBlob"])
     ]
 )
@@ -27,6 +28,7 @@ data class OfficerEntity(
     val station: String? = null,
     val district: String? = null,
     val unit: String? = null,
+    val subDivision: String? = null,
     val photoUrl: String? = null,
     val bloodGroup: String? = null,
     val isHidden: Boolean = false,

@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
@@ -74,7 +75,7 @@ import java.util.*
 // Validators
 fun isValidEmail(v: String) = v.isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(v).matches()
 fun isValidMobile(v: String) = v.filter { it.isDigit() }.length in 10..13
-fun isKgidValid(v: String) = v.isNotBlank()
+fun isKgidValid(v: String) = v.isNotBlank() && v.length >= 6
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -116,6 +117,22 @@ fun CommonEmployeeForm(
     val fullUnits by constantsViewModel.fullUnits.collectAsStateWithLifecycle() // ✅ Need full objects for hidden flag
     val globalHiddenFields by constantsViewModel.globalHiddenFields.collectAsStateWithLifecycle() // ✅ Global Hidden Fields
     val ksrpBattalions by constantsViewModel.ksrpBattalions.collectAsStateWithLifecycle()
+    val unitSections by constantsViewModel.currentUnitSections.collectAsStateWithLifecycle() // ✅ Fix: Collect unitSections
+
+    // Identify if it has custom sections (e.g. State INT or manual sections)
+    // Need this early for visibility logic
+    // (district is a var state defined below, but we can use remember here too)
+
+
+    // Filter hidden units for Registration Form
+    val filteredUnits = remember(units, fullUnits, isRegistration) {
+        if (isRegistration) {
+            val hiddenUnitNames = fullUnits.filter { it.hideFromRegistration }.map { it.name }.toSet()
+            units.filter { !hiddenUnitNames.contains(it) }
+        } else {
+            units
+        }
+    }
 
     // fields
     var kgid by remember(initialEmployee, initialKgid) { mutableStateOf(initialEmployee?.kgid ?: initialKgid.orEmpty()) }
@@ -158,11 +175,38 @@ fun CommonEmployeeForm(
     // Helper to check if field is visible (Hybrid Logic: Global OR Unit)
     // Returns TRUE if field is NOT hidden in Global AND NOT hidden in Unit
     val isFieldVisible: (String) -> Boolean = { fieldId ->
-        val isHiddenGlobally = globalHiddenFields.contains(fieldId)
-        val isHiddenInUnit = selectedUnitModel?.hiddenFields?.contains(fieldId) == true
-        
-        !isHiddenGlobally && !isHiddenInUnit
+        // Hide landline fields on registration form
+        if (isRegistration && (fieldId == "landline" || fieldId == "landline2")) {
+            false
+        } else {
+            val isHiddenGlobally = globalHiddenFields.contains(fieldId)
+            val isHiddenInUnit = selectedUnitModel?.hiddenFields?.contains(fieldId) == true
+            !isHiddenGlobally && !isHiddenInUnit
+        }
     }
+
+    // Dynamic Label Logic (Depends on Unit Configuration)
+    val isDistrictLevelByModel by produceState(initialValue = false, key1 = unit) {
+        value = constantsViewModel.isDistrictLevelUnit(unit)
+    }
+
+    val stationLabel = remember(unit, isDistrictLevelByModel, selectedUnitModel) {
+        val keyword = selectedUnitModel?.stationKeyword
+        if (!keyword.isNullOrBlank()) {
+            keyword
+        } else if (unit == "Law & Order" || !isDistrictLevelByModel) {
+            "Station"
+        } else {
+            "Section / Branch"
+        }
+    }
+
+    val identifierLabel = remember(isOfficer, selectedUnitModel) {
+        val base = if (isOfficer) "ID" else "KGID"
+        val filter = selectedUnitModel?.identifierFilter
+        if (!filter.isNullOrBlank()) "$base ($filter)" else "$base*"
+    }
+
 
     // UI states
     var rankExpanded by remember { mutableStateOf(false) }
@@ -229,23 +273,29 @@ fun CommonEmployeeForm(
     // Reset district/station if Unit changes (but respect dynamic configuration)
     // Validate District Selection when available options change
     LaunchedEffect(availableDistricts) {
-        if (availableDistricts.size == 1) {
-             val autoSelected = availableDistricts.first()
-             if (district != autoSelected) {
-                 district = autoSelected
-             }
-        } else {
-             if (district.isNotBlank() && !availableDistricts.contains(district)) {
-                 district = ""
-                 station = ""
-             }
+        if (availableDistricts.isNotEmpty()) {
+            if (availableDistricts.size == 1) {
+                 val autoSelected = availableDistricts.first()
+                 if (district != autoSelected) {
+                     district = autoSelected
+                 }
+            } else {
+                 if (district.isNotBlank() && !availableDistricts.contains(district)) {
+                     district = ""
+                     station = ""
+                 }
+            }
         }
     }
 
-    // Reset station when district changes
+    // Reset station when district changes (only if it's an actual change from previous)
+    var previousDistrict by remember(initialEmployee) { mutableStateOf(district) }
     LaunchedEffect(district) {
-        if (district.isNotBlank() && station.isNotBlank()) {
-             station = ""
+        if (district != previousDistrict) {
+            if (district.isNotBlank() && station.isNotBlank()) {
+                 station = ""
+            }
+            previousDistrict = district
         }
     }
     
@@ -286,11 +336,9 @@ fun CommonEmployeeForm(
     }
 
     // Identify if label should be "Station" or "Section"
-    val isDistrictLevelByModel by produceState(initialValue = false, key1 = unit) {
-        value = constantsViewModel.isDistrictLevelUnit(unit)
-    }
+    // DEPRECATED in favor of dynamic stationLabel above
     val useStationLabel = remember(unit, isDistrictLevelByModel) {
-        unit == "Law & Order" || isDistrictLevelByModel
+        unit == "Law & Order" || !isDistrictLevelByModel
     }
 
     // Refactored for readability as per review
@@ -300,7 +348,7 @@ fun CommonEmployeeForm(
 
     // Validate Station Selection when options change (e.g. Unit change filters stations)
     LaunchedEffect(stationsForSelectedDistrict) {
-         if (station.isNotBlank() && station != "Others" && !stationsForSelectedDistrict.contains(station)) {
+         if (stationsForSelectedDistrict.isNotEmpty() && station.isNotBlank() && station != "Others" && !stationsForSelectedDistrict.contains(station)) {
                 station = ""
          }
     }
@@ -454,21 +502,21 @@ fun CommonEmployeeForm(
             }
             Spacer(Modifier.height(fieldSpacing))
 
-            // Row 3: Email
-            if (isFieldVisible("email")) {
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Email (Optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    isError = showValidationErrors && email.isNotBlank() && !isValidEmail(email)
+            // Row 3: Email — pre-filled from login/signup, read-only
+            OutlinedTextField(
+                value = email,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Email*") },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = false,
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                    disabledBorderColor = MaterialTheme.colorScheme.outline,
+                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (showValidationErrors && email.isNotBlank() && !isValidEmail(email)) {
-                    Text("Enter valid email", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
-                Spacer(Modifier.height(fieldSpacing))
-            }
+            )
+            Spacer(Modifier.height(fieldSpacing))
 
             // Row 4: Mobile 1
             OutlinedTextField(
@@ -496,110 +544,12 @@ fun CommonEmployeeForm(
                 Spacer(Modifier.height(fieldSpacing))
             }
 
-            // Row 6: Landline
-            if (isFieldVisible("landline")) {
-                OutlinedTextField(
-                    value = landline,
-                    onValueChange = { landline = it.filter { ch -> ch.isDigit() || ch == '-' } },
-                    label = { Text("Landline (Optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-                )
-                Spacer(Modifier.height(fieldSpacing))
-            }
 
 
 
 
 
-
-            // Row 6: KGID, Rank, Metal Number (conditional) - all in same row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // KGID / ID
-                if (!isAutoAgidRank) {
-                    OutlinedTextField(
-                        value = kgid,
-                        onValueChange = { 
-                            // For Officers, allow any characters (AGID). Otherwise, only allow digits (KGID).
-                            if (isOfficer || isHighRankingOfficer) kgid = it else if (it.all { ch -> ch.isDigit() }) kgid = it
-                        },
-                        label = { Text(if(isOfficer || isHighRankingOfficer) "Officer ID (AGID)*" else "KGID*") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer || isHighRankingOfficer) KeyboardType.Text else KeyboardType.Number),
-                        isError = showValidationErrors && !isKgidValid(kgid),
-                        enabled = (isAdmin || isRegistration) && !isEdit
-                    )
-                }
-
-                // Rank
-                ExposedDropdownMenuBox(
-                    expanded = rankExpanded,
-                    onExpandedChange = { rankExpanded = !rankExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    OutlinedTextField(
-                        value = rank,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Rank") },
-                        placeholder = { Text("Select Rank (Optional)") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
-
-                    )
-                    ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
-                        filteredRanks.forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                rank = selection
-                                if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
-                                // If rank is ministerial, verify if we need to clear station or just let UI hide it
-                                // Clearing it ensures validation passes if we accidentally had one selected
-                                if (ministerialRanks.any { it.equals(selection, ignoreCase = true) }) {
-                                    station = ""
-                                }
-                                if (highRankingOfficers.contains(selection)) {
-                                    district = ""
-                                    station = ""
-                                }
-                                rankExpanded = false
-                            })
-                        }
-                    }
-                }
-
-                // Metal Number (Dynamic)
-                if (showMetalNumberField && !isOfficer && isFieldVisible("metalNumber")) {
-                    OutlinedTextField(
-                        value = metalNumber,
-                        onValueChange = { metalNumber = it.filter { ch -> ch.isDigit() } },
-                        label = { Text("Metal No.*") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        isError = showValidationErrors && metalNumber.isBlank()
-                    )
-                }
-
-            }
-            // Error messages below the row
-            if (showValidationErrors) {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    if (!isKgidValid(kgid)) {
-                        Text(if(isOfficer) "ID required" else "KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    }
-                    if (rank.isBlank()) {
-                        Text("Rank required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    }
-                    if (showMetalNumberField && metalNumber.isBlank() && !isOfficer) {
-                        Text("Metal no. required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-            Spacer(Modifier.height(fieldSpacing))
-
-            // Row 7: Unit and District (Unit first, then District)
+            // Row 6: Unit + District (FIRST — so rank can be filtered by unit)
             val isSpecialUnit = remember(selectedUnitModel) {
                 selectedUnitModel?.mappingType == "none"
             }
@@ -624,7 +574,7 @@ fun CommonEmployeeForm(
                         isError = showValidationErrors && unit.isBlank()
                     )
                     ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
-                        units.forEach { selection ->
+                        filteredUnits.forEach { selection ->
                             DropdownMenuItem(text = { Text(selection) }, onClick = {
                                 unit = selection
                                 unitExpanded = false
@@ -635,7 +585,6 @@ fun CommonEmployeeForm(
                 if (showValidationErrors && unit.isBlank()) {
                     Text("Unit req.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
-
 
                 // District
                 if (!isHighRankingOfficer && !isSpecialUnit) {
@@ -674,8 +623,90 @@ fun CommonEmployeeForm(
             }
             Spacer(Modifier.height(fieldSpacing))
 
+            // Row 7: KGID + Rank (Rank now filtered by selected unit)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // KGID / ID (respect visibility)
+                if (!isAutoAgidRank && isFieldVisible("kgid")) {
+                    OutlinedTextField(
+                        value = kgid,
+                        onValueChange = {
+                            if (isOfficer || isHighRankingOfficer) kgid = it else if (it.all { ch -> ch.isDigit() }) kgid = it
+                        },
+                        label = { Text(identifierLabel) },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer || isHighRankingOfficer) KeyboardType.Text else KeyboardType.Number),
+                        isError = showValidationErrors && !isKgidValid(kgid),
+                        enabled = (isAdmin || isRegistration) && !isEdit
+                    )
+                }
+
+                // Rank (filtered by selected unit)
+                ExposedDropdownMenuBox(
+                    expanded = rankExpanded,
+                    onExpandedChange = { rankExpanded = !rankExpanded },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = rank,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Rank") },
+                        placeholder = { Text(if (unit.isBlank()) "Select Unit First" else "Select Rank") },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
+                    )
+                    ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
+                        filteredRanks.forEach { selection ->
+                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                rank = selection
+                                if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
+                                if (ministerialRanks.any { it.equals(selection, ignoreCase = true) }) {
+                                    station = ""
+                                }
+                                if (highRankingOfficers.contains(selection)) {
+                                    district = ""
+                                    station = ""
+                                }
+                                rankExpanded = false
+                            })
+                        }
+                    }
+                }
+
+                // Metal Number (Dynamic)
+                if (showMetalNumberField && !isOfficer && isFieldVisible("metalNumber")) {
+                    OutlinedTextField(
+                        value = metalNumber,
+                        onValueChange = { metalNumber = it.filter { ch -> ch.isDigit() } },
+                        label = { Text("Metal No.*") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = showValidationErrors && metalNumber.isBlank()
+                    )
+                }
+            }
+            // Error messages below the row
+            if (showValidationErrors) {
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    if (!isKgidValid(kgid)) {
+                        Text(if(isOfficer) "ID required" else "KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    }
+                    if (rank.isBlank()) {
+                        Text("Rank required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    }
+                    if (showMetalNumberField && metalNumber.isBlank() && !isOfficer) {
+                        Text("Metal no. required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+            Spacer(Modifier.height(fieldSpacing))
+
             // Row 8: Station/Section (Full Width)
-            if (!isHighRankingOfficer && !isSpecialUnit && !isMinisterial) {
+            // District-level units (e.g. DAR) always hide this field - hasSections must not override
+            if (!isHighRankingOfficer && !isDistrictLevelByModel && !isSpecialUnit && !isMinisterial) {
                 val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks) {
                     val isPoliceStationRank = policeStationRanks.contains(rank)
                     // Apply rank-based filtering to reduce noise for PS ranks ONLY if useStationLabel is true
@@ -954,26 +985,28 @@ fun CommonEmployeeForm(
             }
 
             // Row 9: Create PIN, Confirm PIN (on same row) - Hide for Officer
-            if (!isOfficer) {
+            if (!isOfficer && isFieldVisible("pin")) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedTextField(
                         value = pin,
-                        onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) pin = it },
+                        onValueChange = { if (it.length <= 6) pin = it.filter { ch -> ch.isDigit() } },
                         label = { Text("Create PIN*") },
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                        isError = showValidationErrors && (pin.length != 6 || (pin.isNotEmpty() && pin != confirmPin))
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        isError = showValidationErrors && pin.length != 6
                     )
                     OutlinedTextField(
                         value = confirmPin,
-                        onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) confirmPin = it },
+                        onValueChange = { if (it.length <= 6) confirmPin = it.filter { ch -> ch.isDigit() } },
                         label = { Text("Confirm PIN*") },
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                        isError = showValidationErrors && (confirmPin.length != 6 || (confirmPin.isNotEmpty() && pin != confirmPin))
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        isError = showValidationErrors && confirmPin != pin
                     )
                 }
                 if (showValidationErrors && (pin.length != 6 || pin != confirmPin)) {
@@ -1004,19 +1037,23 @@ fun CommonEmployeeForm(
         } else {
             // Non-registration form (admin/self-edit) - keep original order
             // KGID (admin & registration only)
-            if (!isSelfEdit) {
+            // KGID (admin & registration only)
+            if (!isSelfEdit && !isAutoAgidRank && isFieldVisible("kgid")) {
                 OutlinedTextField(
-                    value = kgid,
-                    onValueChange = { newValue ->
-                        kgid = when {
-                            isOfficer -> newValue
-                            newValue.all { it.isDigit() } -> newValue
-                            else -> kgid
-                        }
-                    },
-                    label = { Text(if (isOfficer) "Officer ID*" else "KGID*") },
+                     value = kgid,
+                     onValueChange = { newValue ->
+                          kgid = when {
+                                // Allow anything for high-ranking officers
+                                isOfficer || isHighRankingOfficer -> newValue
+                                // Otherwise, only allow digits
+                                newValue.all { it.isDigit() } -> newValue
+                                // If new input contains non-digits, keep the old value
+                                else -> kgid
+                          }
+                     },
+                    label = { Text(identifierLabel) },
                     modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer) KeyboardType.Text else KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer || isHighRankingOfficer) KeyboardType.Text else KeyboardType.Number),
                     isError = showValidationErrors && !isKgidValid(kgid),
                     enabled = (isAdmin || isRegistration) && !isEdit
                 )
@@ -1184,21 +1221,100 @@ fun CommonEmployeeForm(
                 Spacer(Modifier.height(fieldSpacing))
             }
 
-
-                // Manual Section (if "Others" is selected)
-                if (station == "Others") {
-                    OutlinedTextField(
-                        value = manualSection,
-                        onValueChange = { manualSection = it },
-                        label = { Text("Specify ${if (!useStationLabel) "Section" else "Station"} Name*") },
-                        modifier = Modifier.fillMaxWidth(),
-                        isError = showValidationErrors && manualSection.isBlank()
-                    )
-                    if (showValidationErrors && manualSection.isBlank()) {
-                        Text("Please specify name", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            // Station/Section (Full Width)
+            // District-level units (e.g. DAR) always hide this field - hasSections must not override
+            if (!isHighRankingOfficer && !isDistrictLevelByModel && !isSpecialUnit && !isMinisterial) {
+                val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks) {
+                    val isPoliceStationRank = policeStationRanks.contains(rank)
+                    // Apply rank-based filtering to reduce noise for PS ranks ONLY if useStationLabel is true
+                    if (isPoliceStationRank && useStationLabel) {
+                         stationsForSelectedDistrict.filter { it.contains(" PS", ignoreCase = true) || !it.contains(" PS", ignoreCase = true) }
+                         // Actually, same logic as User flavor for consistency
+                         stationsForSelectedDistrict.filter { s ->
+                            val isPS = s.contains(" PS", ignoreCase = true)
+                            if (isPoliceStationRank && s.contains(" PS", ignoreCase = true)) true
+                            else if (!s.contains(" PS", ignoreCase = true)) true 
+                            else false
+                        }
+                    } else {
+                        stationsForSelectedDistrict
                     }
-                    Spacer(Modifier.height(fieldSpacing))
                 }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ExposedDropdownMenuBox(
+                        expanded = stationExpanded,
+                        onExpandedChange = {
+                            if (district.isNotBlank() && filteredStations.isNotEmpty()) stationExpanded = !stationExpanded
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        OutlinedTextField(
+                            value = station.ifEmpty { 
+                                if (stationsForSelectedDistrict.isNotEmpty()) "Select ${if(useStationLabel) "Station" else "Section"}" 
+                                else "Select District First" 
+                            },
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(if (useStationLabel) "Station*" else "Section / Branch*") },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
+                            enabled = district.isNotBlank() && filteredStations.isNotEmpty(),
+                            isError = showValidationErrors && station.isBlank()
+                        )
+                        ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
+                            filteredStations.forEach { selection ->
+                                DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                    station = selection
+                                    stationExpanded = false
+                                })
+                            }
+                        }
+                    }
+
+                    // Manual Section Entry
+                    if (station == "Others") {
+                        OutlinedTextField(
+                            value = manualSection,
+                            onValueChange = { manualSection = it },
+                            label = { Text("Specify Name*") },
+                            placeholder = { Text("Section Name") },
+                            modifier = Modifier.weight(1f),
+                            isError = showValidationErrors && manualSection.isBlank(),
+                            singleLine = true
+                        )
+                    }
+                }
+                
+                if (showValidationErrors) {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        if (station.isBlank() && stationsForSelectedDistrict.isNotEmpty()) {
+                            Text(
+                                if (useStationLabel) "Station required" else "Section required", 
+                                color = MaterialTheme.colorScheme.error, 
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.weight(1f)
+                            )
+                        } else {
+                           Spacer(modifier = Modifier.weight(1f))
+                        }
+                        
+                         if (station == "Others" && manualSection.isBlank()) {
+                            Text(
+                                "Name required", 
+                                color = MaterialTheme.colorScheme.error, 
+                                style = MaterialTheme.typography.bodySmall,
+                                 modifier = Modifier.weight(1f).padding(start = 8.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(fieldSpacing))
+            }
 
                 // Duty Role Dropdown (Sub-Section) - Admin/Self-Edit
                 val otherDutyRoles = remember(unit, subSectionList, fullUnits) {
@@ -1412,8 +1528,8 @@ fun CommonEmployeeForm(
                         Toast.makeText(context, "District is required", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
-                    // Validate station
-                    if (station.isBlank() && !isMinisterial && !isHighRankingOfficer) {
+                    // Validate station (skip for district-level units like DAR where station field is hidden)
+                    if (station.isBlank() && !isMinisterial && !isHighRankingOfficer && !isDistrictLevelByModel) {
                         Toast.makeText(context, "Station required", Toast.LENGTH_SHORT).show()
                         return@Button
                     }
@@ -1460,7 +1576,12 @@ fun CommonEmployeeForm(
                     landline2 = landline2.trim().takeIf { it.isNotBlank() },
                     rank = rank.trim(),
                     district = district.trim(),
-                    station = if (isManual) manualSection.trim() else station.trim(),
+                    station = when {
+                        isManual -> manualSection.trim()
+                        station.isNotBlank() -> station.trim()
+                        isDistrictLevelByModel -> district.trim() // For DAR etc: use district as station
+                        else -> ""
+                    },
                     unit = unit.trim().takeIf { it.isNotBlank() },
                     bloodGroup = bloodGroup.ifBlank { null },
                     metalNumber = metalNumber.trim().takeIf { it.isNotBlank() },

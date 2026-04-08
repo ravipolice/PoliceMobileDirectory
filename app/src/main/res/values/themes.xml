@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="UCropTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Default theme for pre-API 35 -->
+        <item name="android:fitsSystemWindows">true</item>
+    </style>
+</resources>

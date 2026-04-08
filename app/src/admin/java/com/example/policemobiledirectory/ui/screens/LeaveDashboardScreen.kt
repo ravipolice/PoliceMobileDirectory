@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.policemobiledirectory.model.LeaveBalance
+import com.example.policemobiledirectory.model.LeaveStatistics
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import com.example.policemobiledirectory.viewmodel.LeaveUiState
 import com.example.policemobiledirectory.viewmodel.LeaveViewModel
@@ -39,6 +40,8 @@ fun LeaveDashboardScreen(
     onNavigateToMcl: () -> Unit,
     onNavigateToOther: () -> Unit,
     onNavigateToReports: () -> Unit,
+    onNavigateToRules: () -> Unit,
+    onDrivePermissionRequest: () -> Unit,
     employeeViewModel: EmployeeViewModel,
     leaveViewModel: LeaveViewModel
 ) {
@@ -47,30 +50,216 @@ fun LeaveDashboardScreen(
     val statistics by leaveViewModel.statistics.collectAsState()
     val uiState by leaveViewModel.uiState.collectAsState()
 
+    val isDrivePermissionGranted by leaveViewModel.isDrivePermissionGranted.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var showMenu by remember { mutableStateOf(false) }
+    var showRestoreDialog by remember { mutableStateOf(false) }
+    var showEditClLimitDialog by remember { mutableStateOf(false) }
+    var showEditElBalanceDialog by remember { mutableStateOf(false) }
+    var elText by remember { mutableStateOf("0") }
+
     LaunchedEffect(currentUser) {
         currentUser?.let { leaveViewModel.refreshData(it) }
+        leaveViewModel.checkDrivePermission()
+    }
+
+    // ✅ Automatically refresh permission status when returning to app
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                leaveViewModel.checkDrivePermission()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(uiState) {
+        val state = uiState
+        when (state) {
+            is LeaveUiState.Error -> {
+                val msg = state.message.lowercase()
+                if (msg.contains("permission") || msg.contains("auth") || msg.contains("credential") || msg.contains("recoverable") || msg.contains("401") || msg.contains("403") || msg.contains("sign in")) {
+                    onDrivePermissionRequest()
+                    snackbarHostState.showSnackbar(
+                        message = "Permissions required. Please grant access.",
+                        duration = SnackbarDuration.Short
+                    )
+                } else {
+                    snackbarHostState.showSnackbar(
+                        message = state.message,
+                        duration = SnackbarDuration.Long
+                    )
+                }
+                leaveViewModel.resetUiState()
+            }
+            is LeaveUiState.BackupSuccess -> {
+                snackbarHostState.showSnackbar("Backup successful!")
+                leaveViewModel.resetUiState()
+            }
+            is LeaveUiState.RestoreSuccess -> {
+                snackbarHostState.showSnackbar("Data restored successfully!")
+                leaveViewModel.resetUiState()
+            }
+            is LeaveUiState.Success -> {
+                leaveViewModel.resetUiState()
+            }
+            else -> {}
+        }
+    }
+
+    if (showRestoreDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestoreDialog = false },
+            title = { Text("Confirm Restore") },
+            text = { Text("This will overwrite your local leave data with the backup from Google Drive. Are you sure?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    currentUser?.let { leaveViewModel.restoreData(it) }
+                    showRestoreDialog = false
+                }) { Text("Restore") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showEditClLimitDialog) {
+        AlertDialog(
+            onDismissRequest = { showEditClLimitDialog = false },
+            title = { Text("Casual Leave Limit") },
+            text = { Text("Select your annual Casual Leave limit:") },
+            confirmButton = {},
+            dismissButton = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    TextButton(onClick = {
+                        currentUser?.let { user -> leaveViewModel.updateClLimit(user, 10) }
+                        showEditClLimitDialog = false
+                    }) {
+                        Text("10 Days")
+                    }
+                    TextButton(onClick = {
+                        currentUser?.let { user -> leaveViewModel.updateClLimit(user, 15) }
+                        showEditClLimitDialog = false
+                    }) {
+                        Text("15 Days")
+                    }
+                }
+            }
+        )
+    }
+
+    if (showEditElBalanceDialog) {
+        LaunchedEffect(balance) {
+            elText = balance?.elManualBalance?.toString()?.removeSuffix(".0") ?: "0"
+        }
+        AlertDialog(
+            onDismissRequest = { showEditElBalanceDialog = false },
+            title = { Text("Edit EL Balance") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Enter your carried-over EL balance:", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedTextField(
+                        value = elText,
+                        onValueChange = { elText = it },
+                        label = { Text("Earned Leave (EL)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    currentUser?.let { user ->
+                        val newEl = elText.toDoubleOrNull() ?: balance?.elManualBalance ?: 0.0
+                        leaveViewModel.updateElManualBalance(user, newEl)
+                    }
+                    showEditElBalanceDialog = false
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditElBalanceDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Leave Manager", fontWeight = FontWeight.Bold) },
+                title = { Text("Leave Register", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    IconButton(onClick = { currentUser?.let { leaveViewModel.refreshData(it) } }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More")
                     }
-                    IconButton(onClick = onNavigateToReports) {
-                        Icon(Icons.Default.BarChart, contentDescription = "Reports")
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+
+
+                        DropdownMenuItem(
+                            text = { Text("Refresh Data") },
+                            leadingIcon = { Icon(Icons.Default.Refresh, contentDescription = null) },
+                            onClick = {
+                                currentUser?.let { leaveViewModel.refreshData(it) }
+                                showMenu = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Leave Rules") },
+                            leadingIcon = { Icon(Icons.Default.ListAlt, contentDescription = null) },
+                            onClick = {
+                                onNavigateToRules()
+                                showMenu = false
+                            }
+                        )
+
+
+                        DropdownMenuItem(
+                            text = { Text("Backup to Drive") },
+                            leadingIcon = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
+                            onClick = {
+                                currentUser?.let { leaveViewModel.backupData(it) }
+                                showMenu = false
+                            },
+                            enabled = isDrivePermissionGranted
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Restore from Drive") },
+                            leadingIcon = { Icon(Icons.Default.CloudDownload, contentDescription = null) },
+                            onClick = {
+                                showRestoreDialog = true
+                                showMenu = false
+                            },
+                            enabled = isDrivePermissionGranted
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("History / Reports") },
+                            leadingIcon = { Icon(Icons.Default.BarChart, contentDescription = null) },
+                            onClick = {
+                                onNavigateToReports()
+                                showMenu = false
+                            }
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White
@@ -127,6 +316,8 @@ fun LeaveDashboardScreen(
                             subtitle = "of ${balance?.clAnnualLimit ?: 15} days",
                             icon = Icons.Default.WbSunny,
                             gradient = listOf(Color(0xFF43A047), Color(0xFF1B5E20)),
+                            actionIcon = Icons.Default.Edit,
+                            onActionClick = { showEditClLimitDialog = true },
                             onClick = onNavigateToCl
                         )
                     }
@@ -139,6 +330,8 @@ fun LeaveDashboardScreen(
                             subtitle = "days remaining",
                             icon = Icons.Default.Star,
                             gradient = listOf(Color(0xFF1E88E5), Color(0xFF0D47A1)),
+                            actionIcon = Icons.Default.Edit,
+                            onActionClick = { showEditElBalanceDialog = true },
                             onClick = onNavigateToEl
                         )
                     }
@@ -200,9 +393,9 @@ fun LeaveDashboardScreen(
                     item {
                         LeaveTile(
                             title = "Maternity / Paternity / LWA",
-                            balance = "${(statistics?.leaveTypeBreakdown?.get("ML") ?: 0) +
-                                    (statistics?.leaveTypeBreakdown?.get("PL") ?: 0) +
-                                    (statistics?.leaveTypeBreakdown?.get("LWA") ?: 0)}",
+                            balance = "${(statistics?.leaveTypeBreakdown?.get("ML") ?: 0.0) +
+                                    (statistics?.leaveTypeBreakdown?.get("PL") ?: 0.0) +
+                                    (statistics?.leaveTypeBreakdown?.get("LWA") ?: 0.0)}",
                             subtitle = "days this year",
                             icon = Icons.Default.MoreHoriz,
                             gradient = listOf(Color(0xFF546E7A), Color(0xFF263238)),
@@ -222,6 +415,8 @@ fun LeaveTile(
     subtitle: String,
     icon: ImageVector,
     gradient: List<Color>,
+    actionIcon: ImageVector? = null,
+    onActionClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
     Card(
@@ -238,6 +433,21 @@ fun LeaveTile(
                 .background(Brush.horizontalGradient(gradient))
                 .padding(16.dp)
         ) {
+            // Action Button in Top-Left
+            if (actionIcon != null && onActionClick != null) {
+                IconButton(
+                    onClick = onActionClick,
+                    modifier = Modifier.align(Alignment.TopStart).size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = actionIcon,
+                        contentDescription = "Action",
+                        modifier = Modifier.size(16.dp),
+                        tint = Color.White.copy(alpha = 0.8f)
+                    )
+                }
+            }
+
             // Title in Top-Right
             Text(
                 text = title,
@@ -282,7 +492,7 @@ fun LeaveTile(
 @Composable
 fun LeaveOverviewCard(
     balance: LeaveBalance?,
-    statistics: com.example.policemobiledirectory.model.LeaveStatistics?
+    statistics: LeaveStatistics?
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),

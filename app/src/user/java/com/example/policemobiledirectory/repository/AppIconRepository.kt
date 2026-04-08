@@ -10,12 +10,13 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
+import javax.inject.Inject
 
 /**
  * Repository to fetch and cache Play Store app icons.
  * Tries to scrape the high-quality icon from the Play Store page first.
  */
-class AppIconRepository(private val dao: AppIconDao) {
+class AppIconRepository @Inject constructor(private val dao: AppIconDao) {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)

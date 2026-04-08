@@ -81,10 +81,8 @@ fun UsefulLinksScreen(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
-                windowInsets = WindowInsets(0.dp),
                 title = { Text("Useful Links") },
                 navigationIcon = {
                     if (navController.previousBackStackEntry != null) {
@@ -105,6 +103,7 @@ fun UsefulLinksScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White
@@ -117,7 +116,8 @@ fun UsefulLinksScreen(
                     Icon(Icons.Filled.Add, contentDescription = "Add Link")
                 }
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Box(
             modifier = Modifier

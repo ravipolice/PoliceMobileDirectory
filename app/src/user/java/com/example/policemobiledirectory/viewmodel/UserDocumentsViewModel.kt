@@ -27,9 +27,10 @@ class UserDocumentsViewModel @Inject constructor(
     val documentsStatus: StateFlow<OperationStatus<List<Document>>> = status
 
     /**
-     * Get a unique identifier for a document (its resolved title)
+     * Get a unique identifier for a document (its resolved URL)
      */
-    override fun getItemIdentifier(item: Document): String = item.resolvedTitle
+    override fun getItemIdentifier(item: Document): String = item.resolvedUrl ?: ""
+
 
     /**
      * Fetch documents from the repository
@@ -46,9 +47,10 @@ class UserDocumentsViewModel @Inject constructor(
     /**
      * Mark a document as broken. This will hide it from the UI.
      */
-    fun markDocumentAsBroken(title: String) {
-        hideItem(title)
+    fun markDocumentAsBroken(url: String) {
+        hideItem(url)
     }
+
 
     fun clearStatus() {
         // No extra status to clear in User version

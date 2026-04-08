@@ -2,16 +2,21 @@ package com.example.policemobiledirectory.ui.screens
 
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.repository.RepoResult
 import com.example.policemobiledirectory.ui.components.CommonEmployeeForm
+import com.example.policemobiledirectory.ui.components.CommonTopAppBar
 import com.example.policemobiledirectory.viewmodel.AddEditEmployeeViewModel
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 
@@ -52,18 +57,29 @@ fun AddEditEmployeeScreen(
         }
     }
 
-    CommonEmployeeForm(
-        isAdmin = true,
-        isSelfEdit = false,
-        isRegistration = false,
-        initialEmployee = employee,
-        initialKgid = employeeId,
-        isEdit = !isNewEmployee,
-        onNavigateToTerms = null,
-        onSubmit = { emp: Employee, photo: Uri? ->
-            addEditViewModel.saveEmployee(emp, photo)
+    Scaffold(
+        topBar = {
+            CommonTopAppBar(
+                title = if (isNewEmployee) "Add Employee" else "Edit Employee",
+                navController = navController
+            )
         },
-        onRegisterSubmit = null,
-        isLoading = isSaving
-    )
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { innerPadding ->
+        CommonEmployeeForm(
+            modifier = Modifier.padding(innerPadding),
+            isAdmin = true,
+            isSelfEdit = false,
+            isRegistration = false,
+            initialEmployee = employee,
+            initialKgid = employeeId,
+            isEdit = !isNewEmployee,
+            onNavigateToTerms = null,
+            onSubmit = { emp: Employee, photo: Uri? ->
+                addEditViewModel.saveEmployee(emp, photo)
+            },
+            onRegisterSubmit = null,
+            isLoading = isSaving
+        )
+    }
 }

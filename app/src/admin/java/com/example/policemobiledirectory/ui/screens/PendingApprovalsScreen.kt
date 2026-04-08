@@ -88,7 +88,6 @@ fun PendingApprovalsScreen(
     val isProcessing = operationStatus is OperationStatus.Loading
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
                 title = { Text("Pending Approvals") },
@@ -99,12 +98,14 @@ fun PendingApprovalsScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = androidx.compose.ui.graphics.Color.White,
                     navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
                     actionIconContentColor = androidx.compose.ui.graphics.Color.White
                 )
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -317,12 +318,12 @@ private fun PendingRegistrationEditDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = true) 
+        properties = DialogProperties(usePlatformDefaultWidth = false) 
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(),
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.95f),
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
@@ -372,7 +373,14 @@ private fun PendingRegistrationEditDialog(
                             unit = employee.unit,
                             landline = employee.landline,
                             landline2 = employee.landline2,
-                            isManualStation = employee.isManualStation
+                            isManualStation = employee.isManualStation,
+                            gender = employee.gender,
+                            serviceStartDate = employee.serviceStartDate,
+                            dateOfBirth = employee.dateOfBirth,
+                            subSection = employee.subSection,
+                            isManualSubSection = employee.isManualSubSection,
+                            dutyRole = employee.subSection, // Sync dutyRole with subSection
+                            isAdmin = employee.isAdmin
                         )
                         onSubmit(updatedPending, photoUri)
                     },

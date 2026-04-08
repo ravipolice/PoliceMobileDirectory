@@ -98,6 +98,18 @@ object LeaveBalanceCalculator {
     }
 
     /**
+     * Updates HPL manual balance (starting balance). Recalculates hplBalance
+     * based on new manual balance minus total HPL taken.
+     */
+    fun updateHplManualBalance(balance: LeaveBalance, newManualBalance: Double, totalHplTaken: Double): LeaveBalance {
+        val newHplBalance = (newManualBalance - totalHplTaken).coerceAtLeast(0.0)
+        return balance.copy(
+            hplManualBalance = newManualBalance,
+            hplBalance = newHplBalance
+        )
+    }
+
+    /**
      * Updates CL annual limit (10 or 15). Recalculates clRemaining.
      */
     fun updateClLimit(balance: LeaveBalance, newLimit: Int, totalClTaken: Double): LeaveBalance {

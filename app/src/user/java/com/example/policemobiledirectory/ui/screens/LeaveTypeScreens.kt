@@ -18,7 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.policemobiledirectory.model.LeaveEntry
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.AuthViewModel
 import com.example.policemobiledirectory.viewmodel.LeaveViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -33,10 +33,10 @@ fun CLLeaveScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEntry: (String) -> Unit,
     onNavigateToEdit: (String) -> Unit,
-    employeeViewModel: EmployeeViewModel,
+    authViewModel: AuthViewModel,
     leaveViewModel: LeaveViewModel
 ) {
-    val employee by employeeViewModel.currentUser.collectAsState()
+    val employee by authViewModel.currentUser.collectAsState()
     val balance by leaveViewModel.balance.collectAsState()
     val clEntries by leaveViewModel.clEntries.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<LeaveEntry?>(null) }
@@ -90,6 +90,7 @@ fun CLLeaveScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Casual Leave", fontWeight = FontWeight.Bold) },
@@ -105,6 +106,7 @@ fun CLLeaveScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFF2E7D32),
+                    scrolledContainerColor = Color(0xFF2E7D32),
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White
@@ -200,10 +202,10 @@ fun ELLeaveScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEntry: (String) -> Unit,
     onNavigateToEdit: (String) -> Unit,
-    employeeViewModel: EmployeeViewModel,
+    authViewModel: AuthViewModel,
     leaveViewModel: LeaveViewModel
 ) {
-    val employee by employeeViewModel.currentUser.collectAsState()
+    val employee by authViewModel.currentUser.collectAsState()
     val balance by leaveViewModel.balance.collectAsState()
     val elEntries by leaveViewModel.elEntries.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<LeaveEntry?>(null) }
@@ -268,6 +270,7 @@ fun ELLeaveScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Earned Leave", fontWeight = FontWeight.Bold) },
@@ -283,6 +286,7 @@ fun ELLeaveScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFF1565C0),
+                    scrolledContainerColor = Color(0xFF1565C0),
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White
@@ -390,13 +394,15 @@ fun HPLLeaveScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEntry: (String) -> Unit,
     onNavigateToEdit: (String) -> Unit,
-    employeeViewModel: EmployeeViewModel,
+    authViewModel: AuthViewModel,
     leaveViewModel: LeaveViewModel
 ) {
-    val employee by employeeViewModel.currentUser.collectAsState()
+    val employee by authViewModel.currentUser.collectAsState()
     val balance by leaveViewModel.balance.collectAsState()
     val hplEntries by leaveViewModel.hplEntries.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<LeaveEntry?>(null) }
+    var showBalanceDialog by remember { mutableStateOf(false) }
+    var manualBalanceInput by remember { mutableStateOf("") }
 
     LaunchedEffect(employee) { employee?.let { leaveViewModel.refreshData(it) } }
 
@@ -417,7 +423,42 @@ fun HPLLeaveScreen(
         )
     }
 
+    if (showBalanceDialog) {
+        LaunchedEffect(showBalanceDialog) {
+            manualBalanceInput = balance?.hplManualBalance?.toString()?.removeSuffix(".0") ?: "0"
+        }
+        AlertDialog(
+            onDismissRequest = { showBalanceDialog = false },
+            title = { Text("Set HPL Balance") },
+            text = {
+                Column {
+                    Text("Enter your starting HPL balance from service records:")
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = manualBalanceInput,
+                        onValueChange = { manualBalanceInput = it },
+                        label = { Text("HPL Balance (days)") },
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val v = manualBalanceInput.toDoubleOrNull()
+                    if (v != null && v >= 0) {
+                        employee?.let { leaveViewModel.updateHplManualBalance(it, v) }
+                        showBalanceDialog = false
+                    }
+                }) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBalanceDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Half Pay Leave", fontWeight = FontWeight.Bold) },
@@ -428,9 +469,16 @@ fun HPLLeaveScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFFE65100),
+                    scrolledContainerColor = Color(0xFFE65100),
                     titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
+                ),
+                actions = {
+                    IconButton(onClick = { showBalanceDialog = true }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Set HPL Balance")
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -452,8 +500,9 @@ fun HPLLeaveScreen(
                 SimpleStatsCard(
                     title = "HPL Balance",
                     stats = listOf(
-                        "Balance" to "%.0f".format(balance?.hplBalance ?: 0.0),
-                        "Taken" to "%.1f".format(hplEntries.sumOf { it.totalDays })
+                        "Starting" to "%.0f".format(balance?.hplManualBalance ?: 0.0),
+                        "Taken" to "%.1f".format(hplEntries.sumOf { it.totalDays }),
+                        "Balance" to "%.0f".format(balance?.hplBalance ?: 0.0)
                     ),
                     gradient = listOf(Color(0xFFFB8C00), Color(0xFFE65100))
                 )
@@ -487,10 +536,10 @@ fun WeeklyOffScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEntry: (String) -> Unit,
     onNavigateToEdit: (String) -> Unit,
-    employeeViewModel: EmployeeViewModel,
+    authViewModel: AuthViewModel,
     leaveViewModel: LeaveViewModel
 ) {
-    val employee by employeeViewModel.currentUser.collectAsState()
+    val employee by authViewModel.currentUser.collectAsState()
     val woEntries by leaveViewModel.woEntries.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<LeaveEntry?>(null) }
     val currentMonth = Calendar.getInstance().get(Calendar.MONTH) + 1
@@ -517,6 +566,7 @@ fun WeeklyOffScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Weekly Off", fontWeight = FontWeight.Bold) },
@@ -527,6 +577,7 @@ fun WeeklyOffScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFF6A1B9A),
+                    scrolledContainerColor = Color(0xFF6A1B9A),
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -586,10 +637,10 @@ fun MCLLeaveScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEntry: (String) -> Unit,
     onNavigateToEdit: (String) -> Unit,
-    employeeViewModel: EmployeeViewModel,
+    authViewModel: AuthViewModel,
     leaveViewModel: LeaveViewModel
 ) {
-    val employee by employeeViewModel.currentUser.collectAsState()
+    val employee by authViewModel.currentUser.collectAsState()
     val balance by leaveViewModel.balance.collectAsState()
     val mclEntries by leaveViewModel.mclEntries.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<LeaveEntry?>(null) }
@@ -617,6 +668,7 @@ fun MCLLeaveScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Menstrual CL", fontWeight = FontWeight.Bold) },
@@ -627,6 +679,7 @@ fun MCLLeaveScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFFC2185B),
+                    scrolledContainerColor = Color(0xFFC2185B),
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -702,10 +755,10 @@ fun CCLLeaveScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEntry: (String) -> Unit,
     onNavigateToEdit: (String) -> Unit,
-    employeeViewModel: EmployeeViewModel,
+    authViewModel: AuthViewModel,
     leaveViewModel: LeaveViewModel
 ) {
-    val employee by employeeViewModel.currentUser.collectAsState()
+    val employee by authViewModel.currentUser.collectAsState()
     val balance by leaveViewModel.balance.collectAsState()
     val cclEntries by leaveViewModel.cclEntries.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<LeaveEntry?>(null) }
@@ -730,6 +783,7 @@ fun CCLLeaveScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Child Care Leave", fontWeight = FontWeight.Bold) },
@@ -740,6 +794,7 @@ fun CCLLeaveScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFF00838F),
+                    scrolledContainerColor = Color(0xFF00838F),
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -799,10 +854,10 @@ fun OtherLeaveScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEntry: (String) -> Unit,
     onNavigateToEdit: (String) -> Unit,
-    employeeViewModel: EmployeeViewModel,
+    authViewModel: AuthViewModel,
     leaveViewModel: LeaveViewModel
 ) {
-    val employee by employeeViewModel.currentUser.collectAsState()
+    val employee by authViewModel.currentUser.collectAsState()
     val otherEntries by leaveViewModel.otherEntries.collectAsState()
     val balance by leaveViewModel.balance.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<LeaveEntry?>(null) }
@@ -828,6 +883,7 @@ fun OtherLeaveScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Other Leaves", fontWeight = FontWeight.Bold) },
@@ -838,6 +894,7 @@ fun OtherLeaveScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color(0xFF37474F),
+                    scrolledContainerColor = Color(0xFF37474F),
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )

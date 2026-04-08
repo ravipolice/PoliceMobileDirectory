@@ -1,0 +1,42 @@
+Configuration on demand is an incubating feature.
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preAdminDebugBuild UP-TO-DATE
+> Task :app:generateAdminDebugBuildConfig UP-TO-DATE
+> Task :app:checkAdminDebugAarMetadata UP-TO-DATE
+> Task :app:processAdminDebugNavigationResources UP-TO-DATE
+> Task :app:compileAdminDebugNavigationResources UP-TO-DATE
+> Task :app:generateAdminDebugResValues UP-TO-DATE
+> Task :app:processAdminDebugGoogleServices UP-TO-DATE
+> Task :app:mapAdminDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateAdminDebugResources UP-TO-DATE
+> Task :app:mergeAdminDebugResources UP-TO-DATE
+> Task :app:packageAdminDebugResources UP-TO-DATE
+> Task :app:parseAdminDebugLocalResources UP-TO-DATE
+> Task :app:createAdminDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksAdminDebug UP-TO-DATE
+> Task :app:processAdminDebugMainManifest UP-TO-DATE
+> Task :app:processAdminDebugManifest UP-TO-DATE
+> Task :app:processAdminDebugManifestForPackage UP-TO-DATE
+> Task :app:processAdminDebugResources UP-TO-DATE
+> Task :app:kspAdminDebugKotlin UP-TO-DATE
+
+> Task :app:compileAdminDebugKotlin FAILED
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/main/java/com/example/policemobiledirectory/utils/ReviewHelper.kt:79:78 Unresolved reference 'launch'.
+e: file:///C:/Users/ravip/AndroidStudioProjects/PoliceMobileDirectory/app/src/main/java/com/example/policemobiledirectory/utils/ReviewHelper.kt:80:29 Suspend function 'suspend fun setLastRatingRequestTime(timestamp: Long): Unit' should be called only from a coroutine or another suspend function.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileAdminDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 6s
+19 actionable tasks: 1 executed, 18 up-to-date

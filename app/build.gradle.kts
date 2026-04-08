@@ -43,9 +43,12 @@ android {
         vectorDrawables.useSupportLibrary = true
         multiDexEnabled = true
         
-        // SECURITY: Add APPS_SCRIPT_SECRET_TOKEN in gradle.properties or local.properties
+        // Security: API Keys
         val secretToken = project.findProperty("APPS_SCRIPT_SECRET_TOKEN") as? String ?: ""
         buildConfigField("String", "APPS_SCRIPT_SECRET_TOKEN", "\"$secretToken\"")
+        
+        val nvidiaKey = project.findProperty("NVIDIA_API_KEY") as? String ?: ""
+        buildConfigField("String", "NVIDIA_API_KEY", "\"$nvidiaKey\"")
         
         // App signature hash for verification (set via CI/CD)
         val signatureHash = project.findProperty("EXPECTED_SIGNATURE_HASH") as? String ?: ""
@@ -167,6 +170,7 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.material3)
     implementation(libs.compose.material.icons)
+    implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.navigation.compose)
     
     // Material3 window size class (from BOM)
@@ -215,6 +219,8 @@ dependencies {
     // Google Sign-In
     implementation("com.google.android.gms:play-services-auth:21.2.0")
     implementation(libs.play.identity)
+    implementation(libs.play.review)
+    implementation(libs.play.review.ktx)
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.0")
@@ -256,6 +262,21 @@ dependencies {
 
     // Chrome Custom Tabs for secure dashboards
     implementation("androidx.browser:browser:1.8.0")
+
+    // Google Drive API
+    implementation("com.google.apis:google-api-services-drive:v3-rev20230822-2.0.0") {
+        exclude(group = "org.apache.httpcomponents")
+    }
+    // Google Sheets API
+    implementation("com.google.apis:google-api-services-sheets:v4-rev20230815-2.0.0") {
+        exclude(group = "org.apache.httpcomponents")
+    }
+    
+    // ML Kit Text Recognition for OCR
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.0")
+
+    implementation(libs.google.api.client.android)
+    implementation(libs.google.http.client.gson)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)

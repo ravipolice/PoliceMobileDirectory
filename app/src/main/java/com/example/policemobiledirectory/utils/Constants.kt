@@ -9,9 +9,9 @@ object Constants {
     // This is the fallback; live order is controlled by seniority_order in Firestore rankMaster
     val allRanksList = listOf(
         // PC Group (Constables)
-        "PC", "APC", "WPC", "PCW", "CPC", "S.RPC",
+        "CPC", "APC", "S.RPC", "WPC", "PCW", "PC",
         // HC Group (Head Constables)
-        "HC", "AHC", "WHC", "CHC", "HCW", "S.RHC",
+        "CHC", "AHC", "S.RHC", "WHC", "HCW", "HC",
         // ASI Group
         "ASI", "WASI", "ARSI", "ASIW", "S.ARSI",
         // RSI / PSI Group
@@ -81,12 +81,14 @@ object Constants {
 
     // Functional Units for filtering
     val defaultUnitsList = listOf(
-        "Admin", "ASC Team", "BDDS", "C Room", "CAR", "CCB", "CCRB", "CDR", "CEN", "CID", 
-        "Coast Guard", "Computer", "Court", "CSB", "CSP", "DAR", "DCIB", "DCRB", "DCRE", 
-        "Dog Squad", "DSB", "ERSS", "ESCOM", "Excise", "Fire", "Forest", "FPB", "FRRO", 
-        "FSL", "Guest House", "Health", "Home Guard", "INT", "IPS", "ISD", "KSRP", "Lokayukta", "L&O", 
-        "Ministrial", "Minisrial", "Others", "Prison", "PTS", "Railway", "RTO", 
-        "S INT", "SCRB", "Social Media", "State INT", "Toll", "Traffic", "VVIP", "Wireless"
+        // High Priority Units
+        "L&O", "DAR", "CAR", "Ministrial", "KSRP", "ISD", "State INT", "CEN", "DCRE", "FSL", "CID",
+        // Other Units
+        "Admin", "ASC Team", "BDDS", "C Room", "CCB", "CCRB", "CDR", "Coast Guard", "Computer", 
+        "Court", "CSB", "CSP", "DCIB", "DCRB", "Dog Squad", "DSB", "ERSS", "ESCOM", 
+        "Excise", "Fire", "Forest", "FPB", "FRRO", "Guest House", "Health", "Home Guard", 
+        "INT", "IPS", "Lokayukta", "Minisrial", "Others", "Prison", "PTS", 
+        "Railway", "RTO", "S INT", "SCRB", "Social Media", "Toll", "Traffic", "VVIP", "Wireless"
     )
 
 

@@ -33,6 +33,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.policemobiledirectory.R
 import com.example.policemobiledirectory.model.Employee
@@ -41,29 +43,32 @@ import com.example.policemobiledirectory.ui.theme.PrimaryTeal
 import com.example.policemobiledirectory.ui.theme.SecondaryYellow
 import com.example.policemobiledirectory.utils.Constants
 import com.example.policemobiledirectory.utils.IntentUtils
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.EmployeeListViewModel
+import com.example.policemobiledirectory.viewmodel.SettingsViewModel
 
 @Composable
 fun EmployeeDetailScreen(
     id: String,
     isOfficer: Boolean,
     navController: NavController,
-    viewModel: EmployeeViewModel
+    viewModel: EmployeeListViewModel,
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val allEmployees by viewModel.filteredEmployees.collectAsState()
-    val allOfficers by viewModel.filteredContacts.collectAsState()
+    val allContacts by viewModel.allContacts.collectAsStateWithLifecycle()
+    val fontScale by settingsViewModel.fontScale.collectAsStateWithLifecycle()
 
     // Find the contact
-    val contact = remember(id, isOfficer, allEmployees, allOfficers) {
+    val contact = remember(id, isOfficer, allContacts) {
         if (isOfficer) {
-            allOfficers.find { it.officer?.agid == id }?.officer
+            allContacts.find { it.officer?.agid == id }?.officer
         } else {
-            allEmployees.find { it.kgid == id }
+            allContacts.find { it.employee?.kgid == id }?.employee
         }
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Contact Details", fontWeight = FontWeight.Bold) },
@@ -99,7 +104,8 @@ fun EmployeeDetailScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = PrimaryTeal,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White
@@ -155,7 +161,7 @@ fun EmployeeDetailScreen(
                                     Text(
                                         text = bloodGroup,
                                         color = Color.White,
-                                        fontSize = 12.sp,
+                                        fontSize = (12 * fontScale).sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -194,7 +200,7 @@ fun EmployeeDetailScreen(
                             ) {
                                 Text(
                                     text = name,
-                                    fontSize = 26.sp,
+                                    fontSize = (26 * fontScale).sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF8B1A1A), // Maroon
                                     textAlign = TextAlign.Center
@@ -202,7 +208,7 @@ fun EmployeeDetailScreen(
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     text = rank,
-                                    fontSize = 18.sp,
+                                    fontSize = (18 * fontScale).sp,
                                     fontWeight = FontWeight.Medium,
                                     color = Color.Gray,
                                     textAlign = TextAlign.Center
@@ -235,7 +241,7 @@ fun EmployeeDetailScreen(
                             if (line1.isNotBlank()) {
                                 Text(
                                     text = line1,
-                                    fontSize = 17.sp,
+                                    fontSize = (17 * fontScale).sp,
                                     color = Color(0xFF546E7A), // Blue-Grey
                                     textAlign = TextAlign.Center
                                 )
@@ -255,7 +261,7 @@ fun EmployeeDetailScreen(
                             if (line2.isNotBlank()) {
                                 Text(
                                     text = line2,
-                                    fontSize = 17.sp,
+                                    fontSize = (17 * fontScale).sp,
                                     color = Color(0xFF546E7A),
                                     textAlign = TextAlign.Center,
                                     fontWeight = FontWeight.Medium
@@ -270,12 +276,13 @@ fun EmployeeDetailScreen(
                     val metalNumber = if (contact is Employee) contact.metalNumber else null
                     val gender = if (contact is Employee) contact.gender else "N/A"
 
-                    DetailSection(title = "Contact info") {
+                    DetailSection(title = "Contact info", fontScale = fontScale) {
                         if (!metalNumber.isNullOrBlank()) {
                             InfoRow(
                                 label = "Metal Number",
                                 value = metalNumber,
                                 icon = Icons.Default.Badge,
+                                fontScale = fontScale,
                                 onAction = { IntentUtils.copyToClipboard(context, "Metal Number", metalNumber) }
                             )
                             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
@@ -286,7 +293,8 @@ fun EmployeeDetailScreen(
                             InfoRow(
                                 label = "Gender",
                                 value = gender,
-                                icon = genderIcon
+                                icon = genderIcon,
+                                fontScale = fontScale
                             )
                             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
                         }
@@ -296,6 +304,7 @@ fun EmployeeDetailScreen(
                                 label = "Mobile",
                                 value = mobile,
                                 icon = Icons.Default.Call,
+                                fontScale = fontScale,
                                 onAction = { IntentUtils.dial(context, mobile) },
                                 secondaryActionIcon = painterResource(R.drawable.ic_whatsapp),
                                 onSecondaryAction = { IntentUtils.openWhatsApp(context, mobile) },
@@ -311,6 +320,7 @@ fun EmployeeDetailScreen(
                                 label = "Landline",
                                 value = landline,
                                 icon = Icons.Default.Phone,
+                                fontScale = fontScale,
                                 onAction = { IntentUtils.dial(context, landline) }
                             )
                             if (!email.isNullOrBlank()) {
@@ -323,6 +333,7 @@ fun EmployeeDetailScreen(
                                 label = "Email",
                                 value = email,
                                 icon = Icons.Default.Email,
+                                fontScale = fontScale,
                                 onAction = { IntentUtils.sendEmail(context, email) }
                             )
                         }
@@ -337,6 +348,7 @@ fun EmployeeDetailScreen(
 @Composable
 private fun DetailSection(
     title: String,
+    fontScale: Float,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(
@@ -349,7 +361,7 @@ private fun DetailSection(
     ) {
         Text(
             text = title,
-            fontSize = 18.sp,
+            fontSize = (18 * fontScale).sp,
             fontWeight = FontWeight.Bold,
             color = Color.Black
         )
@@ -363,6 +375,7 @@ private fun InfoRow(
     label: String,
     value: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    fontScale: Float,
     onAction: (() -> Unit)? = null,
     secondaryActionIcon: androidx.compose.ui.graphics.painter.Painter? = null,
     onSecondaryAction: (() -> Unit)? = null,
@@ -381,8 +394,8 @@ private fun InfoRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = label, fontSize = 13.sp, color = Color.Gray.copy(alpha = 0.7f))
-            Text(text = value, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+            Text(text = label, fontSize = (13 * fontScale).sp, color = Color.Gray.copy(alpha = 0.7f))
+            Text(text = value, fontSize = (15 * fontScale).sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
         }
         
         Row(verticalAlignment = Alignment.CenterVertically) {

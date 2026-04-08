@@ -3,8 +3,10 @@ package com.example.policemobiledirectory.repository
 import android.content.Context
 import com.example.policemobiledirectory.api.ConstantsApiService
 import com.example.policemobiledirectory.data.local.EmployeeDao
+import com.example.policemobiledirectory.model.UnitMapping
 import com.example.policemobiledirectory.utils.SecurityConfig
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,9 +26,27 @@ class ConstantsRepository @Inject constructor(
 
     /**
      * Get stations for a given unit from a list of district stations.
-     * Uses Constants.getStationsForUnit logic.
+     * Returns empty list for district-level units (e.g. DAR) to hide the Section/Branch field.
      */
     override fun getStationsForUnit(unitName: String, districtStations: List<String>): List<String> {
+        // Hide Section/Branch for district-level units (e.g. DAR with "district" scope)
+        // Check isDistrictLevel boolean OR scopes containing "district" as fallback
+        val json = prefs.getString(UNIT_MAPPINGS_CACHE_KEY, null)
+        if (json != null) {
+            try {
+                val mappings: Map<String, UnitMapping> = gson.fromJson(
+                    json, object : TypeToken<Map<String, UnitMapping>>() {}.type
+                )
+                val mapping = mappings[unitName]
+                val isDistrictLevel = mapping?.isDistrictLevel == true ||
+                    mapping?.scopes?.contains("district") == true
+                if (isDistrictLevel) {
+                    return emptyList()
+                }
+            } catch (e: Exception) {
+                // Fall through to default behavior
+            }
+        }
         return com.example.policemobiledirectory.utils.Constants.getStationsForUnit(unitName, districtStations)
     }
 

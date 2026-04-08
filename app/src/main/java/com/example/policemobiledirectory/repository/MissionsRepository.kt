@@ -32,4 +32,20 @@ class MissionsRepository @Inject constructor(
             emit(Result.failure(e))
         }
     }
+
+    suspend fun updateMission(mission: Mission): Result<Unit> {
+        return try {
+            val response = apiService.updateMission(com.example.policemobiledirectory.api.UpdateMissionRequest(mission))
+            if (response.isSuccessful) {
+                // Clear cache on update to force fresh fetch
+                cachedMissions = null
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to update mission: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
+

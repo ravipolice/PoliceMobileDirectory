@@ -1,6 +1,7 @@
 package com.example.policemobiledirectory.ui.screens
 
 import android.app.DatePickerDialog
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -19,9 +20,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.Delete
 import com.example.policemobiledirectory.model.LeaveEntry
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.AuthViewModel
 import com.example.policemobiledirectory.viewmodel.LeaveUiState
 import com.example.policemobiledirectory.viewmodel.LeaveViewModel
+import androidx.compose.material.icons.filled.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -38,11 +40,11 @@ fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier =
 fun LeaveEntryScreen(
     onNavigateBack: () -> Unit,
     preselectedType: String = "CL",
-    employeeViewModel: EmployeeViewModel,
+    authViewModel: AuthViewModel,
     leaveViewModel: LeaveViewModel
 ) {
     val context = LocalContext.current
-    val currentUser by employeeViewModel.currentUser.collectAsState()
+    val currentUser by authViewModel.currentUser.collectAsState()
     val uiState by leaveViewModel.uiState.collectAsState()
 
     // Load balance when screen opens
@@ -101,9 +103,35 @@ fun LeaveEntryScreen(
         return (diff / (1000 * 60 * 60 * 24)).toDouble() + 1
     }
 
+    fun getLeaveIcon(type: String) = when (type) {
+        "CL" -> Icons.Default.Schedule
+        "EL" -> Icons.Default.WbSunny
+        "HPL" -> Icons.Default.HealthAndSafety
+        "WO" -> Icons.Default.Weekend
+        "ML", "PL" -> Icons.Default.ChildCare
+        "CCL" -> Icons.Default.ChildFriendly
+        "LWA" -> Icons.Default.Block
+        "MCL" -> Icons.Default.Favorite
+        else -> Icons.Default.Description
+    }
+
+    @Composable
+    fun getLeaveColor(type: String): Color {
+        val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+        return when (type) {
+            "CL" -> if (isDark) Color(0xFF80CBC4) else Color(0xFF009688)
+            "EL" -> if (isDark) Color(0xFFFFCC80) else Color(0xFFFF9800)
+            "HPL" -> if (isDark) Color(0xFFEF9A9A) else Color(0xFFF44336)
+            "WO" -> if (isDark) Color(0xFF90CAF9) else Color(0xFF2196F3)
+            "MCL" -> if (isDark) Color(0xFFF48FB1) else Color(0xFFE91E63)
+            else -> if (isDark) Color(0xFFCE93D8) else Color(0xFF9C27B0)
+        }
+    }
+
     val days = calculateDays()
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("$leaveType Entry & History", fontWeight = FontWeight.Bold) },
@@ -114,6 +142,7 @@ fun LeaveEntryScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -148,7 +177,8 @@ fun LeaveEntryScreen(
                         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                             leaveTypes.forEach { type ->
                                 DropdownMenuItem(
-                                    text = { Text(type) },
+                                    leadingIcon = { Icon(getLeaveIcon(type), contentDescription = null, tint = getLeaveColor(type)) },
+                                    text = { Text(type, fontWeight = FontWeight.Medium) },
                                     onClick = {
                                         leaveType = type
                                         expanded = false
@@ -183,29 +213,45 @@ fun LeaveEntryScreen(
                         }
                     }
 
-                    OutlinedTextField(
-                        value = dateFrom?.let { dateFormat.format(it) } ?: "Tap to select",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(if (isHalfDay) "Date" else "From Date") },
-                        modifier = Modifier.fillMaxWidth().noRippleClickable {
-                            showDatePicker(dateFrom) {
-                                dateFrom = it
-                                if (isHalfDay || leaveType in listOf("WO", "MCL")) dateTo = it
-                            }
-                        }
-                    )
-
-                    if (!isHalfDay && leaveType !in listOf("WO", "MCL")) {
+                    Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
-                            value = dateTo?.let { dateFormat.format(it) } ?: "Tap to select",
+                            value = dateFrom?.let { dateFormat.format(it) } ?: "Tap to select",
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("To Date") },
-                            modifier = Modifier.fillMaxWidth().noRippleClickable {
-                                showDatePicker(dateTo ?: dateFrom) { dateTo = it }
-                            }
+                            label = { Text(if (isHalfDay) "Date" else "From Date") },
+                            trailingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                            modifier = Modifier.fillMaxWidth()
                         )
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .noRippleClickable {
+                                    showDatePicker(dateFrom) {
+                                        dateFrom = it
+                                        if (isHalfDay || leaveType in listOf("WO", "MCL")) dateTo = it
+                                    }
+                                }
+                        )
+                    }
+
+                    if (!isHalfDay && leaveType !in listOf("WO", "MCL")) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = dateTo?.let { dateFormat.format(it) } ?: "Tap to select",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("To Date") },
+                                trailingIcon = { Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .noRippleClickable {
+                                        showDatePicker(dateTo ?: dateFrom) { dateTo = it }
+                                    }
+                            )
+                        }
                     }
 
                     if (days > 0) {
@@ -257,7 +303,11 @@ fun LeaveEntryScreen(
                         if (uiState is LeaveUiState.Loading) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                         } else {
-                            Text("Save Leave Entry")
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Save, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Save Leave Entry")
+                            }
                         }
                     }
                 }
@@ -273,34 +323,64 @@ fun LeaveEntryScreen(
                 }
             } else {
                 filteredEntries.forEach { entry ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
                         Row(
-                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = if (entry.isMcl) "Menstrual CL" else entry.leaveType,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                val dateStr = if (entry.dateFrom == entry.dateTo) {
-                                    entry.dateFrom?.let { dateFormat.format(it) } ?: ""
-                                } else {
-                                    "${entry.dateFrom?.let { dateFormat.format(it) } ?: ""} - ${entry.dateTo?.let { dateFormat.format(it) } ?: ""}"
+                            // Leave Type Indicator Bar
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(6.dp)
+                                    .background(getLeaveColor(if (entry.isMcl) "MCL" else entry.leaveType))
+                            )
+                            
+                            Row(
+                                modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            getLeaveIcon(if (entry.isMcl) "MCL" else entry.leaveType),
+                                            contentDescription = null,
+                                            tint = getLeaveColor(if (entry.isMcl) "MCL" else entry.leaveType),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = if (entry.isMcl) "Menstrual CL" else entry.leaveType,
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    }
+                                    val dateStr = if (entry.dateFrom == entry.dateTo) {
+                                        entry.dateFrom?.let { dateFormat.format(it) } ?: ""
+                                    } else {
+                                        "${entry.dateFrom?.let { dateFormat.format(it) } ?: ""} - ${entry.dateTo?.let { dateFormat.format(it) } ?: ""}"
+                                    }
+                                    Text(text = dateStr, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                    Text(text = "Duration: ${entry.totalDays} days", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
+                                    entry.remark?.let {
+                                        Text(
+                                            text = "Note: $it",
+                                            fontSize = 12.sp,
+                                            modifier = Modifier.padding(top = 4.dp),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
-                                Text(text = dateStr, fontSize = 14.sp)
-                                Text(text = "Duration: ${entry.totalDays} days", fontSize = 12.sp, color = Color.Gray)
-                                entry.remark?.let {
-                                    Text(text = "Note: $it", fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                                IconButton(onClick = { showDeleteDialog = entry }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                                 }
-                            }
-                            IconButton(onClick = { showDeleteDialog = entry }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }

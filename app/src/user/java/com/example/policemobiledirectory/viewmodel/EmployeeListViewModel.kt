@@ -15,6 +15,7 @@ import com.example.policemobiledirectory.utils.SearchEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 /**
@@ -27,7 +28,8 @@ import javax.inject.Inject
 @HiltViewModel
 class EmployeeListViewModel @Inject constructor(
     private val employeeRepo: EmployeeRepository,
-    private val officerRepo: OfficerRepository
+    private val officerRepo: OfficerRepository,
+    private val aiSearchParser: com.example.policemobiledirectory.utils.AISearchParser
 ) : ViewModel() {
 
     // Employee State
@@ -43,6 +45,9 @@ class EmployeeListViewModel @Inject constructor(
 
     private val _officerStatus = MutableStateFlow<OperationStatus<List<Officer>>>(OperationStatus.Loading)
     val officerStatus: StateFlow<OperationStatus<List<Officer>>> = _officerStatus.asStateFlow()
+
+    private val _aiSearchStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
+    val aiSearchStatus: StateFlow<OperationStatus<String>> = _aiSearchStatus.asStateFlow()
 
     // ✅ Sync Throttling
     private var lastEmployeeSyncTime = 0L
@@ -65,31 +70,62 @@ class EmployeeListViewModel @Inject constructor(
 
     // Search and Filter State
     private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
     private val _debouncedSearchQuery = MutableStateFlow("")
     private val _searchFilter = MutableStateFlow(SearchFilter.ALL)
     val searchFilter: StateFlow<SearchFilter> = _searchFilter.asStateFlow()
 
+    private val _selectedUnit = MutableStateFlow("All")
+    val selectedUnit: StateFlow<String> = _selectedUnit.asStateFlow()
+
     private val _selectedDistrict = MutableStateFlow("All")
+    val selectedDistrict: StateFlow<String> = _selectedDistrict.asStateFlow()
+
     private val _selectedStation = MutableStateFlow("All")
+    val selectedStation: StateFlow<String> = _selectedStation.asStateFlow()
+
     private val _selectedRank = MutableStateFlow("All")
     val selectedRank: StateFlow<String> = _selectedRank.asStateFlow()
+
+    // Rank Priority Map (Highest Rank = Lowest Index)
+    private val rankPriorityMap = mapOf(
+        // Senior Officers
+        "DYSP" to 1,
+        // Inspectors
+        "PI" to 2, "CPI" to 2, "RPI" to 2, "WPI" to 2, "PIW" to 2,
+        // Sub-Inspectors
+        "PSI" to 3, "WPSI" to 3, "RSI" to 3, "PSIW" to 3,
+        // Asst Sub-Inspectors
+        "ASI" to 4, "WASI" to 4, "ARSI" to 4, "ASIW" to 4,
+        // Head Constables
+        "HC" to 5, "AHC" to 5, "CHC" to 5, "WHC" to 5, "HCW" to 5,
+        // Constables
+        "PC" to 6, "APC" to 6, "CPC" to 6, "WPC" to 6, "PCW" to 6,
+        // Ministerial / Staff
+        "SS" to 7, "FDA" to 8, "SDA" to 9, "GHA" to 10, "AO" to 11,
+        "Typist" to 12, "Steno" to 13, "PA" to 14
+    )
+
+    private fun getRankPriority(rank: String?): Int {
+        if (rank.isNullOrBlank()) return 999
+        val normalized = rank.trim().uppercase()
+        return rankPriorityMap[normalized] ?: 998
+    }
 
     private data class SearchFilters(
         val query: String,
         val filter: SearchFilter,
+        val unit: String,
         val district: String,
         val station: String,
         val rank: String
     )
 
-    private val searchFiltersFlow = combine(
-        _debouncedSearchQuery,
-        _searchFilter,
-        _selectedDistrict,
-        _selectedStation,
-        _selectedRank
-    ) { query, filter, district, station, rank ->
-        SearchFilters(query, filter, district, station, rank)
+    private val filtersFlow1 = combine(_debouncedSearchQuery, _searchFilter, _selectedUnit) { q, f, u -> Triple(q, f, u) }
+    private val filtersFlow2 = combine(_selectedDistrict, _selectedStation, _selectedRank) { d, s, r -> Triple(d, s, r) }
+
+    private val searchFiltersFlow = combine(filtersFlow1, filtersFlow2) { f1, f2 ->
+        SearchFilters(f1.first, f1.second, f1.third, f2.first, f2.second, f2.third)
     }
 
     // Admin state (needed for filtering approved employees)
@@ -121,21 +157,28 @@ class EmployeeListViewModel @Inject constructor(
         _isAdmin
     ) { contacts, powerResults, filters, isAdmin ->
         val query = filters.query
+        val unit = filters.unit
         val district = filters.district
         val station = filters.station
         val rank = filters.rank
+
+        val sourceList = if (query.isNotBlank()) powerResults else contacts
         
-        val sourceList = if (query.isNotBlank()) {
-            powerResults
+        if (query.isNotBlank()) {
+            val queryLower = query.trim().lowercase()
+            sourceList.sortedByDescending { contact ->
+                when {
+                    contact.employee != null -> SearchEngine.calculateEmployeeScore(contact.employee, queryLower, filters.filter)
+                    contact.officer != null -> SearchEngine.calculateOfficerScore(contact.officer, queryLower, filters.filter.name)
+                    else -> 0.0
+                }
+            }
         } else {
-            contacts
-        }
-
-        if (sourceList.isEmpty() && query.isNotBlank()) {
-            // Fallback while Power Search is loading or if it returned nothing
-        }
-
-        sourceList.filter { contact ->
+            sourceList.sortedWith(
+                compareBy<Contact> { getRankPriority(it.rank) }
+                    .thenBy { it.name }
+            )
+        }.filter { contact ->
             // if Global Search (query present), ignore dropdown filters and search whole DB
             val isGlobalSearch = query.isNotBlank()
 
@@ -157,7 +200,9 @@ class EmployeeListViewModel @Inject constructor(
 
             val rankMatch = isGlobalSearch || rank == "All" || contact.rank?.equals(rank, ignoreCase = true) == true
             
-            districtMatch && stationMatch && rankMatch
+            val unitMatch = isGlobalSearch || unit == "All" || contact.employee?.unit?.equals(unit, ignoreCase = true) == true
+            
+            districtMatch && stationMatch && rankMatch && unitMatch
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -317,6 +362,10 @@ class EmployeeListViewModel @Inject constructor(
         _searchFilter.value = filter
     }
 
+    fun updateSelectedUnit(unit: String) {
+        _selectedUnit.value = unit
+    }
+
     fun updateSelectedDistrict(district: String) {
         _selectedDistrict.value = district
     }
@@ -327,6 +376,33 @@ class EmployeeListViewModel @Inject constructor(
 
     fun updateSelectedRank(rank: String) {
         _selectedRank.value = rank
+    }
+
+    fun performAISearch(query: String) {
+        if (query.isBlank()) return
+        
+        viewModelScope.launch {
+            _aiSearchStatus.value = OperationStatus.Loading
+            val structuredResult = aiSearchParser.parseSearchQuery(query)
+            
+            if (structuredResult != null) {
+                // Apply AI-derived filters
+                _searchQuery.value = structuredResult.name ?: structuredResult.kgid ?: ""
+                _selectedRank.value = structuredResult.rank ?: "All"
+                _selectedDistrict.value = structuredResult.district ?: "All"
+                _selectedStation.value = structuredResult.station ?: "All"
+                _selectedUnit.value = structuredResult.unit ?: "All"
+                
+                _aiSearchStatus.value = OperationStatus.Success("AI Filters Applied")
+                
+                delay(2000)
+                _aiSearchStatus.value = OperationStatus.Idle
+            } else {
+                _aiSearchStatus.value = OperationStatus.Error("AI could not understand search")
+                delay(2000)
+                _aiSearchStatus.value = OperationStatus.Idle
+            }
+        }
     }
 
     // =========================================================

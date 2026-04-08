@@ -31,6 +31,10 @@ coil-compose = "2.7.0"
 # ------------------ Google Services (Updated for Android 16) ------------------
 play-auth = "21.2.0"
 play-identity = "18.1.0"
+play-review = "2.0.1"
+google-api-drive = "v3-rev20230822-2.0.0"
+google-api-client = "2.0.0"
+google-http-gson = "1.43.3"
 
 # ------------------ Testing ------------------
 junit = "4.13.2"
@@ -88,6 +92,11 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 # Google Sign-In
 play-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "play-auth" }
 play-identity = { group = "com.google.android.gms", name = "play-services-identity", version.ref = "play-identity" }
+play-review = { group = "com.google.android.play", name = "review", version.ref = "play-review" }
+play-review-ktx = { group = "com.google.android.play", name = "review-ktx", version.ref = "play-review" }
+google-api-drive = { group = "com.google.apis", name = "google-api-services-drive", version.ref = "google-api-drive" }
+google-api-client-android = { group = "com.google.api-client", name = "google-api-client-android", version.ref = "google-api-client" }
+google-http-client-gson = { group = "com.google.http-client", name = "google-http-client-gson", version.ref = "google-http-gson" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }

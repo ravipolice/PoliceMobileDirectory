@@ -30,7 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.viewmodel.ConstantsViewModel
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.EmployeeListViewModel
 import java.io.File
 import java.io.FileOutputStream
 
@@ -78,7 +78,7 @@ fun shareCsv(employees: List<Employee>, fileName: String, context: Context) {
 @Composable
 fun EmployeeStatsScreen(
     navController: NavController,
-    viewModel: EmployeeViewModel,
+    viewModel: EmployeeListViewModel,
     constantsViewModel: ConstantsViewModel = hiltViewModel()
 ) {
     val allEmployees by viewModel.employees.collectAsState()
@@ -137,13 +137,14 @@ fun EmployeeStatsScreen(
         .eachCount().toList().sortedByDescending { it.second }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Employee Statistics") },
                 navigationIcon = { IconButton(onClick = { navController.popBackStack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = ComposeColor.White,
                     navigationIconContentColor = ComposeColor.White
                 )

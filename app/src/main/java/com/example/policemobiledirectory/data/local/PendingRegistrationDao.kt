@@ -26,6 +26,9 @@ interface PendingRegistrationDao {
     @Query("DELETE FROM pending_registrations")
     suspend fun deleteAll()
 
+    @Query("DELETE FROM pending_registrations WHERE LOWER(status) = 'pending'")
+    suspend fun deletePending()
+
     @Query("DELETE FROM pending_registrations WHERE roomId = :roomId")
     suspend fun deleteById(roomId: Long)
 
@@ -56,7 +59,7 @@ interface PendingRegistrationDao {
        QUERIES
     ----------------------------------------------------- */
 
-    @Query("SELECT * FROM pending_registrations WHERE status = 'pending' ORDER BY submittedAt DESC")
+    @Query("SELECT * FROM pending_registrations WHERE LOWER(status) = 'pending' ORDER BY submittedAt DESC")
     fun getAllPending(): Flow<List<PendingRegistrationEntity>>
 
     @Query("SELECT * FROM pending_registrations WHERE kgid = :kgid LIMIT 1")

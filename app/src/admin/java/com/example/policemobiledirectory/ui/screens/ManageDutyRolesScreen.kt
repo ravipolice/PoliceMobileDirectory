@@ -77,7 +77,8 @@ fun ManageDutyRolesScreen(
                     navigationIconContentColor = Color.White
                 )
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             // Success Snackbar/Banner

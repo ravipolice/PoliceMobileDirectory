@@ -55,7 +55,7 @@ fun AboutScreen(navController: NavController) {
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("About App") },

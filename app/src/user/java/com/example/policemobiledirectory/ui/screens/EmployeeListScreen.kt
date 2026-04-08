@@ -55,9 +55,11 @@ import com.example.policemobiledirectory.ui.theme.BackgroundLight
 import com.example.policemobiledirectory.ui.theme.SecondaryYellow
 import com.example.policemobiledirectory.utils.Constants
 import com.example.policemobiledirectory.viewmodel.ConstantsViewModel
+import com.example.policemobiledirectory.viewmodel.EmployeeListViewModel
+import com.example.policemobiledirectory.viewmodel.AuthViewModel
+import com.example.policemobiledirectory.viewmodel.SettingsViewModel
 
 import com.example.policemobiledirectory.utils.OperationStatus
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import kotlinx.coroutines.launch
 
 import com.example.policemobiledirectory.ui.components.ContactCard
@@ -76,16 +78,17 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 @Composable
 fun EmployeeListScreen(
     navController: NavController,
-    viewModel: EmployeeViewModel,
-    onThemeToggle: () -> Unit,
-    constantsViewModel: ConstantsViewModel = hiltViewModel(),
+    viewModel: com.example.policemobiledirectory.viewmodel.EmployeeListViewModel,
+    authViewModel: com.example.policemobiledirectory.viewmodel.AuthViewModel,
+    settingsViewModel: com.example.policemobiledirectory.viewmodel.SettingsViewModel,
+    constantsViewModel: com.example.policemobiledirectory.viewmodel.ConstantsViewModel = hiltViewModel(),
     notificationsViewModel: com.example.policemobiledirectory.viewmodel.NotificationsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val filteredEmployees by viewModel.filteredEmployees.collectAsStateWithLifecycle()
     val employeeStatus by viewModel.employeeStatus.collectAsStateWithLifecycle()
-    val isAdmin by viewModel.isAdmin.collectAsStateWithLifecycle()
-    val fontScale by viewModel.fontScale.collectAsStateWithLifecycle()
+    val isAdmin by authViewModel.isAdmin.collectAsStateWithLifecycle()
+    val fontScale by settingsViewModel.fontScale.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     
@@ -100,26 +103,16 @@ fun EmployeeListScreen(
     LaunchedEffect(currentRoute) { 
         // Only refresh if we're on the employee list screen
         if (currentRoute == Routes.EMPLOYEE_LIST) {
-            viewModel.checkIfAdmin()
-            // Refresh current user to check for approval status changes
-            viewModel.refreshCurrentUser()
+            authViewModel.checkIfAdmin()
+            viewModel.setIsAdmin(authViewModel.isAdmin.value)
             // Refresh data when screen comes back into focus
             viewModel.refreshEmployees()
             viewModel.refreshOfficers()
         }
     }
 
-    // ✅ Ensure status bar matches the PMD Home top bar color on this screen
-    val systemUiController = rememberSystemUiController()
-    SideEffect {
-        systemUiController.setStatusBarColor(
-            color = PrimaryTeal,
-            darkIcons = false
-        )
-    }
-
     Scaffold(
-        contentWindowInsets = WindowInsets(0),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -165,6 +158,7 @@ fun EmployeeListScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = androidx.compose.ui.graphics.Color.White,
                     navigationIconContentColor = androidx.compose.ui.graphics.Color.White,
                     actionIconContentColor = androidx.compose.ui.graphics.Color.White
@@ -185,7 +179,7 @@ fun EmployeeListScreen(
                     FontSizeSelectorButton(
                         currentFontScale = fontScale,
                         onFontScaleSelected = { scale ->
-                            viewModel.setFontScale(scale)
+                            settingsViewModel.setFontScale(scale)
                         },
                         onFontScaleToggle = {
                             // Cycle through common presets: 0.8, 1.0, 1.2, 1.4, 1.6, 1.8
@@ -199,12 +193,12 @@ fun EmployeeListScreen(
                             } else {
                                 0 // Cycle back to first
                             }
-                            viewModel.setFontScale(presets[nextIndex])
+                            settingsViewModel.setFontScale(presets[nextIndex])
                         },
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                     
-                    IconButton(onClick = onThemeToggle) {
+                    IconButton(onClick = { settingsViewModel.toggleTheme() }) {
                         Icon(Icons.Default.Brightness6, contentDescription = "Toggle Theme")
                     }
                 }
@@ -221,6 +215,7 @@ fun EmployeeListScreen(
             EmployeeListContent(
                 navController = navController,
                 viewModel = viewModel,
+                authViewModel = authViewModel,
                 constantsViewModel = constantsViewModel,
                 context = context,
                 isAdmin = isAdmin,
@@ -235,8 +230,9 @@ fun EmployeeListScreen(
 @Composable
 private fun EmployeeListContent(
     navController: NavController,
-    viewModel: EmployeeViewModel,
-    constantsViewModel: ConstantsViewModel,
+    viewModel: com.example.policemobiledirectory.viewmodel.EmployeeListViewModel,
+    authViewModel: com.example.policemobiledirectory.viewmodel.AuthViewModel,
+    constantsViewModel: com.example.policemobiledirectory.viewmodel.ConstantsViewModel,
     context: Context,
     isAdmin: Boolean,
     fontScale: Float,
@@ -250,7 +246,7 @@ private fun EmployeeListContent(
     val employeeStatus by viewModel.employeeStatus.collectAsStateWithLifecycle()
     val officerStatus by viewModel.officerStatus.collectAsStateWithLifecycle()
     val searchFilter by viewModel.searchFilter.collectAsStateWithLifecycle()
-    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    val currentUser by authViewModel.currentUser.collectAsStateWithLifecycle()
 
     // Get constants from ViewModel
     val districts by constantsViewModel.districts.collectAsStateWithLifecycle()
@@ -294,11 +290,10 @@ private fun EmployeeListContent(
         }
     }
 
-    // Show "All" only for admins, regular users see only districts
     // 🔹 DYNAMIC DISTRICTS LIST (Sync with Admin Mapping)
     val districtsList = remember(isAdmin, selectedUnit, districts) {
         val baseList = if (selectedUnit == "All") districts else constantsViewModel.getDistrictsForUnit(selectedUnit)
-        if (isAdmin) listOf("All") + baseList else baseList
+        listOf("All") + baseList // Allow 'All' for everyone
     }
 
     // 🔹 DYNAMIC DROPDOWNS & LABELS
@@ -307,29 +302,31 @@ private fun EmployeeListContent(
         value = listOf("All") + resolved
     }
     val allRanks = remember(ranks) { listOf("All") + ranks }
+    val allUnitNames = remember(filteredUnitNames) { if (filteredUnitNames.contains("All")) filteredUnitNames else listOf("All") + filteredUnitNames }
 
-    // Initialize district to user's registered district when currentUser loads (for non-admins)
-    LaunchedEffect(currentUser, isAdmin, districts) {
-        if (!isAdmin) {
-            // Regular user: set to their registered district (if it exists in the list)
-            val userDistrict = currentUser?.district?.takeIf { it.isNotBlank() }
-            if (userDistrict != null && districts.contains(userDistrict)) {
-                viewModel.updateSelectedDistrict(userDistrict)
-            } else if (districts.isNotEmpty() && selectedDistrict == "All") {
-                // Fallback: use first district if user has no district set
-                districts.firstOrNull()?.let { viewModel.updateSelectedDistrict(it) }
-            }
-        }
-    }
+
+    // Removed auto-filter: all users (including regular users) now default to seeing "All" districts
 
     // val searchFields removed
 
     val listState = rememberLazyListState()
 
+    // 🔹 Profile Verification Prompt Check
+    val isProfileOutdated = remember(currentUser) {
+        val lastUpdate = currentUser?.updatedAt
+        if (lastUpdate == null) {
+            false // Don't block new users, they will verify later
+        } else {
+            val ninetyDaysInMillis = 90L * 24 * 60 * 60 * 1000
+            val diff = System.currentTimeMillis() - lastUpdate.time
+            diff > ninetyDaysInMillis
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White) // Clean white background for the whole screen
+            .background(MaterialTheme.colorScheme.background) // Themed background
     ) {
 
         // 🔹 DYNAMIC LABELS
@@ -337,10 +334,60 @@ private fun EmployeeListContent(
         val districtLabel = if (unitObj?.mappedAreaType == "BATTALION") "Battalion" else "District / HQ"
         val stationLabel = if (stationsForDistrict.size > 1 && !stationsForDistrict.contains("Others") && selectedUnit != "All" && selectedUnit != "Law & Order") "Section" else "Station / Section"
 
+        if (isProfileOutdated) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Warning",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Profile Verification Required",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            text = "Please verify your station and designation to keep the directory updated.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                    Button(
+                        onClick = { navController.navigate(Routes.MY_PROFILE) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("Review", fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+
+        val aiSearchStatus by viewModel.aiSearchStatus.collectAsStateWithLifecycle()
+
         // 🔹 3. Search Bar (Integrated below categories)
         Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)) {
             SearchFilterBar(
-                units = filteredUnitNames,
+                units = allUnitNames,
                 districts = districtsList,
                 stations = stationsForDistrict,
                 ranks = allRanks,
@@ -357,14 +404,18 @@ private fun EmployeeListContent(
                 onRankChange = { viewModel.updateSelectedRank(it) },
                 searchQuery = searchQuery,
                 onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+                onAISearch = { viewModel.performAISearch(it) },
+                aiStatus = aiSearchStatus,
                 isDistrictLevelUnit = isDistrictLevelUnit,
                 isAdmin = isAdmin,
                 districtLabel = districtLabel,
                 stationLabel = stationLabel,
                 totalContactsCount = allContacts.size,
+                filteredContactsCount = filteredContacts.size,
                 modifier = Modifier
             )
         }
+
 
 
 
@@ -496,7 +547,7 @@ private fun EmployeeListContent(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 80.dp)
+                        contentPadding = PaddingValues(bottom = 16.dp)
                     ) {
                         items(
                             items = filteredContacts,

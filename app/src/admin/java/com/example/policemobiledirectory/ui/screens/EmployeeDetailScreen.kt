@@ -66,6 +66,7 @@ fun EmployeeDetailScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Contact Details", fontWeight = FontWeight.Bold) },
@@ -148,6 +149,7 @@ fun EmployeeDetailScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = PrimaryTeal,
+                    scrolledContainerColor = PrimaryTeal,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White

@@ -25,7 +25,7 @@ class OfficerRepository @Inject constructor(
     private val officerDao: OfficerDao
 ) {
     private val TAG = "OfficerRepository"
-    private val officersCollection = firestore.collection("officers")
+    private val officersCollection = firestore.collection("officers_v2")
     private val ioDispatcher = Dispatchers.IO
 
     fun getOfficers(): Flow<RepoResult<List<Officer>>> = officerDao.getAllOfficers()
@@ -45,7 +45,7 @@ class OfficerRepository @Inject constructor(
                 val off = safeOfficerFromDoc(doc)
                 if (off != null) {
                     val blob = SearchUtils.generateSearchBlob(
-                        off.agid, off.name, off.mobile, off.rank, off.unit, off.district, off.station, off.email, off.bloodGroup
+                        off.agid, off.name, off.mobile, off.rank, off.unit, off.district, off.subDivision, off.station, off.email, off.bloodGroup
                     )
                     off.toEntity(blob)
                 } else null
@@ -202,8 +202,11 @@ class OfficerRepository @Inject constructor(
                 rank = getString("rank"),
                 station = getString("station"),
                 district = getString("district"),
+                subDivision = getString("subDivision"),
                 photoUrl = getString("photoUrl"),
                 unit = getString("unit"),
+                createdAt = doc.getDate("createdAt"),
+                updatedAt = doc.getDate("updatedAt"),
                 isHidden = isHidden
             )
 

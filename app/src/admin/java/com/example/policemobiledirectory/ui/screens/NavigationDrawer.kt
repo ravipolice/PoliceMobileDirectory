@@ -8,6 +8,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AdminPanelSettings
@@ -16,12 +19,14 @@ import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Badge // Or Person
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.LocalPolice
 import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Apartment
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Notifications
@@ -43,6 +48,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -54,6 +62,7 @@ import coil.request.ImageRequest
 import coil.size.Scale
 import com.example.policemobiledirectory.R
 import com.example.policemobiledirectory.navigation.Routes
+import com.google.firebase.auth.FirebaseAuth
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -65,45 +74,71 @@ fun NavigationDrawer(
     drawerState: DrawerState,
     scope: CoroutineScope,
     viewModel: EmployeeViewModel = hiltViewModel(),
-    onLogout: () -> Unit
+    authViewModel: com.example.policemobiledirectory.viewmodel.AuthViewModel = hiltViewModel(),
+    onLogout: () -> Unit,
+    onDrivePermissionRequest: () -> Unit
 ) {
     val context = LocalContext.current
     val currentUser by viewModel.currentUser.collectAsState()
     val isAdmin by viewModel.isAdmin.collectAsState()
+    val hasDriveAccess by authViewModel.hasGoogleDriveAccess.collectAsState()
     val currentRoute = navController.currentDestination?.route
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                authViewModel.checkGoogleDriveAccess(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    LaunchedEffect(currentUser) {
+        authViewModel.checkGoogleDriveAccess(context)
+    }
 
     ModalDrawerSheet(
         modifier = Modifier
             .width(280.dp),
         drawerShape = RectangleShape,
         drawerContainerColor = MaterialTheme.colorScheme.surface,
-        windowInsets = WindowInsets(0, 0, 0, 0) // Draw completely edge-to-edge
+        windowInsets = WindowInsets(0, 0, 0, 0)
     ) {
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f))
-                .navigationBarsPadding() // ✅ Fix: Account for system navigation bar to prevent overlap
         ) {
 
             // ============================================================
             // 🔹 TOP SECTION: PROFILE CARD
             // ============================================================
-            Surface(
-                color = MaterialTheme.colorScheme.primary,
-                tonalElevation = 3.dp,
-                modifier = Modifier.fillMaxWidth()
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                            )
+                        )
+                    )
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .statusBarsPadding()
-                        .padding(vertical = 12.dp, horizontal = 12.dp),
+                        .padding(top = 24.dp, bottom = 20.dp, start = 16.dp, end = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+
                     // Profile Image with Blood Group in top right corner
                     Box(
-                        modifier = Modifier.size(90.dp),
+                        modifier = Modifier.size(96.dp),
                         contentAlignment = Alignment.TopEnd
                     ) {
                         val painter = rememberAsyncImagePainter(
@@ -120,8 +155,9 @@ fun NavigationDrawer(
                             painter = painter,
                             contentDescription = "Profile photo",
                             modifier = Modifier
-                                .size(90.dp)
+                                .fillMaxSize()
                                 .clip(CircleShape)
+                                .border(2.dp, Color.White.copy(alpha = 0.8f), CircleShape)
                         )
                         
                         // Blood Group badge in top right corner
@@ -154,9 +190,10 @@ fun NavigationDrawer(
                             Surface(
                                 color = MaterialTheme.colorScheme.error,
                                 shape = CircleShape,
+                                border = androidx.compose.foundation.BorderStroke(1.5.dp, Color.White),
                                 modifier = Modifier
                                     .size(28.dp)
-                                    .offset(x = 4.dp, y = (-4).dp)
+                                    .offset(x = 2.dp, y = (-2).dp)
                             ) {
                                 Box(
                                     contentAlignment = Alignment.Center,
@@ -175,57 +212,110 @@ fun NavigationDrawer(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     
-                    // Name + Rank (bold, prominent)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    ) {
-                        Text(
-                            text = buildString {
-                                append(currentUser?.name ?: "")
-                                currentUser?.displayRank?.takeIf { it.isNotBlank() }?.let { rank ->
-                                    append(" ($rank)")
+                    // Name + Rank (with fallback)
+                    val firebaseUser = FirebaseAuth.getInstance().currentUser
+                    val displayName = currentUser?.name ?: firebaseUser?.displayName ?: "Administrator"
+                    val displayRank = currentUser?.displayRank ?: if (isAdmin) "Super Admin" else ""
+
+                    Text(
+                        text = buildAnnotatedString {
+                            withStyle(SpanStyle(fontWeight = FontWeight.ExtraBold)) {
+                                append(displayName)
+                            }
+                            if (displayRank.isNotBlank()) {
+                                append("  ")
+                                withStyle(SpanStyle(fontSize = 16.sp, fontWeight = FontWeight.Normal, color = Color.White.copy(alpha = 0.9f))) {
+                                    append(displayRank)
                                 }
-                            },
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            ),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    
-                    // KGID (larger)
-                    Text(
-                        text = currentUser?.kgid?.let { "KGID: $it" } ?: "",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(alpha = 0.95f),
-                            fontSize = 16.sp
-                        )
+                            }
+                        },
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            color = Color.White
+                        ),
+                        textAlign = TextAlign.Center
                     )
                     
-                    // Station (larger)
-                    currentUser?.station?.takeIf { it.isNotBlank() }?.let { station ->
-                        Text(
-                            text = station,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = Color.White.copy(alpha = 0.9f),
-                                fontSize = 16.sp
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Compact Metadata Row 1: KGID
+                    currentUser?.kgid?.takeIf { it.isNotBlank() }?.let { kgid ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Badge,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
                             )
-                        )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "KGID: $kgid",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = Color.White.copy(alpha = 0.95f)
+                                )
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
                     
-                    // Email (larger)
-                    Text(
-                        text = currentUser?.email ?: "",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(alpha = 0.9f),
-                            fontSize = 16.sp
-                        )
-                    )
+                    // Compact Metadata Row 2: Station
+                    currentUser?.station?.takeIf { it.isNotBlank() }?.let { station ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = station,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = Color.White.copy(alpha = 0.95f)
+                                ),
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                    
+                    // Compact Metadata Row 3: Email
+                    val displayEmail = currentUser?.email ?: firebaseUser?.email
+                    displayEmail?.takeIf { it.isNotBlank() }?.let { email ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Email,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = email,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = Color.White.copy(alpha = 0.95f)
+                                ),
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
             }
 
@@ -566,6 +656,21 @@ fun NavigationDrawer(
                         }
                     )
                 }
+
+                DrawerItem(
+                    icon = Icons.Default.AccountCircle,
+                    text = if (hasDriveAccess) "Drive Access Granted" else "Grant Drive Access",
+                    textColor = if (hasDriveAccess) if (androidx.compose.foundation.isSystemInDarkTheme()) Color(0xFF81C784) else Color(0xFF2E7D32) else MaterialTheme.colorScheme.error,
+                    onClick = {
+                        if (!hasDriveAccess) {
+                            scope.launch {
+                                drawerState.close()
+                                onDrivePermissionRequest()
+                            }
+                        }
+                    }
+                )
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
 
                 DrawerItem(
                     icon = Icons.AutoMirrored.Filled.Logout,

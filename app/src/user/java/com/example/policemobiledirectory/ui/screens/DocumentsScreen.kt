@@ -98,7 +98,6 @@ fun DocumentsScreen(
 
     // Handle delete status
     Scaffold(
-        contentWindowInsets = WindowInsets(0),
         topBar = {
             TopAppBar(
                 title = { Text("Documents") },
@@ -109,6 +108,7 @@ fun DocumentsScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = ComposeColor.White,
                     navigationIconContentColor = ComposeColor.White,
                     actionIconContentColor = ComposeColor.White
@@ -122,7 +122,8 @@ fun DocumentsScreen(
                     }
                 }
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
 
         Surface(
@@ -229,9 +230,10 @@ fun DocumentsScreen(
                         previewUrl = null
                         previewMimeType = null
                     },
-                    onDocumentBroken = { title ->
-                        viewModel.markDocumentAsBroken(title)
+                    onDocumentBroken = { url ->
+                        viewModel.markDocumentAsBroken(url)
                     }
+
                 )
             }
 
@@ -387,7 +389,7 @@ fun FullscreenPreviewDialog(
                                 )
                                 // Try to let the user know we're removing it
                                 SideEffect {
-                                    onDocumentBroken(title)
+                                    onDocumentBroken(url)
                                 }
                             }
                         }

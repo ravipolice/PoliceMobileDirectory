@@ -38,20 +38,19 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.example.policemobiledirectory.R
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.UsefulLinksViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UsefulLinksScreen(
     navController: NavController,
-    viewModel: EmployeeViewModel
+    viewModel: UsefulLinksViewModel
 ) {
     val usefulLinks by viewModel.usefulLinks.collectAsState()
     // isAdmin and deleteDialog state removed
 
 
     val context = LocalContext.current
-    val pendingStatus by viewModel.pendingStatus.collectAsState()
 
     // Get the current back stack entry to detect when screen comes back into focus
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -65,25 +64,7 @@ fun UsefulLinksScreen(
         }
     }
 
-    // Show toast for delete status
-    LaunchedEffect(pendingStatus) {
-        val status = pendingStatus
-        when (status) {
-            is com.example.policemobiledirectory.utils.OperationStatus.Success<*> -> {
-                val data = status.data.toString()
-                Toast.makeText(context, data, Toast.LENGTH_SHORT).show()
-                viewModel.resetPendingStatus()
-            }
-            is com.example.policemobiledirectory.utils.OperationStatus.Error -> {
-                Toast.makeText(context, status.message, Toast.LENGTH_SHORT).show()
-                viewModel.resetPendingStatus()
-            }
-            else -> {}
-        }
-    }
-
     Scaffold(
-        contentWindowInsets = WindowInsets(0),
         topBar = {
             TopAppBar(
                 title = { Text("Useful Links") },
@@ -106,12 +87,14 @@ fun UsefulLinksScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White
                 )
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         Box(
             modifier = Modifier

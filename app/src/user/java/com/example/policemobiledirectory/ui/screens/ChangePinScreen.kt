@@ -23,7 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.policemobiledirectory.ui.theme.components.PinVisualTransformation
 import com.example.policemobiledirectory.utils.OperationStatus
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.AuthViewModel
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.HourglassTop
@@ -42,7 +42,7 @@ import androidx.compose.material.icons.filled.Brightness6
 @Composable
 fun ChangePinScreen(
     navController: NavController,
-    viewModel: EmployeeViewModel = hiltViewModel()
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val userEmail = viewModel.currentUser.collectAsState().value?.email  // ✅ added this
@@ -58,6 +58,7 @@ fun ChangePinScreen(
     val pinChangeState by viewModel.pinChangeState.collectAsState()
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Change PIN") },
@@ -68,8 +69,10 @@ fun ChangePinScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = androidx.compose.ui.graphics.Color.White,
-                    navigationIconContentColor = androidx.compose.ui.graphics.Color.White
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 )
             )
         }

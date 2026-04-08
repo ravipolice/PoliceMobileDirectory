@@ -5,12 +5,14 @@ import com.example.policemobiledirectory.api.ConstantsApiService
 import com.example.policemobiledirectory.api.EmployeeApiService
 import com.example.policemobiledirectory.api.OfficersSyncApiService
 import com.example.policemobiledirectory.api.SyncApiService
+import com.example.policemobiledirectory.api.NvidiaApiService
 import com.example.policemobiledirectory.api.UsefulLinksApiService
 import com.example.policemobiledirectory.data.remote.DocumentsApiService
 import com.example.policemobiledirectory.data.remote.GalleryApiService
 import com.example.policemobiledirectory.repository.DocumentsRepository
 import com.example.policemobiledirectory.repository.GalleryRepository
 import com.example.policemobiledirectory.utils.SecurityConfig
+import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
 import dagger.Provides
@@ -27,6 +29,14 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
+    
+    @Provides
+    @Singleton
+    fun provideGson(): Gson {
+        return GsonBuilder()
+            .setLenient()
+            .create()
+    }
 
     @Provides
     @Singleton
@@ -211,4 +221,28 @@ object NetworkModule {
     @Singleton
     fun provideMissionsApiService(@Named("MissionsRetrofit") retrofit: Retrofit): com.example.policemobiledirectory.api.MissionsApiService =
         retrofit.create(com.example.policemobiledirectory.api.MissionsApiService::class.java)
+
+    // --- NVIDIA AI ---
+
+    @Provides
+    @Singleton
+    @Named("NvidiaRetrofit")
+    fun provideNvidiaRetrofit(loggingInterceptor: HttpLoggingInterceptor): Retrofit {
+        val okHttpClient = OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(120, TimeUnit.SECONDS) // AI can take time
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl("https://integrate.api.nvidia.com/v1/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNvidiaApiService(@Named("NvidiaRetrofit") retrofit: Retrofit): NvidiaApiService =
+        retrofit.create(NvidiaApiService::class.java)
 }

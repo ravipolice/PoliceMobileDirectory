@@ -89,10 +89,10 @@ fun AddEmployeeScreen(
     )
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             CommonTopAppBar(title = if (isEditMode) "Edit Employee" else "Add Employee", navController = navController)
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier

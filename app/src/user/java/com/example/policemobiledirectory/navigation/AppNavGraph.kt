@@ -14,25 +14,24 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.policemobiledirectory.ui.screens.*
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.*
 import kotlinx.coroutines.launch
 import android.net.Uri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.Schedule
-import com.example.policemobiledirectory.viewmodel.UserDocumentsViewModel
-import com.example.policemobiledirectory.viewmodel.NotificationsViewModel
 
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
     startDestination: String,
-    employeeViewModel: EmployeeViewModel,
+    authViewModel: AuthViewModel,
+    settingsViewModel: SettingsViewModel,
     isDarkTheme: Boolean,
     onThemeToggle: () -> Unit,
     onGoogleSignInClicked: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onDrivePermissionRequest: () -> Unit
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -57,27 +56,31 @@ fun AppNavGraph(
                     navController = navController,
                     drawerState = drawerState,
                     scope = scope,
-                    viewModel = employeeViewModel,
-                    onLogout = onLogout
+                    viewModel = authViewModel,
+                    settingsViewModel = settingsViewModel,
+                    onLogout = onLogout,
+                    onDrivePermissionRequest = onDrivePermissionRequest
                 )
             }
         ) {
             Scaffold(
-                contentWindowInsets = WindowInsets(0),
                 bottomBar = {
                     BottomNavigationBar(
                         navController = navController,
                         drawerState = drawerState, scope = scope
                     )
-                }
+                },
+                contentWindowInsets = WindowInsets(0, 0, 0, 0)
             ) { innerPadding ->
                 AppNavHostContent(
                     navController = navController,
-                    employeeViewModel = employeeViewModel,
+                    authViewModel = authViewModel,
+                    settingsViewModel = settingsViewModel,
                     onThemeToggle = onThemeToggle,
                     onGoogleSignInClicked = onGoogleSignInClicked,
                     startDestination = startDestination,
                     onLogout = onLogout,
+                    onDrivePermissionRequest = onDrivePermissionRequest,
                     modifier = androidx.compose.ui.Modifier.padding(innerPadding)
                 )
             }
@@ -85,11 +88,13 @@ fun AppNavGraph(
     } else {
         AppNavHostContent(
             navController = navController,
-            employeeViewModel = employeeViewModel,
+            authViewModel = authViewModel,
+            settingsViewModel = settingsViewModel,
             onThemeToggle = onThemeToggle,
             onGoogleSignInClicked = onGoogleSignInClicked,
             startDestination = startDestination,
-            onLogout = onLogout
+            onLogout = onLogout,
+            onDrivePermissionRequest = onDrivePermissionRequest
         )
     }
 }
@@ -97,14 +102,16 @@ fun AppNavGraph(
 @Composable
 private fun AppNavHostContent(
     navController: NavHostController,
-    employeeViewModel: EmployeeViewModel,
+    authViewModel: AuthViewModel,
+    settingsViewModel: SettingsViewModel,
     onThemeToggle: () -> Unit,
     onGoogleSignInClicked: () -> Unit,
     startDestination: String,
     onLogout: () -> Unit,
+    onDrivePermissionRequest: () -> Unit,
     modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier
 ) {
-    val isAdmin by employeeViewModel.isAdmin.collectAsStateWithLifecycle()
+    val isAdmin by authViewModel.isAdmin.collectAsStateWithLifecycle()
 
     NavHost(
         navController = navController,
@@ -116,16 +123,17 @@ private fun AppNavHostContent(
         composable(Routes.SPLASH) {
             SplashVideoScreen(
                 navController = navController,
-                viewModel = employeeViewModel
+                viewModel = authViewModel
             )
         }
 
         // --- LOGIN ---
         composable(Routes.LOGIN) {
             LoginScreen(
-                viewModel = employeeViewModel,
+                viewModel = authViewModel,
+                settingsViewModel = settingsViewModel,
                 onLoginSuccess = { isAdmin ->
-                    val user = employeeViewModel.currentUser.value
+                    val user = authViewModel.currentUser.value
                     if (user != null && !user.isApproved && !isAdmin) {
                         navController.navigate(Routes.PENDING_APPROVAL) {
                             popUpTo(Routes.LOGIN) { inclusive = true }
@@ -152,7 +160,7 @@ private fun AppNavHostContent(
         // --- PENDING APPROVAL ---
         composable(Routes.PENDING_APPROVAL) {
             PendingApprovalScreen(
-                viewModel = employeeViewModel,
+                viewModel = authViewModel,
                 onLogout = onLogout
             )
         }
@@ -176,7 +184,7 @@ private fun AppNavHostContent(
             val initialName = if (nameArg.isNotEmpty()) Uri.decode(nameArg) else ""
             UserRegistrationScreen(
                 navController = navController,
-                viewModel = employeeViewModel,
+                viewModel = authViewModel,
                 initialEmail = email,
                 initialName = initialName
             )
@@ -194,7 +202,7 @@ private fun AppNavHostContent(
         // --- FORGOT PIN ---
         composable(Routes.FORGOT_PIN) {
             ForgotPinScreen(
-                viewModel = employeeViewModel,
+                viewModel = authViewModel,
                 onPinResetSuccess = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.FORGOT_PIN) { inclusive = true }
@@ -210,10 +218,12 @@ private fun AppNavHostContent(
 
         // --- EMPLOYEE LIST (HOME) ---
         composable(Routes.EMPLOYEE_LIST) {
+            val employeeListViewModel: EmployeeListViewModel = hiltViewModel()
             EmployeeListScreen(
                 navController = navController,
-                viewModel = employeeViewModel,
-                onThemeToggle = onThemeToggle
+                viewModel = employeeListViewModel,
+                authViewModel = authViewModel,
+                settingsViewModel = settingsViewModel
             )
         }
         
@@ -227,11 +237,13 @@ private fun AppNavHostContent(
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("id") ?: ""
             val isOfficer = backStackEntry.arguments?.getBoolean("isOfficer") ?: false
+            val employeeListViewModel: EmployeeListViewModel = hiltViewModel()
             EmployeeDetailScreen(
                 id = id,
                 isOfficer = isOfficer,
                 navController = navController,
-                viewModel = employeeViewModel
+                viewModel = employeeListViewModel,
+                settingsViewModel = settingsViewModel
             )
         }
 
@@ -265,17 +277,13 @@ private fun AppNavHostContent(
 
         // --- USEFUL LINKS ---
         composable(Routes.USEFUL_LINKS) {
-            UsefulLinksScreen(navController = navController, viewModel = employeeViewModel)
+            val usefulLinksViewModel: UsefulLinksViewModel = hiltViewModel()
+            UsefulLinksScreen(navController = navController, viewModel = usefulLinksViewModel)
         }
 
-        // --- NUDI CONVERTER (Coming Soon) ---
+        // --- NUDI CONVERTER ---
         composable(Routes.NUDI_CONVERTER) {
-            ComingSoonScreen(
-                navController = navController,
-                title = "Nudi Converter",
-                icon = Icons.Default.Translate,
-                description = "Convert text between Nudi and Unicode Kannada fonts. This feature is under development."
-            )
+            NudiConverterScreen(navController = navController)
         }
 
         // --- DUTY REGISTER (Coming Soon) ---
@@ -290,7 +298,7 @@ private fun AppNavHostContent(
 
         // --- LEAVE MANAGER ---
         composable(Routes.LEAVE_DASHBOARD) {
-            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            val leaveViewModel: LeaveViewModel = hiltViewModel()
             LeaveDashboardScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToCl = { navController.navigate("${Routes.LEAVE_ENTRY}?type=CL") },
@@ -300,86 +308,90 @@ private fun AppNavHostContent(
                 onNavigateToCcl = { navController.navigate("${Routes.LEAVE_ENTRY}?type=CCL") },
                 onNavigateToMcl = { navController.navigate("${Routes.LEAVE_ENTRY}?type=MCL") },
                 onNavigateToOther = { navController.navigate("${Routes.LEAVE_ENTRY}?type=ML") },
+                onNavigateToApplyLeave = { navController.navigate(Routes.APPLY_LEAVE) },
                 onNavigateToReports = { navController.navigate(Routes.LEAVE_REPORTS) },
-                employeeViewModel = employeeViewModel,
-                leaveViewModel = leaveViewModel
+                onNavigateToRules = { navController.navigate(Routes.LEAVE_RULES) },
+                authViewModel = authViewModel,
+                leaveViewModel = leaveViewModel,
+                onGoogleSignInClicked = onGoogleSignInClicked,
+                onDrivePermissionRequest = onDrivePermissionRequest
             )
         }
 
         composable(Routes.LEAVE_CL) {
-            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            val leaveViewModel: LeaveViewModel = hiltViewModel()
             CLLeaveScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToEntry = { type -> navController.navigate("${Routes.LEAVE_ENTRY}?type=$type") },
                 onNavigateToEdit = { id -> navController.navigate(Routes.leaveEditRoute(id)) },
-                employeeViewModel = employeeViewModel,
+                authViewModel = authViewModel,
                 leaveViewModel = leaveViewModel
             )
         }
 
         composable(Routes.LEAVE_EL) {
-            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            val leaveViewModel: LeaveViewModel = hiltViewModel()
             ELLeaveScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToEntry = { type -> navController.navigate("${Routes.LEAVE_ENTRY}?type=$type") },
                 onNavigateToEdit = { id -> navController.navigate(Routes.leaveEditRoute(id)) },
-                employeeViewModel = employeeViewModel,
+                authViewModel = authViewModel,
                 leaveViewModel = leaveViewModel
             )
         }
 
         composable(Routes.LEAVE_HPL) {
-            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            val leaveViewModel: LeaveViewModel = hiltViewModel()
             HPLLeaveScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToEntry = { type -> navController.navigate("${Routes.LEAVE_ENTRY}?type=$type") },
                 onNavigateToEdit = { id -> navController.navigate(Routes.leaveEditRoute(id)) },
-                employeeViewModel = employeeViewModel,
+                authViewModel = authViewModel,
                 leaveViewModel = leaveViewModel
             )
         }
 
         composable(Routes.LEAVE_WO) {
-            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            val leaveViewModel: LeaveViewModel = hiltViewModel()
             WeeklyOffScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToEntry = { type -> navController.navigate("${Routes.LEAVE_ENTRY}?type=$type") },
                 onNavigateToEdit = { id -> navController.navigate(Routes.leaveEditRoute(id)) },
-                employeeViewModel = employeeViewModel,
+                authViewModel = authViewModel,
                 leaveViewModel = leaveViewModel
             )
         }
 
         composable(Routes.LEAVE_CCL) {
-            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            val leaveViewModel: LeaveViewModel = hiltViewModel()
             CCLLeaveScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToEntry = { type -> navController.navigate("${Routes.LEAVE_ENTRY}?type=$type") },
                 onNavigateToEdit = { id -> navController.navigate(Routes.leaveEditRoute(id)) },
-                employeeViewModel = employeeViewModel,
+                authViewModel = authViewModel,
                 leaveViewModel = leaveViewModel
             )
         }
 
         composable(Routes.LEAVE_MCL) {
-            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            val leaveViewModel: LeaveViewModel = hiltViewModel()
             MCLLeaveScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToEntry = { type -> navController.navigate("${Routes.LEAVE_ENTRY}?type=$type") },
                 onNavigateToEdit = { id -> navController.navigate(Routes.leaveEditRoute(id)) },
-                employeeViewModel = employeeViewModel,
+                authViewModel = authViewModel,
                 leaveViewModel = leaveViewModel
             )
         }
 
         // --- LEAVE OTHER ---
         composable(Routes.LEAVE_OTHER) {
-            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            val leaveViewModel: LeaveViewModel = hiltViewModel()
             OtherLeaveScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToEntry = { type -> navController.navigate("${Routes.LEAVE_ENTRY}?type=$type") },
                 onNavigateToEdit = { id -> navController.navigate(Routes.leaveEditRoute(id)) },
-                employeeViewModel = employeeViewModel,
+                authViewModel = authViewModel,
                 leaveViewModel = leaveViewModel
             )
         }
@@ -390,12 +402,22 @@ private fun AppNavHostContent(
                 defaultValue = "CL"
             })
         ) { backStackEntry ->
-            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            val leaveViewModel: LeaveViewModel = hiltViewModel()
             val type = backStackEntry.arguments?.getString("type") ?: "CL"
             LeaveEntryScreen(
                 onNavigateBack = { navController.popBackStack() },
                 preselectedType = type,
-                employeeViewModel = employeeViewModel,
+                authViewModel = authViewModel,
+                leaveViewModel = leaveViewModel
+            )
+        }
+
+        composable(Routes.APPLY_LEAVE) {
+            val leaveViewModel: LeaveViewModel = hiltViewModel()
+            ApplyLeaveScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onSaveSuccess = { navController.popBackStack() },
+                authViewModel = authViewModel,
                 leaveViewModel = leaveViewModel
             )
         }
@@ -404,22 +426,35 @@ private fun AppNavHostContent(
             route = Routes.LEAVE_EDIT,
             arguments = listOf(navArgument("entryId") { defaultValue = "" })
         ) { backStackEntry ->
-            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            val leaveViewModel: LeaveViewModel = hiltViewModel()
             val entryId = backStackEntry.arguments?.getString("entryId") ?: ""
             LeaveEditScreen(
                 entryId = entryId,
                 onNavigateBack = { navController.popBackStack() },
-                employeeViewModel = employeeViewModel,
+                authViewModel = authViewModel,
                 leaveViewModel = leaveViewModel
             )
         }
 
         composable(Routes.LEAVE_REPORTS) {
-            val leaveViewModel: com.example.policemobiledirectory.viewmodel.LeaveViewModel = hiltViewModel()
+            val leaveViewModel: LeaveViewModel = hiltViewModel()
             LeaveReportsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                employeeViewModel = employeeViewModel,
+                authViewModel = authViewModel,
                 leaveViewModel = leaveViewModel
+            )
+        }
+
+        composable(Routes.LEAVE_RULES) {
+            LeaveRulesScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable("payslip_upload") {
+            PayslipUploadScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onDrivePermissionRequest = onDrivePermissionRequest,
+                authViewModel = authViewModel
             )
         }
     }

@@ -24,10 +24,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -60,12 +60,13 @@ fun EmployeeListScreen(
     navController: NavController,
     viewModel: EmployeeViewModel,
     onThemeToggle: () -> Unit,
+    isAdmin: Boolean = false,
     constantsViewModel: ConstantsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val filteredEmployees by viewModel.filteredEmployees.collectAsState()
     val employeeStatus by viewModel.employeeStatus.collectAsState()
-    val isAdmin by viewModel.isAdmin.collectAsState()
+    // val isAdmin by viewModel.isAdmin.collectAsState() // Use passed parameter
     val fontScale by viewModel.fontScale.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -96,7 +97,7 @@ fun EmployeeListScreen(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -130,6 +131,7 @@ fun EmployeeListScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White
@@ -228,12 +230,75 @@ private fun EmployeeListContent(
 
     val listState = rememberLazyListState()
 
+    // 🔹 Profile Verification Prompt Check
+    val currentUser by viewModel.currentUser.collectAsState()
+    val isProfileOutdated = remember(currentUser) {
+        val lastUpdate = currentUser?.updatedAt
+        if (lastUpdate == null) {
+            false // Don't block new users, they will verify later
+        } else {
+            val ninetyDaysInMillis = 90L * 24 * 60 * 60 * 1000
+            val diff = System.currentTimeMillis() - lastUpdate.time
+            diff > ninetyDaysInMillis
+        }
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
 
         // 🔹 SEARCH & FILTER BAR
         val unitObj = fullUnits.find { it.name == searchParams.unit }
         val districtLabel = if (unitObj?.mappedAreaType == "BATTALION") "Battalion" else "District / HQ"
         val stationLabel = if (stationsForDistrict.size > 1 && !stationsForDistrict.contains("Others") && searchParams.unit != "All") "Section" else "Station / Section"
+
+        if (isProfileOutdated) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(12.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Warning",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Profile Verification Required",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            text = "Please verify your station and designation to keep the directory updated.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                    Button(
+                        onClick = { navController.navigate(Routes.MY_PROFILE) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        ),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("Review", fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+
+        val aiSearchStatus by viewModel.aiSearchStatus.collectAsState()
 
         SearchFilterBar(
             units = units,
@@ -253,6 +318,8 @@ private fun EmployeeListContent(
             onRankChange = { viewModel.updateSelectedRank(it) },
             searchQuery = searchParams.query,
             onSearchQueryChange = { viewModel.updateSearchQuery(it) },
+            onAISearch = { viewModel.performAISearch(it) },
+            aiStatus = aiSearchStatus,
             isDistrictLevelUnit = isDistrictLevelUnit,
             isAdmin = isAdmin,
             districtLabel = districtLabel,
@@ -287,7 +354,7 @@ private fun EmployeeListContent(
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 80.dp)
+                        contentPadding = PaddingValues(bottom = 16.dp)
                     ) {
                         items(filteredContacts, key = { it.id }) { contact ->
                             ContactCard(

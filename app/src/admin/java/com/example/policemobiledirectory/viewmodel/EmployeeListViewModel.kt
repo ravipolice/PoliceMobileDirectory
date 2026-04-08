@@ -15,6 +15,7 @@ import com.example.policemobiledirectory.utils.SearchEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 /**
@@ -27,7 +28,8 @@ import javax.inject.Inject
 @HiltViewModel
 class EmployeeListViewModel @Inject constructor(
     private val employeeRepo: EmployeeRepository,
-    private val officerRepo: OfficerRepository
+    private val officerRepo: OfficerRepository,
+    private val aiSearchParser: com.example.policemobiledirectory.utils.AISearchParser
 ) : ViewModel() {
 
     // Employee State
@@ -43,6 +45,9 @@ class EmployeeListViewModel @Inject constructor(
 
     private val _officerStatus = MutableStateFlow<OperationStatus<List<Officer>>>(OperationStatus.Loading)
     val officerStatus: StateFlow<OperationStatus<List<Officer>>> = _officerStatus.asStateFlow()
+
+    private val _aiSearchStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
+    val aiSearchStatus: StateFlow<OperationStatus<String>> = _aiSearchStatus.asStateFlow()
 
     // Combined contacts (employees + officers) for unified search
     data class Contact(
@@ -298,6 +303,33 @@ class EmployeeListViewModel @Inject constructor(
 
     fun updateSelectedRank(rank: String) {
         _selectedRank.value = rank
+    }
+
+    fun performAISearch(query: String) {
+        if (query.isBlank()) return
+        
+        viewModelScope.launch {
+            _aiSearchStatus.value = OperationStatus.Loading
+            val structuredResult = aiSearchParser.parseSearchQuery(query)
+            
+            if (structuredResult != null) {
+                // Apply AI-derived filters
+                _searchQuery.value = structuredResult.name ?: structuredResult.kgid ?: ""
+                _selectedRank.value = structuredResult.rank ?: "All"
+                _selectedDistrict.value = structuredResult.district ?: "All"
+                _selectedStation.value = structuredResult.station ?: "All"
+                // _selectedUnit not present in this flavor
+                
+                _aiSearchStatus.value = OperationStatus.Success("AI Filters Applied")
+                
+                delay(2000)
+                _aiSearchStatus.value = OperationStatus.Idle
+            } else {
+                _aiSearchStatus.value = OperationStatus.Error("AI could not understand search")
+                delay(2000)
+                _aiSearchStatus.value = OperationStatus.Idle
+            }
+        }
     }
 
     // =========================================================

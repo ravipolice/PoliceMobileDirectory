@@ -7,6 +7,7 @@ import com.example.policemobiledirectory.data.local.SessionManager
 import com.example.policemobiledirectory.data.mapper.toEmployee
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.repository.EmployeeRepository
+import com.example.policemobiledirectory.repository.PendingRegistrationRepository
 import com.example.policemobiledirectory.repository.RepoResult
 import com.example.policemobiledirectory.ui.screens.GoogleSignInUiEvent
 import com.example.policemobiledirectory.utils.OperationStatus
@@ -31,7 +32,8 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val employeeRepo: EmployeeRepository,
-    private val sessionManager: SessionManager,
+    private val pendingRepo: PendingRegistrationRepository,
+    val sessionManager: SessionManager,
     private val auth: FirebaseAuth
 ) : ViewModel() {
 
@@ -50,6 +52,42 @@ class AuthViewModel @Inject constructor(
 
     private val _googleSignInUiEvent = MutableStateFlow<GoogleSignInUiEvent>(GoogleSignInUiEvent.Idle)
     val googleSignInUiEvent: StateFlow<GoogleSignInUiEvent> = _googleSignInUiEvent.asStateFlow()
+
+    private val _googleAccountPickerLoading = MutableStateFlow(false)
+    val googleAccountPickerLoading: StateFlow<Boolean> = _googleAccountPickerLoading.asStateFlow()
+
+    fun setGoogleAccountPickerLoading(loading: Boolean) {
+        _googleAccountPickerLoading.value = loading
+    }
+
+    // Google Drive Permission State
+    private val _hasGoogleDriveAccess = MutableStateFlow(false)
+    val hasGoogleDriveAccess: StateFlow<Boolean> = _hasGoogleDriveAccess.asStateFlow()
+
+    fun checkGoogleDriveAccess(context: android.content.Context) {
+        val account = com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(context)
+        if (account == null) {
+            _hasGoogleDriveAccess.value = false
+            return
+        }
+        val hasAppData = com.google.android.gms.auth.api.signin.GoogleSignIn.hasPermissions(
+            account, com.google.android.gms.common.api.Scope("https://www.googleapis.com/auth/drive.appdata")
+        )
+        val hasDriveFile = com.google.android.gms.auth.api.signin.GoogleSignIn.hasPermissions(
+            account, com.google.android.gms.common.api.Scope("https://www.googleapis.com/auth/drive.file")
+        )
+        val hasSpreadsheets = com.google.android.gms.auth.api.signin.GoogleSignIn.hasPermissions(
+            account, com.google.android.gms.common.api.Scope("https://www.googleapis.com/auth/spreadsheets")
+        )
+        
+        _hasGoogleDriveAccess.value = hasAppData && hasDriveFile && hasSpreadsheets
+    }
+
+    fun saveDriveAccountEmail(email: String) {
+        viewModelScope.launch {
+            sessionManager.saveDriveAccountEmail(email)
+        }
+    }
 
     // OTP/PIN State
     private val _otpUiState = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
@@ -71,9 +109,16 @@ class AuthViewModel @Inject constructor(
 
     init {
         Log.d("AuthViewModel", "🟢 AuthViewModel initialized")
+        val options = com.google.firebase.FirebaseApp.getInstance().options
+        Log.d("LoginFlow", "🚀 PROJECT ID: ${options.projectId}")
+        
+        val firebaseUser = auth.currentUser
+        Log.d("LoginFlow", "👤 CURRENT USER ID: ${firebaseUser?.uid}")
+        Log.d("LoginFlow", "📧 CURRENT EMAIL: ${firebaseUser?.email}")
+        
         loadSession()
 
-        // Observe login state from DataStore
+        // 1️⃣ Observe login state from DataStore
         viewModelScope.launch {
             sessionManager.isLoggedIn.collect { loggedIn ->
                 _isLoggedIn.value = loggedIn
@@ -81,91 +126,35 @@ class AuthViewModel @Inject constructor(
             }
         }
 
-        // Observe admin flag from DataStore
+        // 2️⃣ Observe admin status from DataStore
         viewModelScope.launch {
-            sessionManager.isAdmin.collect { isAdmin ->
-                _isAdmin.value = isAdmin
-                Log.d("Session", "🔄 isAdmin = $isAdmin")
-            }
-        }
-
-        // Restore current user session from Room or Firestore
-        viewModelScope.launch {
-            sessionManager.userEmail.collect { email ->
-                if (_isLoggedIn.value == false && email.isBlank()) {
-                    Log.d("Session", "🔒 Logout in progress, skipping session restore")
-                    return@collect
-                }
-
-                if (email.isNotBlank()) {
-                    Log.d("Session", "🔁 Restoring session for $email")
-
-                    // Try Room first
-                    val localUser = employeeRepo.getEmployeeByEmail(email)
-                    if (localUser != null) {
-                        if (!localUser.isApproved) {
-                            Log.w("Session", "⚠️ User access disabled. Forcing logout.")
-                            sessionManager.clearSession()
-                            _isLoggedIn.value = false
-                            return@collect
-                        }
-                        _currentUser.value = localUser.toEmployee()
-                        _isAdmin.value = localUser.isAdmin
-                        _isLoggedIn.value = true
-                        Log.d("Session", "✅ Loaded user ${localUser.name} (Admin=${localUser.isAdmin})")
-
-                        // 🔴 Background live check from Firestore
-                        viewModelScope.launch {
-                            val liveApproved = employeeRepo.checkIsApprovedFromFirestore(email)
-                            if (liveApproved == false) {
-                                Log.w("Session", "🔴 Firestore says user is DISABLED. Forcing logout.")
-                                sessionManager.clearSession()
-                                _isLoggedIn.value = false
-                                _currentUser.value = null
-                                _isAdmin.value = false
+            sessionManager.isAdmin.collect { isAdminValue ->
+                _isAdmin.value = isAdminValue
+                Log.d("Session", "🔄 isAdmin = $isAdminValue")
+                
+                // ✅ CRITICAL: Sync UID if admin to enable Firestore rules
+                if (isAdminValue) {
+                    viewModelScope.launch {
+                        // Use session email if auth email is null (common for PIN/Anonymous logins)
+                        val email = auth.currentUser?.email ?: sessionManager.userEmail.first()
+                        val uid = auth.currentUser?.uid
+                        
+                        if (email.isNotBlank() && !uid.isNullOrBlank()) {
+                            val kgid = employeeRepo.getEmployeeByEmail(email)?.kgid ?: ""
+                            employeeRepo.syncAdminUid(email, uid, kgid)
+                            
+                            // ✅ Pre-fetch pending registrations after sync
+                            val result = pendingRepo.fetchPendingFromFirestore()
+                            if (result is RepoResult.Success) {
+                                pendingRepo.saveAllToLocal(result.data ?: emptyList())
                             }
                         }
-                    } else {
-                        // Fallback to Firestore if Room is empty
-                        when (val remoteResult = employeeRepo.getUserByEmail(email)) {
-                            is RepoResult.Success -> {
-                                remoteResult.data?.let { user ->
-                                    if (!user.isApproved) {
-                                        Log.w("Session", "⚠️ Remote user access disabled. Forcing logout.")
-                                        sessionManager.clearSession()
-                                        _isLoggedIn.value = false
-                                        return@let
-                                    }
-                                    _currentUser.value = user
-                                    _isAdmin.value = user.isAdmin
-                                    _isLoggedIn.value = true
-                                    Log.d("Session", "✅ Loaded remote user ${user.name}")
-                                } ?: run {
-                                    Log.w("Session", "⚠️ No matching user found for $email — resetting session")
-                                    sessionManager.clearSession()
-                                    _isLoggedIn.value = false
-                                }
-                            }
-                            is RepoResult.Error -> {
-                                Log.e("Session", "❌ Error loading user: ${remoteResult.message}")
-                                sessionManager.clearSession()
-                                _isLoggedIn.value = false
-                            }
-                            else -> Unit
-                        }
-                    }
-                } else {
-                    Log.d("Session", "🔒 No stored email — user not logged in")
-                    if (_currentUser.value != null || _isLoggedIn.value == true) {
-                        _currentUser.value = null
-                        _isAdmin.value = false
-                        _isLoggedIn.value = false
                     }
                 }
             }
         }
 
-        // Ensure signed in if needed
+        // 3️⃣ Ensure signed in if needed
         viewModelScope.launch {
             try {
                 ensureSignedInIfNeeded()
@@ -238,7 +227,8 @@ class AuthViewModel @Inject constructor(
                         _isLoggedIn.value = true
                         _googleSignInUiEvent.value = GoogleSignInUiEvent.SignInSuccess(user)
                     } else {
-                        _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email, authResult.user?.displayName)
+                        // User not found in employees -> Check Pending/Rejected
+                        checkPendingRegistration(email, authResult.user?.displayName)
                     }
                 } else {
                     _googleSignInUiEvent.value = GoogleSignInUiEvent.Error("Sign-in failed: Firebase user is null.")
@@ -248,6 +238,27 @@ class AuthViewModel @Inject constructor(
                 _googleSignInUiEvent.value = GoogleSignInUiEvent.Error(e.localizedMessage ?: "Unknown error")
                 logout()
             }
+        }
+    }
+
+    private suspend fun checkPendingRegistration(email: String, name: String?) {
+        try {
+            val pending = pendingRepo.getPendingByEmail(email)
+            if (pending != null) {
+                if (pending.status.lowercase() == "rejected") {
+                    _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRejected(
+                        email,
+                        pending.rejectionReason ?: "No reason provided"
+                    )
+                } else {
+                    _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationPending(email)
+                }
+            } else {
+                _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email, name)
+            }
+        } catch (e: Exception) {
+            Log.e("GoogleSignIn", "❌ Pending check failed", e)
+            _googleSignInUiEvent.value = GoogleSignInUiEvent.RegistrationRequired(email, name)
         }
     }
 
@@ -401,11 +412,21 @@ class AuthViewModel @Inject constructor(
 
             if (isLoggedIn) {
                 val email = sessionManager.userEmail.first()
-                val isAdmin = sessionManager.isAdmin.first()
-                _isAdmin.value = isAdmin
+                val persistedAdmin = sessionManager.isAdmin.first()
+                val firebaseUser = auth.currentUser
+
+                // ✅ CRITICAL: If we have a local session but Firebase Auth is NULL, force logout
+                if (firebaseUser == null) {
+                    Log.e("Session", "❌ SESSION MISMATCH: Local session exists but Firebase Auth is NULL. Forcing logout.")
+                    logout()
+                    return@launch
+                }
+                
+                _isAdmin.value = persistedAdmin
 
                 if (email.isNotBlank()) {
                     try {
+                        // 1. Load from Local Room DB
                         val userEntity = employeeRepo.getEmployeeByEmail(email)
                         val user = userEntity?.toEmployee()
 
@@ -416,32 +437,93 @@ class AuthViewModel @Inject constructor(
                                 return@launch
                             }
                             _currentUser.value = user
-                            Log.d("Session", "✅ Session restored for user: ${user.name}, admin=$isAdmin")
+                            _isAdmin.value = user.isAdmin || persistedAdmin
+                            Log.d("Session", "✅ Session restored for user: ${user.name}, admin=${_isAdmin.value}")
 
-                            // 🔴 Background live Firestore check on startup
+                            // 🔴 2. Background live Firestore check & Admin Sync
                             viewModelScope.launch {
+                                // Live check for account approval
                                 val liveApproved = employeeRepo.checkIsApprovedFromFirestore(email)
                                 if (liveApproved == false) {
-                                    Log.w("Session", "🔴 Firestore says user is DISABLED. Forcing logout.")
+                                    Log.w("Session", "🔴 Account DISABLED in Firestore. Logging out.")
                                     logout()
+                                    return@launch
+                                }
+
+                                // Live check and sync for Admin status
+                                val liveAdmin = employeeRepo.isAdminInFirestore(email)
+                                val finalAdminState = liveAdmin || user.isAdmin
+                                
+                                if (finalAdminState) {
+                                    Log.d("Session", "🛡️ Admin status confirmed. Syncing UID handshake...")
+                                    _isAdmin.value = true
+                                    
+                                    // Persist if it was a promotion or confirmation
+                                    if (liveAdmin && !persistedAdmin) {
+                                        sessionManager.saveLogin(email, true)
+                                    }
+                                    
+                                    // satisfy Firestore security rules
+                                    auth.currentUser?.uid?.let { uid ->
+                                        val kgid = userEntity?.kgid ?: ""
+                                        employeeRepo.syncAdminUid(email, uid, kgid)
+                                        // ✅ Pre-fetch pending registrations after sync
+                                        val result = pendingRepo.fetchPendingFromFirestore()
+                                        if (result is RepoResult.Success) {
+                                            pendingRepo.saveAllToLocal(result.data ?: emptyList())
+                                        }
+                                    }
+                                } else {
+                                    // If live check says NOT admin but we thought we were, demote locally
+                                    if (persistedAdmin) {
+                                        Log.w("Session", "🚫 Admin status revoked in Firestore. Updating local session.")
+                                        _isAdmin.value = false
+                                        sessionManager.saveLogin(email, false)
+                                    }
                                 }
                             }
                         } else {
-                            Log.e("Session", "❌ Session exists for $email but user not found in DB. Forcing logout.")
-                            logout()
+                            // 3. Fallback to Remote fetch if Room is empty
+                            Log.d("Session", "ℹ️ Room empty for $email, fetching from remote...")
+                            when (val remoteResult = employeeRepo.getUserByEmail(email)) {
+                                is RepoResult.Success -> {
+                                    remoteResult.data?.let { remoteUser ->
+                                        if (!remoteUser.isApproved) {
+                                            Log.w("Session", "🚫 User is not approved. Logging out.")
+                                            logout()
+                                            return@let
+                                        }
+                                        _currentUser.value = remoteUser
+                                        _isAdmin.value = remoteUser.isAdmin || persistedAdmin
+                                        Log.d("Session", "✅ Remote user loaded: ${remoteUser.name}")
+                                    }
+                                }
+                                is RepoResult.Error -> {
+                                    // ✅ FIX: Don't logout on error if we might be an admin!
+                                    Log.w("Session", "⚠️ Failed to fetch remote profile: ${remoteResult.message}. Continuing session.")
+                                    // If we are an admin, we can survive without a profile
+                                    if (persistedAdmin) {
+                                        _isAdmin.value = true
+                                    } else {
+                                        Log.w("Session", "Lenient mode: Staying logged in despite profile error.")
+                                    }
+                                }
+                                else -> {
+                                    // Loading or other states - do nothing
+                                }
+                            }
                         }
                     } catch (e: Exception) {
-                        Log.e("Session", "❌ DB error during session restore: ${e.message}. Forcing logout.")
+                        Log.e("Session", "❌ Error during session restore: ${e.message}")
                         logout()
                     }
                 } else {
-                    Log.e("Session", "❌ Invalid session state. Forcing logout.")
                     logout()
                 }
             } else {
                 _isAdmin.value = false
                 _currentUser.value = null
-                Log.d("Session", "ℹ️ No active session. App is in Guest mode.")
+                Log.d("Session", "ℹ️ Guest Mode (No session)")
             }
         }
     }
@@ -471,14 +553,10 @@ class AuthViewModel @Inject constructor(
             return
         }
 
-        if (user.isAnonymous || user.email.isNullOrBlank()) {
-            Log.w("AuthCheck", "⚠️ Anonymous Firebase session detected — signing out.")
-            try {
-                auth.signOut()
-                FirebaseAuth.getInstance().signOut()
-            } catch (e: Exception) {
-                Log.e("AuthCheck", "❌ Failed to sign out anonymous user: ${e.message}")
-            }
+        if (user.isAnonymous) {
+            Log.d("AuthCheck", "✅ Valid Anonymous Firebase session (PIN Login)")
+        } else if (user.email.isNullOrBlank()) {
+            Log.w("AuthCheck", "⚠️ Firebase user has no email — checking session consistency.")
         } else {
             Log.d("AuthCheck", "✅ Valid Firebase user: ${user.email}")
         }

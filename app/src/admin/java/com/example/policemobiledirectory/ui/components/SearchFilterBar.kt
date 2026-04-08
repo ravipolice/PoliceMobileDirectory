@@ -21,6 +21,7 @@ import androidx.compose.foundation.border
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import com.example.policemobiledirectory.ui.theme.PrimaryTeal
+import com.example.policemobiledirectory.utils.OperationStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +47,9 @@ fun SearchFilterBar(
     // Search Query
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
-    
+    onAISearch: (String) -> Unit = {},
+    aiStatus: OperationStatus<String> = OperationStatus.Idle,
+
     // Config
     isDistrictLevelUnit: Boolean,
     isAdmin: Boolean,
@@ -91,9 +94,51 @@ fun SearchFilterBar(
                 },
                 leadingIcon = { Icon(Icons.Default.Search, null, tint = PrimaryTeal, modifier = Modifier.size(20.dp)) },
                 trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { onSearchQueryChange("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = PrimaryTeal, modifier = Modifier.size(18.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { onSearchQueryChange("") }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear", tint = PrimaryTeal, modifier = Modifier.size(18.dp))
+                            }
+                        }
+
+                        // 🔹 AI SEARCH BUTTON
+                        IconButton(
+                            onClick = { onAISearch(searchQuery) },
+                            enabled = searchQuery.isNotBlank() && aiStatus !is OperationStatus.Loading
+                        ) {
+                            when (aiStatus) {
+                                is OperationStatus.Loading -> {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp,
+                                        color = PrimaryTeal
+                                    )
+                                }
+                                is OperationStatus.Success -> {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = "AI Success",
+                                        tint = Color(0xFF4CAF50),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                is OperationStatus.Error -> {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = "AI Error",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                else -> {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = "AI Search",
+                                        tint = PrimaryTeal,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 },

@@ -61,14 +61,26 @@ data class GalleryImage(
     val thumbnailUrlUnderscore: String? = null,
 
     @SerializedName("imageUrl")
-    val imageUrl: String? = null
+    val imageUrl: String? = null,
+
+    @SerializedName("ImageUrl")
+    val imageUrlPascal: String? = null,
+
+    @SerializedName("image_url")
+    val imageUrlUnderscore: String? = null,
+
+    @SerializedName("id")
+    val id: String? = null,
+
+    @SerializedName("source")
+    val source: String? = null
 ) {
     // Computed properties with fallbacks to handle field name variations
     val resolvedTitle: String
-        get() = (title ?: titleLower)?.takeIf { it.isNotBlank() } ?: "Untitled"
+        get() = (title ?: titleLower ?: "Untitled").takeIf { it.isNotBlank() } ?: "Untitled"
     
     val resolvedUrl: String?
-        get() = (url ?: urlLower ?: urlMixed ?: imageUrl)?.takeIf { it.isNotBlank() }
+        get() = (url ?: urlLower ?: urlMixed ?: imageUrl ?: imageUrlPascal ?: imageUrlUnderscore)?.takeIf { it.isNotBlank() }
     
     val resolvedCategory: String?
         get() = (category ?: categoryLower)?.takeIf { it.isNotBlank() }

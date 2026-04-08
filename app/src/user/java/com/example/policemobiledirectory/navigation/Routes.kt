@@ -41,9 +41,12 @@ object Routes {
     const val MANAGE_CONSTANTS = "manage_constants" // ✅ New Route
 
     // --- Leave Manager ---
+    // --- Leave Manager ---
     const val LEAVE_DASHBOARD = "leave_dashboard"
     const val LEAVE_ENTRY = "leave_entry"
+    const val APPLY_LEAVE = "apply_leave"
     const val LEAVE_REPORTS = "leave_reports"
+    const val LEAVE_RULES = "leave_rules"
     const val LEAVE_CL = "leave_cl"
     const val LEAVE_EL = "leave_el"
     const val LEAVE_HPL = "leave_hpl"

@@ -33,7 +33,8 @@ object LeaveCreditScheduler {
                 kgid = balance.kgid,
                 type = "CL_RESET",
                 amount = updatedBalance.clAnnualLimit,
-                year = currentYear
+                year = currentYear,
+                date = currentDate
             ))
         }
 
@@ -48,8 +49,8 @@ object LeaveCreditScheduler {
                     hplBalance = updatedBalance.hplBalance + 10.0,
                     lastCreditDate = todayStr
                 )
-                newLogs.add(LeaveCreditLog(kgid = balance.kgid, type = "EL_CREDIT", amount = 15, year = currentYear))
-                newLogs.add(LeaveCreditLog(kgid = balance.kgid, type = "HPL_CREDIT", amount = 10, year = currentYear))
+                newLogs.add(LeaveCreditLog(kgid = balance.kgid, type = "EL_CREDIT", amount = 15, year = currentYear, date = currentDate))
+                newLogs.add(LeaveCreditLog(kgid = balance.kgid, type = "HPL_CREDIT", amount = 10, year = currentYear, date = currentDate))
             }
             
             // Check if Jul 1 credit is needed
@@ -59,8 +60,8 @@ object LeaveCreditScheduler {
                     hplBalance = updatedBalance.hplBalance + 10.0,
                     lastCreditDate = todayStr
                 )
-                newLogs.add(LeaveCreditLog(kgid = balance.kgid, type = "EL_CREDIT", amount = 15, year = currentYear))
-                newLogs.add(LeaveCreditLog(kgid = balance.kgid, type = "HPL_CREDIT", amount = 10, year = currentYear))
+                newLogs.add(LeaveCreditLog(kgid = balance.kgid, type = "EL_CREDIT", amount = 15, year = currentYear, date = currentDate))
+                newLogs.add(LeaveCreditLog(kgid = balance.kgid, type = "HPL_CREDIT", amount = 10, year = currentYear, date = currentDate))
             }
         }
 

@@ -19,5 +19,6 @@ data class UnitModel(
     val mappedAreaType: String = "", // "DISTRICT", "BATTALION", "RANGE", "ZONE", "NONE"
     val hideFromRegistration: Boolean = false,
     val hiddenFields: List<String> = emptyList(), // ✅ Hybrid Field Visibility
-    val dutyRoles: List<String> = emptyList() // ✅ Unit-specific duty roles (sub-sections)
+    val dutyRoles: List<String> = emptyList(), // ✅ Unit-specific duty roles (sub-sections)
+    val identifierFilter: String = "" // ✅ Unit-specific identifier hint/filter
 )

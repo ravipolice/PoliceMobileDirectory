@@ -23,6 +23,16 @@ import com.example.policemobiledirectory.viewmodel.LeaveUiState
 import com.example.policemobiledirectory.viewmodel.LeaveViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Weekend
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.EditCalendar
+import androidx.compose.material.icons.filled.Save
 
 @Composable
 fun Modifier.noRippleClickable(onClick: () -> Unit): Modifier =
@@ -86,7 +96,31 @@ fun LeaveEntryScreen(
         return (diff / (1000 * 60 * 60 * 24)).toDouble() + 1
     }
 
+    @Composable
+    fun getLeaveIcon(type: String) = when (type) {
+        "CL" -> Icons.Default.WbSunny
+        "EL" -> Icons.Default.Star
+        "HPL" -> Icons.Default.Schedule
+        "WO" -> Icons.Default.Weekend
+        "MCL" -> Icons.Default.Favorite
+        else -> Icons.Default.Description
+    }
+
+    @Composable
+    fun getLeaveColor(type: String): Color {
+        val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+        return when (type) {
+            "CL" -> if (isDark) Color(0xFF80CBC4) else Color(0xFF009688)
+            "EL" -> if (isDark) Color(0xFFFFCC80) else Color(0xFFFF9800)
+            "HPL", "CML", "LND" -> if (isDark) Color(0xFFEF9A9A) else Color(0xFFF44336)
+            "WO" -> if (isDark) Color(0xFF90CAF9) else Color(0xFF2196F3)
+            "MCL" -> if (isDark) Color(0xFFF48FB1) else Color(0xFFE91E63)
+            else -> if (isDark) Color(0xFFCE93D8) else Color(0xFF9C27B0)
+        }
+    }
+
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("New Leave Entry", fontWeight = FontWeight.Bold) },
@@ -111,13 +145,42 @@ fun LeaveEntryScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Summary Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(getLeaveIcon(leaveType), contentDescription = null, tint = getLeaveColor(leaveType), modifier = Modifier.size(32.dp))
+                    Spacer(Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = if (leaveType == "MCL") "Menstrual Leave (CL)" else "Leave Type: $leaveType",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        val currentDays = calculateDays()
+                        Text(
+                            text = if (currentDays > 0) "${"%.1f".format(currentDays)} day${if (currentDays != 1.0) "s" else ""} selected" else "Select dates below",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
             // Leave Type Dropdown
             ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
                 OutlinedTextField(
                     value = leaveType,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Leave Type") },
+                    label = { Text("Change Leave Type") },
+                    leadingIcon = { Icon(getLeaveIcon(leaveType), contentDescription = null, tint = getLeaveColor(leaveType)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                     modifier = Modifier.fillMaxWidth().menuAnchor()
                 )
@@ -125,6 +188,7 @@ fun LeaveEntryScreen(
                     leaveTypes.forEach { type ->
                         DropdownMenuItem(
                             text = { Text(type) },
+                            leadingIcon = { Icon(getLeaveIcon(type), contentDescription = null, tint = getLeaveColor(type), modifier = Modifier.size(20.dp)) },
                             onClick = {
                                 leaveType = type
                                 expanded = false
@@ -162,43 +226,51 @@ fun LeaveEntryScreen(
             }
 
             // Date From
-            OutlinedTextField(
-                value = dateFrom?.let { dateFormat.format(it) } ?: "Tap to select",
-                onValueChange = {},
-                readOnly = true,
-                label = { Text(if (isHalfDay) "Date" else "From Date") },
-                modifier = Modifier.fillMaxWidth().noRippleClickable {
-                    showDatePicker(dateFrom) {
-                        dateFrom = it
-                        if (isHalfDay) dateTo = it
-                    }
-                }
-            )
-
-            // Date To (not for half-day or single-day leaves)
-            if (!isHalfDay && leaveType !in listOf("WO", "MCL")) {
+            Box(modifier = Modifier.fillMaxWidth()) {
                 OutlinedTextField(
-                    value = dateTo?.let { dateFormat.format(it) } ?: "Tap to select",
+                    value = dateFrom?.let { dateFormat.format(it) } ?: "Select Date",
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("To Date") },
-                    modifier = Modifier.fillMaxWidth().noRippleClickable {
-                        showDatePicker(dateTo ?: dateFrom) { dateTo = it }
-                    }
+                    label = { Text(if (isHalfDay) "Date" else "From Date") },
+                    leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                    trailingIcon = { Icon(Icons.Default.EditCalendar, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                // Overlay to ensure clicks are handled reliably
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .noRippleClickable {
+                            showDatePicker(dateFrom) {
+                                dateFrom = it
+                                if (isHalfDay) dateTo = it
+                            }
+                        }
                 )
             }
 
-            // Days preview
-            val days = calculateDays()
-            if (days > 0) {
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                    Text(
-                        text = "Duration: ${"%.1f".format(days)} day${if (days != 1.0) "s" else ""}",
-                        modifier = Modifier.padding(12.dp),
-                        fontWeight = FontWeight.SemiBold
+            // Date To (not for half-day or single-day leaves)
+            if (!isHalfDay && leaveType !in listOf("WO", "MCL")) {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = dateTo?.let { dateFormat.format(it) } ?: "Select Date",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("To Date") },
+                        leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        trailingIcon = { Icon(Icons.Default.EditCalendar, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .noRippleClickable {
+                                showDatePicker(dateTo ?: dateFrom) { dateTo = it }
+                            }
                     )
                 }
             }
+
 
             // Remark
             OutlinedTextField(
@@ -231,7 +303,7 @@ fun LeaveEntryScreen(
                         kgid = emp.kgid,
                         dateFrom = from,
                         dateTo = to,
-                        totalDays = days,
+                        totalDays = calculateDays(),
                         leaveType = if (leaveType == "MCL") "CL" else leaveType,
                         remark = remark.ifBlank { null },
                         isHalfDay = isHalfDay,
@@ -242,7 +314,8 @@ fun LeaveEntryScreen(
                     )
                     leaveViewModel.applyLeave(emp, entry)
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(12.dp),
                 enabled = dateFrom != null &&
                         (isHalfDay || leaveType in listOf("WO", "MCL") || dateTo != null) &&
                         uiState !is LeaveUiState.Loading
@@ -250,7 +323,9 @@ fun LeaveEntryScreen(
                 if (uiState is LeaveUiState.Loading) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                 } else {
-                    Text("Save Leave Entry")
+                    Icon(imageVector = Icons.Filled.Save, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Save Leave Entry", fontWeight = FontWeight.Bold)
                 }
             }
         }

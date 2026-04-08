@@ -22,6 +22,11 @@ class SessionManager @Inject constructor(
         val IS_ADMIN = booleanPreferencesKey("is_admin")
         val USER_NOTIF_LAST_SEEN = longPreferencesKey("user_notif_last_seen")
         val ADMIN_NOTIF_LAST_SEEN = longPreferencesKey("admin_notif_last_seen")
+        val LAUNCH_COUNT = longPreferencesKey("launch_count")
+        val SUCCESSFUL_EVENTS_COUNT = longPreferencesKey("successful_events_count")
+        val LAST_RATING_REQUEST_TIME = longPreferencesKey("last_rating_request_time")
+        val HAS_RATED_OR_NEVER_SHOW = booleanPreferencesKey("has_rated_or_never_show")
+        val DRIVE_ACCOUNT_EMAIL = stringPreferencesKey("drive_account_email")
     }
 
     val isLoggedIn: Flow<Boolean> = context.dataStore.data.map { it[IS_LOGGED_IN] ?: false }
@@ -29,6 +34,11 @@ class SessionManager @Inject constructor(
     val isAdmin: Flow<Boolean> = context.dataStore.data.map { it[IS_ADMIN] ?: false }
     val userNotificationsSeenAt: Flow<Long> = context.dataStore.data.map { it[USER_NOTIF_LAST_SEEN] ?: 0L }
     val adminNotificationsSeenAt: Flow<Long> = context.dataStore.data.map { it[ADMIN_NOTIF_LAST_SEEN] ?: 0L }
+    val launchCount: Flow<Long> = context.dataStore.data.map { it[LAUNCH_COUNT] ?: 0L }
+    val successfulEventsCount: Flow<Long> = context.dataStore.data.map { it[SUCCESSFUL_EVENTS_COUNT] ?: 0L }
+    val lastRatingRequestTime: Flow<Long> = context.dataStore.data.map { it[LAST_RATING_REQUEST_TIME] ?: 0L }
+    val hasRatedOrNeverShow: Flow<Boolean> = context.dataStore.data.map { it[HAS_RATED_OR_NEVER_SHOW] ?: false }
+    val driveAccountEmail: Flow<String?> = context.dataStore.data.map { it[DRIVE_ACCOUNT_EMAIL] }
 
     suspend fun saveLogin(email: String, isAdmin: Boolean) {
         context.dataStore.edit {
@@ -48,6 +58,36 @@ class SessionManager @Inject constructor(
         context.dataStore.edit { prefs ->
             prefs[ADMIN_NOTIF_LAST_SEEN] = timestamp
         }
+    }
+
+    suspend fun incrementLaunchCount() {
+        context.dataStore.edit { prefs ->
+            val current = prefs[LAUNCH_COUNT] ?: 0L
+            prefs[LAUNCH_COUNT] = current + 1
+        }
+    }
+
+    suspend fun incrementSuccessfulEventsCount() {
+        context.dataStore.edit { prefs ->
+            val current = prefs[SUCCESSFUL_EVENTS_COUNT] ?: 0L
+            prefs[SUCCESSFUL_EVENTS_COUNT] = current + 1
+        }
+    }
+
+    suspend fun setLastRatingRequestTime(timestamp: Long) {
+        context.dataStore.edit { prefs ->
+            prefs[LAST_RATING_REQUEST_TIME] = timestamp
+        }
+    }
+
+    suspend fun setHasRatedOrNeverShow(hasRated: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[HAS_RATED_OR_NEVER_SHOW] = hasRated
+        }
+    }
+
+    suspend fun saveDriveAccountEmail(email: String) {
+        context.dataStore.edit { it[DRIVE_ACCOUNT_EMAIL] = email }
     }
 
     suspend fun clearSession() {

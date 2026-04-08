@@ -9,13 +9,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
+
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +33,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.policemobiledirectory.data.remote.Mission
 import com.example.policemobiledirectory.viewmodel.MissionsViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,11 +42,13 @@ fun MissionsDashboardScreen(
     viewModel: MissionsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Missions Dashboard") },
+                title = { Text("Global Indian Missions", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(
@@ -63,11 +69,33 @@ fun MissionsDashboardScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
+        var missionToEdit by remember { mutableStateOf<Mission?>(null) }
+
+        if (missionToEdit != null) {
+            EditMissionDialog(
+                mission = missionToEdit!!,
+                onDismiss = { missionToEdit = null },
+                onSave = { updatedMission ->
+                    viewModel.updateMission(updatedMission)
+                    missionToEdit = null
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Syncing with Google Sheet...")
+                    }
+                }
+            )
+        }
+
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -99,56 +127,40 @@ fun MissionsDashboardScreen(
                 }
             }
 
-            // 3. Filter Section (Per Sketch)
+            // 3. Live Search Section
             item {
-                Card(
+                OutlinedTextField(
+                    value = uiState.searchQuery,
+                    onValueChange = { viewModel.onSearchQueryChange(it) },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            // Country Selection
-                            SearchableSelector(
-                                label = "Country",
-                                selectedOption = uiState.selectedCountry,
-                                options = uiState.countries,
-                                onOptionSelected = { viewModel.onCountrySelected(it) },
-                                modifier = Modifier.weight(1f)
-                            )
-                            
-                            // Mission (City) Selection
-                            SearchableSelector(
-                                label = "Mission",
-                                selectedOption = uiState.selectedMission,
-                                options = uiState.availableMissions,
-                                onOptionSelected = { viewModel.onMissionSelected(it) },
-                                modifier = Modifier.weight(1f)
-                            )
+                    placeholder = { Text("Search by country, city or mission name…", style = MaterialTheme.typography.bodyMedium) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = Color(0xFF2C5590)
+                        )
+                    },
+                    trailingIcon = {
+                        if (uiState.searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Clear",
+                                    tint = Color.Gray
+                                )
+                            }
                         }
-                        
-                        Spacer(modifier = Modifier.height(20.dp))
-                        
-                        // SEARCH BUTTON (Per Sketch)
-                        Button(
-                            onClick = { viewModel.onSearchClicked() },
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C5590))
-                        ) {
-                            Icon(Icons.Default.Search, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "SEARCH",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
-                        }
-                    }
-                }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedContainerColor = Color.White,
+                        focusedContainerColor = Color.White,
+                        unfocusedBorderColor = Color.LightGray,
+                        focusedBorderColor = Color(0xFF2C5590)
+                    )
+                )
             }
 
             // 4. Results List
@@ -171,9 +183,13 @@ fun MissionsDashboardScreen(
                 }
             } else {
                 items(uiState.filteredMissions) { mission ->
-                    MissionDetailFormCard(mission = mission)
+                    MissionDetailFormCard(
+                        mission = mission,
+                        onEditClick = { missionToEdit = it }
+                    )
                 }
             }
+
             
             // Removed extra spacer to reduce bottom padding
 
@@ -209,62 +225,11 @@ fun StatCard(title: String, value: String, modifier: Modifier = Modifier, contai
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SearchableSelector(
-    label: String,
-    selectedOption: String,
-    options: List<String>,
-    onOptionSelected: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var expanded by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier) {
-        Text(
-            text = label.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Black,
-            color = Color.Gray,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded }
-        ) {
-            OutlinedTextField(
-                value = selectedOption,
-                onValueChange = {},
-                readOnly = true,
-                modifier = Modifier.menuAnchor(),
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = Color.LightGray,
-                    focusedBorderColor = Color(0xFF2C5590)
-                ),
-                shape = RoundedCornerShape(8.dp),
-                textStyle = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                options.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(option, style = MaterialTheme.typography.bodySmall) },
-                        onClick = {
-                            onOptionSelected(option)
-                            expanded = false
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
-fun MissionDetailFormCard(mission: Mission) {
+fun MissionDetailFormCard(mission: Mission, onEditClick: (Mission) -> Unit) {
+
     var isExpanded by remember { mutableStateOf(false) }
 
     Card(
@@ -306,6 +271,10 @@ fun MissionDetailFormCard(mission: Mission) {
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall
                         )
+                    }
+                    
+                    IconButton(onClick = { onEditClick(mission) }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Mission", tint = Color.White)
                     }
                 }
             }
@@ -437,3 +406,72 @@ fun ColiBadge(coli: String) {
         }
     }
 }
+
+@Composable
+fun EditMissionDialog(
+    mission: Mission,
+    onDismiss: () -> Unit,
+    onSave: (Mission) -> Unit
+) {
+    var status by remember { mutableStateOf(mission.status) }
+    var notes by remember { mutableStateOf(mission.notes) }
+    var coli by remember { mutableStateOf(mission.costOfLiving) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Text(
+                "Edit Mission: ${mission.country} / ${mission.city}", 
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            ) 
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                OutlinedTextField(
+                    value = status,
+                    onValueChange = { status = it },
+                    label = { Text("Status") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = coli,
+                    onValueChange = { coli = it },
+                    label = { Text("COLI Index") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Remarks / Notes") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3,
+                    shape = RoundedCornerShape(8.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(mission.copy(status = status, notes = notes, costOfLiving = coli))
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C5590)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("SAVE TO SHEET")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CANCEL", color = Color.Gray)
+            }
+        }
+    )
+}
+

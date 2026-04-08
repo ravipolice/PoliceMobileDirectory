@@ -13,6 +13,7 @@ const GMAIL_PASS_SECRET = defineSecret("GMAIL_PASS");
    2️⃣ Global Options
 ---------------------------------------- */
 const { setGlobalOptions } = require("firebase-functions/v2");
+// Force redeploy - caching bypass 1
 setGlobalOptions({
   maxInstances: 10,
 });
@@ -290,15 +291,23 @@ exports.requestOtp = onCall(
       const snap = await db
         .collection("employees")
         .where("email", "==", email)
-        .limit(1)
         .get();
 
       if (snap.empty)
         return { success: false, message: "No account found with this email" };
 
-      const user = snap.docs[0].data();
-      if (!user.isApproved)
+      // Check if user is an admin
+      const adminSnap = await db.collection("admins").where("email", "==", email).get();
+      const isAdmin = !adminSnap.empty;
+
+      // If there are duplicate records, check if ANY of them are approved (or missing the field, which defaults to approved)
+      const isAnyApproved = snap.docs.some(doc => doc.data().isApproved !== false);
+      
+      // Admins are always approved, bypass the block
+      if (!isAnyApproved && !isAdmin)
         return { success: false, message: "Account not approved yet" };
+
+      const user = snap.docs[0].data();
 
       const code = generateOtp();
       const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
@@ -385,24 +394,45 @@ exports.verifyOtpEmail = onCall({ region: "asia-south1" }, async (req) => {
      - uppercase letters
   ========================================================= */
   const allEmployees = await db.collection("employees").get();
-  let matchedDoc = null;
+  let matchedDocs = [];
   allEmployees.forEach((empDoc) => {
     const storedEmail = (empDoc.data().email || "").toLowerCase().trim();
     if (storedEmail === normalizedEmail) {
-      matchedDoc = empDoc;
+      matchedDocs.push(empDoc);
     }
   });
 
   // If still not found
-  if (!matchedDoc) {
+  if (matchedDocs.length === 0) {
     return { success: false, message: "No employee found for this email." };
   }
 
-  const emp = matchedDoc.data();
+  // Find any approved doc
+  let approvedDoc = matchedDocs.find((doc) => doc.data().isApproved !== false);
+
+  // Check if admin
+  const adminSnap = await db.collection("admins").where("email", "==", normalizedEmail).get();
+  const isAdmin = !adminSnap.empty;
 
   // Check approval
-  if (!emp.isApproved) {
+  if (!approvedDoc && !isAdmin) {
     return { success: false, message: "Account not approved yet." };
+  }
+
+  let emp;
+  if (approvedDoc) {
+    emp = approvedDoc.data();
+  } else if (matchedDocs.length > 0) {
+    emp = matchedDocs[0].data();
+  } else if (isAdmin) {
+    emp = adminSnap.docs[0].data();
+  } else {
+    return { success: false, message: "No employee data found." };
+  }
+
+  if (isAdmin) {
+    emp.isAdmin = true;
+    emp.isApproved = true;
   }
 
   // Mark OTP used
@@ -413,7 +443,7 @@ exports.verifyOtpEmail = onCall({ region: "asia-south1" }, async (req) => {
 
   // Prepare clean employee object
   const employeePayload = {
-    kgid: emp.kgid || matchedDoc.id,
+    kgid: emp.kgid || (matchedDocs.length > 0 ? matchedDocs[0].id : ""),
     name: emp.name || "",
     email: emp.email || normalizedEmail,
     pin: emp.pin || "",
@@ -450,9 +480,11 @@ exports.updateUserPin = onCall(
   async (req) => {
     const { email, newPinHash, oldPinHash, isForgot } = req.data;
 
+    const normalizedEmail = (email || "").toLowerCase().trim();
+    
     const snap = await db
       .collection("employees")
-      .where("email", "==", email.toLowerCase())
+      .where("email", "==", normalizedEmail)
       .limit(1)
       .get();
 

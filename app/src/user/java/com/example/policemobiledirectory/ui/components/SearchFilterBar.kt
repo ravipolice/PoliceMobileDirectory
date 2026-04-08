@@ -21,6 +21,7 @@ import androidx.compose.ui.zIndex
 import com.example.policemobiledirectory.data.local.SearchFilter
 import com.example.policemobiledirectory.ui.theme.ChipSelectedStart
 import com.example.policemobiledirectory.ui.theme.PrimaryTeal
+import com.example.policemobiledirectory.utils.OperationStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +47,8 @@ fun SearchFilterBar(
     // Search Query
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
-    
+    onAISearch: (String) -> Unit = {},
+    aiStatus: OperationStatus<String> = OperationStatus.Idle,
     
     // Config
     isDistrictLevelUnit: Boolean,
@@ -54,8 +56,12 @@ fun SearchFilterBar(
     districtLabel: String = "District / HQ",
     stationLabel: String = "Station / Section",
     totalContactsCount: Int = 0,
+    filteredContactsCount: Int = 0,
+    showHidden: Boolean = false,
+    onShowHiddenChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+
     // UI State for Dropdowns (Internal)
     var unitExpanded by remember { mutableStateOf(false) }
     var districtExpanded by remember { mutableStateOf(false) }
@@ -79,17 +85,67 @@ fun SearchFilterBar(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
                 placeholder = { 
+                    val placeholderText = remember(totalContactsCount, filteredContactsCount) {
+                        when {
+                            totalContactsCount == 0 -> "Search by name, mobile..."
+                            filteredContactsCount < totalContactsCount -> "Showing $filteredContactsCount of $totalContactsCount contacts..."
+                            else -> "Searching from $totalContactsCount contacts..."
+                        }
+                    }
                     Text(
-                        if (totalContactsCount > 0) "Searching from $totalContactsCount contacts..." else "Search by name, mobile...", 
+                        placeholderText, 
                         maxLines = 1, 
                         fontSize = 12.sp
                     ) 
                 },
+
                 leadingIcon = { Icon(Icons.Default.Search, null, tint = PrimaryTeal, modifier = Modifier.size(20.dp)) },
                 trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(onClick = { onSearchQueryChange("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = PrimaryTeal, modifier = Modifier.size(18.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { onSearchQueryChange("") }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear", tint = PrimaryTeal, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                        
+                        // 🔹 AI SEARCH BUTTON
+                        IconButton(
+                            onClick = { onAISearch(searchQuery) },
+                            enabled = searchQuery.isNotBlank() && aiStatus !is OperationStatus.Loading
+                        ) {
+                            when (aiStatus) {
+                                is OperationStatus.Loading -> {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp,
+                                        color = PrimaryTeal
+                                    )
+                                }
+                                is OperationStatus.Success -> {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = "AI Success",
+                                        tint = Color(0xFF4CAF50),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                is OperationStatus.Error -> {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = "AI Error",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                else -> {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = "AI Search",
+                                        tint = PrimaryTeal,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 },
@@ -103,8 +159,8 @@ fun SearchFilterBar(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = PrimaryTeal,
                     unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
                 )
             )
             

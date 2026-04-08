@@ -87,7 +87,10 @@ fun UserRegistrationScreen(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp)
+        topBar = {
+            CommonTopAppBar(title = "Registration", navController = navController)
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
         val isProcessing = pendingStatus is OperationStatus.Loading || hasSubmittedState.value
         

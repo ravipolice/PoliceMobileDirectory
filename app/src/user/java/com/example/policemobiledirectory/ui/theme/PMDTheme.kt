@@ -86,14 +86,15 @@ fun PMDTheme(
 
     // ✅ Apply matching system bar colors for all screens
     SideEffect {
-        // Match both system bars to the primary color so they visually merge
+        // Transparent status bar for seamless integration with TopAppBar
         systemUiController.setStatusBarColor(
-            color = colors.primary,
-            darkIcons = false // White icons over colored bar
+            color = Color.Transparent,
+            darkIcons = !darkTheme // Use dark icons in light theme for better contrast on PrimaryTeal
         )
+        // Match navigation bar with background
         systemUiController.setNavigationBarColor(
-            color = colors.primary,
-            darkIcons = false
+            color = colors.background,
+            darkIcons = !darkTheme
         )
     }
 

@@ -22,13 +22,13 @@ import com.example.policemobiledirectory.data.local.PendingRegistrationEntity
 import com.example.policemobiledirectory.navigation.Routes
 import com.example.policemobiledirectory.ui.components.CommonEmployeeForm
 import com.example.policemobiledirectory.utils.OperationStatus
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
 @Composable
 fun UserRegistrationScreen(
     navController: NavController,
-    viewModel: EmployeeViewModel = hiltViewModel(),
+    viewModel: AuthViewModel = hiltViewModel(),
     initialEmail: String = "",
     initialName: String = ""
 ) {
@@ -88,6 +88,7 @@ fun UserRegistrationScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         val isProcessing = pendingStatus is OperationStatus.Loading || hasSubmittedState.value
         

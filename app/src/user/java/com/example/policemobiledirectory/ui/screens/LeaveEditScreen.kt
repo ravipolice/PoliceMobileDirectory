@@ -15,7 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.policemobiledirectory.model.LeaveEntry
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.AuthViewModel
 import com.example.policemobiledirectory.viewmodel.LeaveUiState
 import com.example.policemobiledirectory.viewmodel.LeaveViewModel
 import java.text.SimpleDateFormat
@@ -26,11 +26,11 @@ import java.util.*
 fun LeaveEditScreen(
     entryId: String,
     onNavigateBack: () -> Unit,
-    employeeViewModel: EmployeeViewModel,
+    authViewModel: AuthViewModel,
     leaveViewModel: LeaveViewModel
 ) {
     val context = LocalContext.current
-    val currentUser by employeeViewModel.currentUser.collectAsState()
+    val currentUser by authViewModel.currentUser.collectAsState()
     val allEntries by leaveViewModel.entries.collectAsState()
     val uiState by leaveViewModel.uiState.collectAsState()
 
@@ -75,6 +75,7 @@ fun LeaveEditScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Edit Leave Entry", fontWeight = FontWeight.Bold) },
@@ -85,6 +86,7 @@ fun LeaveEditScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )

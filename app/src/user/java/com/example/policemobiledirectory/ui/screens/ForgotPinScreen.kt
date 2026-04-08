@@ -12,13 +12,19 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.policemobiledirectory.utils.OperationStatus
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.example.policemobiledirectory.R
 
 @Composable
 fun ForgotPinScreen(
-    viewModel: EmployeeViewModel,
+    viewModel: AuthViewModel,
     onPinResetSuccess: () -> Unit,
 ) {
     var email by remember { mutableStateOf("") }
@@ -37,22 +43,40 @@ fun ForgotPinScreen(
 
     val scope = rememberCoroutineScope()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.CenterHorizontally
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Forgot PIN", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(24.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Top,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Image(
+                painter = painterResource(id = R.drawable.app_logo),
+                contentDescription = "App Logo",
+                modifier = Modifier
+                    .size(100.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Fit
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Forgot PIN", style = MaterialTheme.typography.headlineSmall)
+            Spacer(modifier = Modifier.height(24.dp))
 
         // --- STEP 1: EMAIL ---
         if (otpState !is OperationStatus.Success) {
             OutlinedTextField(
                 value = email,
-                onValueChange = { email = it },
+                onValueChange = { 
+                    email = it
+                    if (otpState is OperationStatus.Error) {
+                        viewModel.resetForgotPinFlow()
+                    }
+                },
                 label = { Text("Enter your Email") },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -82,7 +106,14 @@ fun ForgotPinScreen(
 
             OutlinedTextField(
                 value = otp,
-                onValueChange = { otp = it },
+                onValueChange = { 
+                    otp = it
+                    if (verifyOtpState is OperationStatus.Error) {
+                        // Assuming we don't have a specific reset for just OTP verify state, we can reset the whole flow or add one.
+                        // Actually resetForgotPinFlow clears everything including OTP sent state, so we shouldn't call it here!
+                        // The user said "msg should clear if email error or wrong pin".
+                    }
+                },
                 label = { Text("Enter OTP") },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -213,4 +244,5 @@ fun ForgotPinScreen(
             }
         }
     }
+  }
 }

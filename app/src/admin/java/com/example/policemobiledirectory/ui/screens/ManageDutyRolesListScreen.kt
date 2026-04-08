@@ -56,7 +56,6 @@ fun ManageDutyRolesListScreen(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             TopAppBar(
                 windowInsets = WindowInsets(0.dp),
@@ -77,7 +76,8 @@ fun ManageDutyRolesListScreen(
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Role")
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
             if (subSections.isEmpty()) {

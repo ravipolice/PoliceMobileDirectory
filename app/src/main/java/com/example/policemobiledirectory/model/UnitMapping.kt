@@ -14,5 +14,8 @@ data class UnitMapping(
     val applicableRanks: List<String> = emptyList(),
     val stationKeyword: String? = null,
     val mappedAreaType: String? = null,
-    val hideFromRegistration: Boolean = false
+    val hideFromRegistration: Boolean = false,
+    val hiddenFields: List<String> = emptyList(), // ✅ Unit-specific field visibility
+    val dutyRoles: List<String> = emptyList(), // ✅ Unit-specific duty roles
+    val identifierFilter: String? = null
 )

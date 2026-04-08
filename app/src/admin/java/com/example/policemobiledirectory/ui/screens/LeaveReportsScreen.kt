@@ -1,7 +1,6 @@
 package com.example.policemobiledirectory.ui.screens
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -13,9 +12,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.policemobiledirectory.model.LeaveCreditLog
 import com.example.policemobiledirectory.model.LeaveEntry
 import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
 import com.example.policemobiledirectory.viewmodel.LeaveViewModel
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,10 +26,13 @@ fun LeaveReportsScreen(
     employeeViewModel: EmployeeViewModel,
     leaveViewModel: LeaveViewModel
 ) {
-    val entries by leaveViewModel.entries.collectAsState()
     val balance by leaveViewModel.balance.collectAsState()
+    val statistics by leaveViewModel.statistics.collectAsState()
+    val creditLogs by leaveViewModel.creditLogs.collectAsState()
+    val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Leave Reports") },
@@ -72,21 +77,22 @@ fun LeaveReportsScreen(
             }
 
             item {
+                val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
                 Text(
-                    text = "Usage by Type (This Year)",
+                    text = "Usage by Type ($currentYear)",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
 
-            val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
-            val yearEntries = entries.filter { it.year == currentYear }
-            val groupedUsage = yearEntries.groupBy { it.leaveType }
-                .mapValues { it.value.sumOf { entry -> entry.totalDays } }
+            val groupedUsage = statistics?.leaveTypeBreakdown ?: emptyMap()
 
             if (groupedUsage.isEmpty()) {
-                item { Text("No usage recorded for $currentYear", color = Color.Gray) }
+                item { 
+                    val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+                    Text("No usage recorded for $currentYear", color = Color.Gray) 
+                }
             } else {
                 items(groupedUsage.toList()) { (type, days) ->
                     Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -96,6 +102,59 @@ fun LeaveReportsScreen(
                         ) {
                             Text(text = type, fontWeight = FontWeight.Medium)
                             Text(text = "$days Days", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            if (creditLogs.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(
+                        text = "Credit History",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+                items(creditLogs) { log ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = when (log.type) {
+                                        "EL_CREDIT" -> "EL Credited"
+                                        "HPL_CREDIT" -> "HPL Credited"
+                                        "CL_RESET" -> "CL Reset"
+                                        else -> log.type
+                                    },
+                                    fontWeight = FontWeight.Bold
+                                )
+                                log.date?.let {
+                                    Text(
+                                        text = dateFormatter.format(it),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.Gray
+                                    )
+                                }
+                            }
+                            Text(
+                                text = (if (log.amount > 0) "+" else "") + "${log.amount} Days",
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (log.amount > 0) Color(0xFF388E3C) else Color.Gray
+                            )
                         }
                     }
                 }

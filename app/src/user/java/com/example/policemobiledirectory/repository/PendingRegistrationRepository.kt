@@ -50,16 +50,26 @@ class PendingRegistrationRepository @Inject constructor(
 
     suspend fun getPendingByEmail(email: String): PendingRegistrationEntity? =
         withContext(ioDispatcher) {
+            val normalizedEmail = email.trim().lowercase()
+            val rawEmail = email.trim()
+
             // First check local DB
-            val local = dao.getByEmail(email)
+            val local = dao.getByEmail(normalizedEmail) ?: if (normalizedEmail != rawEmail) dao.getByEmail(rawEmail) else null
             if (local != null) return@withContext local
 
             // Then check Firestore as fallback
             try {
-                val snapshot = firestore.collection("pending_registrations")
-                    .whereEqualTo("email", email)
-                    .whereEqualTo("status", "pending")
+                // Try normalized first
+                var snapshot = firestore.collection("pending_registrations")
+                    .whereEqualTo("email", normalizedEmail)
                     .get().await()
+                
+                if (snapshot.isEmpty && normalizedEmail != rawEmail) {
+                    // Try raw fallback
+                    snapshot = firestore.collection("pending_registrations")
+                        .whereEqualTo("email", rawEmail)
+                        .get().await()
+                }
                 
                 snapshot.toObjects(PendingRegistrationEntity::class.java).firstOrNull()
             } catch (e: Exception) {
@@ -76,7 +86,7 @@ class PendingRegistrationRepository @Inject constructor(
             emit(RepoResult.Loading)
 
             try {
-                val docRef = firestore.collection("pending_registrations").document()
+                val docRef = firestore.collection("pending_registrations").document(entity.kgid)
 
                 var finalPin = entity.pin
                 if (finalPin.length == 6 && !finalPin.contains(":")) {

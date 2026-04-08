@@ -15,8 +15,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.policemobiledirectory.data.local.PendingRegistrationEntity
 import com.example.policemobiledirectory.data.local.SearchFilter
 import com.example.policemobiledirectory.data.local.SessionManager
-import com.example.policemobiledirectory.data.mapper.toEmployee
-import com.example.policemobiledirectory.data.mapper.toEntity
+import com.example.policemobiledirectory.data.local.toEmployee
+import com.example.policemobiledirectory.data.local.toEntity
 import com.example.policemobiledirectory.repository.*
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.model.Officer
@@ -42,7 +42,6 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
-import kotlin.text.contains
 import com.example.policemobiledirectory.repository.EmployeeRepository
 import com.example.policemobiledirectory.repository.PendingRegistrationRepository
 import com.example.policemobiledirectory.repository.ConstantsRepository
@@ -52,6 +51,7 @@ import com.example.policemobiledirectory.repository.RepoResult
 import com.example.policemobiledirectory.repository.AppIconRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Date
 import java.util.UUID
 
 
@@ -59,13 +59,14 @@ import java.util.UUID
 open class EmployeeViewModel @Inject constructor(
     private val employeeRepo: EmployeeRepository,
     private val pendingRepo: PendingRegistrationRepository,
-    private val sessionManager: SessionManager,
+    val sessionManager: SessionManager,
     private val constantsRepository: ConstantsRepository,
     private val imageRepo: ImageRepository,
     private val syncRepository: SyncRepository,
     private val officerRepo: OfficerRepository,
     @ApplicationContext private val context: Context,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val aiSearchParser: com.example.policemobiledirectory.utils.AISearchParser
 ) : ViewModel() {
 
     private val firestore = FirebaseFirestore.getInstance()
@@ -100,6 +101,9 @@ open class EmployeeViewModel @Inject constructor(
     val employees: StateFlow<List<Employee>> = _employees.asStateFlow()
     private val _employeeStatus = MutableStateFlow<OperationStatus<List<Employee>>>(OperationStatus.Loading)
     val employeeStatus: StateFlow<OperationStatus<List<Employee>>> = _employeeStatus.asStateFlow()
+
+    private val _aiSearchStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
+    val aiSearchStatus: StateFlow<OperationStatus<String>> = _aiSearchStatus.asStateFlow()
     
     // Officers (read-only contacts)
     private val _officers = MutableStateFlow<List<Officer>>(emptyList())
@@ -203,13 +207,92 @@ open class EmployeeViewModel @Inject constructor(
         _searchParams.value = SearchParameters()
     }
 
+    fun performAISearch(query: String) {
+        if (query.isBlank()) return
+        
+        viewModelScope.launch {
+            _aiSearchStatus.value = OperationStatus.Loading
+            val structuredResult = aiSearchParser.parseSearchQuery(query)
+            
+            if (structuredResult != null) {
+                // Apply AI-derived filters
+                _searchParams.value = _searchParams.value.copy(
+                    query = structuredResult.name ?: structuredResult.kgid ?: "",
+                    rank = structuredResult.rank ?: "All",
+                    district = structuredResult.district ?: "All",
+                    station = structuredResult.station ?: "All",
+                    unit = structuredResult.unit ?: "All"
+                )
+                _aiSearchStatus.value = OperationStatus.Success("AI Filters Applied")
+                
+                // Return to idle after a short feedback period
+                delay(2000)
+                _aiSearchStatus.value = OperationStatus.Idle
+            } else {
+                _aiSearchStatus.value = OperationStatus.Error("AI could not understand search")
+                delay(2000)
+                _aiSearchStatus.value = OperationStatus.Idle
+            }
+        }
+    }
+
     // State for stations map loaded from repository
     private val _stationsMap = MutableStateFlow<Map<String, List<String>>>(emptyMap())
 
     init {
-        // Load stations map locally
+        // 1️⃣ Load stations map locally
         viewModelScope.launch {
             _stationsMap.value = constantsRepository.getStationsByDistrict()
+        }
+
+        // 2️⃣ Observe login state & Admin status from DataStore
+        viewModelScope.launch {
+            sessionManager.isLoggedIn.collect { loggedIn ->
+                _isLoggedIn.value = loggedIn
+            }
+        }
+
+        viewModelScope.launch {
+            sessionManager.isAdmin.collect { isAdminValue ->
+                _isAdmin.value = isAdminValue
+                
+                // ✅ CRITICAL: Sync UID if admin to enable Firestore rules
+                if (isAdminValue) {
+                    val email = auth.currentUser?.email
+                    val uid = auth.currentUser?.uid
+                    if (!email.isNullOrBlank() && !uid.isNullOrBlank()) {
+                        Log.d("EmployeeViewModel", "🔄 Starting Admin UID sync for $email")
+                        employeeRepo.syncAdminUid(email, uid, null)
+                        Log.d("EmployeeViewModel", "✅ Admin UID sync completed")
+                    }
+                    // Trigger sync once confirmed
+                    Log.d("EmployeeViewModel", "🔄 Triggering initial pending refresh")
+                    refreshPendingRegistrations()
+                }
+            }
+        }
+
+        // 3️⃣ Observe user email and fetch profile
+        viewModelScope.launch {
+            sessionManager.userEmail.collect { email ->
+                if (email.isNotBlank()) {
+                    // Try local first
+                    val user = employeeRepo.getEmployeeByEmail(email)?.toEmployee()
+                    if (user != null) {
+                        _currentUser.value = user
+                        // If user object says they are admin, upgrade state
+                        if (user.isAdmin && !_isAdmin.value) {
+                             _isAdmin.value = true
+                        }
+                    } else {
+                        // Fallback to remote
+                        val remoteUser = employeeRepo.getUserByEmail(email)
+                        if (remoteUser is RepoResult.Success) {
+                            _currentUser.value = remoteUser.data
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -252,21 +335,18 @@ open class EmployeeViewModel @Inject constructor(
     // Optimized filteredContacts with simpler chaining
     val filteredContacts: StateFlow<List<Contact>> = combine(
         allContacts,
-        _searchParams,
-        _debouncedSearchQuery // Triggers when debounced query changes
-    ) { contacts, params, debouncedQuery ->
-        // Use debounced query for the actual filtering
-        val effectiveParams = params.copy(query = debouncedQuery)
-        
+        _searchParams
+    ) { contacts, params ->
         if (contacts.isEmpty()) return@combine emptyList<Contact>()
 
-        val isGlobalSearch = effectiveParams.query.isNotBlank()
+        val query = params.query.trim()
+        val isGlobalSearch = query.isNotBlank()
 
         // 1. Initial Filtering by Hidden Status
-        val visibleContacts = contacts.filter { it.isHidden == effectiveParams.showHidden }
+        val visibleContacts = contacts.filter { it.isHidden == params.showHidden }
 
         // 2. Filter by Type (Employee/Officer)
-        val filteredByType = when (effectiveParams.staffType) {
+        val filteredByType = when (params.staffType) {
             StaffType.ALL -> visibleContacts
             StaffType.EMPLOYEE -> visibleContacts.filter { it.employee != null }
             StaffType.OFFICER -> visibleContacts.filter { it.officer != null }
@@ -276,16 +356,16 @@ open class EmployeeViewModel @Inject constructor(
             filteredByType
         } else {
             filteredByType
-                .filterByDistrict(effectiveParams.district)
-                .filterByStation(effectiveParams.station)
-                .filterByRank(effectiveParams.rank)
-                .filterByUnit(effectiveParams.unit)
+                .filterByDistrict(params.district)
+                .filterByStation(params.station)
+                .filterByRank(params.rank)
+                .filterByUnit(params.unit)
         }
 
-        // 3. Sorting Process
-        if (effectiveParams.query.isNotBlank()) {
-            val queryLower = effectiveParams.query.trim().lowercase()
-            filteredByDropdowns.filterByQuery(effectiveParams.query, effectiveParams.filter)
+        // 3. Sorting and Filtering Process
+        if (query.isNotBlank()) {
+            val queryLower = query.lowercase()
+            filteredByDropdowns.filterByQuery(query, params.filter)
                 .sortedByDescending { contact ->
                     when {
                         contact.employee != null -> contact.employee.matches(queryLower, "name") // Simple relevance check
@@ -349,7 +429,7 @@ open class EmployeeViewModel @Inject constructor(
                         SearchFilter.RANK -> "rank"
                         SearchFilter.METAL_NUMBER -> "metal"
                         SearchFilter.BLOOD_GROUP -> "blood"
-                        SearchFilter.ALL -> "name"
+                        SearchFilter.ALL -> "all"
                     }
                     contact.employee.matches(queryLower, filterString)
                 }
@@ -394,12 +474,11 @@ open class EmployeeViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     // Simplified filteredEmployees (reusing logic implicitly or explicitly if needed, but keeping separate for now as it returns Employee objects)
-    val filteredEmployees: StateFlow<List<Employee>> = combine(_employees, _searchParams, _isAdmin, _debouncedSearchQuery) { employees, params, isAdmin, debouncedQuery ->
+    val filteredEmployees: StateFlow<List<Employee>> = combine(_employees, _searchParams, _isAdmin) { employees, params, isAdmin ->
          if (employees.isEmpty()) return@combine emptyList<Employee>()
          val approvedEmployees = if (isAdmin) employees else employees.filter { it.isApproved }
          
-         // Re-implement simplified logic for pure Employee list (similar to Contact logic)
-         val effectiveParams = params.copy(query = debouncedQuery)
+         val query = params.query.trim()
          
          approvedEmployees
             .filter { params.district == "All" || normalizeDistrict(it.district) == normalizeDistrict(params.district) }
@@ -407,10 +486,10 @@ open class EmployeeViewModel @Inject constructor(
             .filter { params.rank == "All" || it.rank.equals(params.rank, ignoreCase = true) }
             .filter { params.unit == "All" || it.effectiveUnit.equals(params.unit, ignoreCase = true) }
             .filter { 
-                if (effectiveParams.query.isBlank()) {
+                if (query.isBlank()) {
                     true 
                 } else {
-                    val filterString = when (effectiveParams.filter) {
+                    val filterString = when (params.filter) {
                         SearchFilter.NAME -> "name"
                         SearchFilter.KGID -> "kgid"
                         SearchFilter.MOBILE -> "mobile"
@@ -418,33 +497,51 @@ open class EmployeeViewModel @Inject constructor(
                         SearchFilter.RANK -> "rank"
                         SearchFilter.METAL_NUMBER -> "metal"
                         SearchFilter.BLOOD_GROUP -> "blood"
-                        SearchFilter.ALL -> "name"
+                        SearchFilter.ALL -> "all"
                     }
-                    it.matches(effectiveParams.query.lowercase().trim(), filterString)
+                    it.matches(query.lowercase().trim(), filterString)
                 }
             }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _uploadStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
     val uploadStatus: StateFlow<OperationStatus<String>> = _uploadStatus.asStateFlow()
-    private val _pendingRegistrations = MutableStateFlow<List<PendingRegistrationEntity>>(emptyList())
-    val pendingRegistrations: StateFlow<List<PendingRegistrationEntity>> = _pendingRegistrations.asStateFlow()
+    
+    // Trigger for refreshing both pending sources
+    private val _pendingRefreshTrigger = MutableStateFlow(0)
+    
+    // ✅ Source of truth combines two sources for full parity with Web Dashboard:
+    // 1. Dedicated 'pending_registrations' collection (via pendingRepo)
+    // 2. 'employees' collection where rank is "Pending Verification" (via employeeRepo)
+    val pendingRegistrations: StateFlow<List<PendingRegistrationEntity>> = combine(
+        _pendingRefreshTrigger,
+        pendingRepo.getLocalPending(),
+        employeeRepo.getPendingRegistrations()
+    ) { trigger, fromPending, fromEmployees ->
+        // Combine and deduplicate case-insensitively by KGID/Email
+        val combined = (fromPending + fromEmployees)
+            .distinctBy { it.kgid.trim().lowercase().ifBlank { it.email.trim().lowercase() } }
+            .sortedByDescending { it.submittedAt?.time ?: it.createdAt?.time ?: 0L }
+        Log.d("EmployeeViewModel", "📊 PendingRegistrations Combined: total=${combined.size}, fromPending=${fromPending.size}, fromEmployees=${fromEmployees.size}, trigger=$trigger")
+        combined
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     private val _pendingStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
     val pendingStatus: StateFlow<OperationStatus<String>> = _pendingStatus.asStateFlow()
     
     // Count of pending approvals for notification badge
-    // Count of pending approvals (Total)
-    val pendingApprovalsTotalCount: StateFlow<Int> = _pendingRegistrations.map { it.size }
+    val pendingApprovalsTotalCount: StateFlow<Int> = pendingRegistrations.map { it.size }
         .stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
     // Count of unviewed pending approvals (for Badge)
-    val unviewedPendingCount: StateFlow<Int> = _pendingRegistrations.map { list ->
+    // Count of unviewed pending approvals (for Badge)
+    val unviewedPendingCount: StateFlow<Int> = pendingRegistrations.map { list ->
         list.count { !it.viewedByAdmin }
     }.stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
     fun markPendingRegistrationsAsViewed() {
         viewModelScope.launch {
-            val unviewed = _pendingRegistrations.value.filter { !it.viewedByAdmin }
+            val unviewed = pendingRegistrations.value.filter { !it.viewedByAdmin }
             if (unviewed.isNotEmpty()) {
                 unviewed.forEach { entity ->
                     pendingRepo.markAsViewed(entity)
@@ -496,94 +593,30 @@ open class EmployeeViewModel @Inject constructor(
             }
         }
 
-        // 3️⃣ Observe admin flag from DataStore
+        // 🆕 Observe admin status from DataStore
         viewModelScope.launch {
             sessionManager.isAdmin.collect { isAdmin ->
                 _isAdmin.value = isAdmin
-                Log.d("Session", "🔄 isAdmin = $isAdmin")
-            }
-        }
-
-        // 4️⃣ Restore current user session from Room or Firestore
-        viewModelScope.launch {
-            sessionManager.userEmail.collect { email ->
-                // ✅ Only restore if we're not in the middle of a logout
-                // Check if isLoggedIn is already false (indicating logout in progress)
-                if (_isLoggedIn.value == false && email.isBlank()) {
-                    Log.d("Session", "🔒 Logout in progress, skipping session restore")
-                    return@collect
-                }
-                
-                if (email.isNotBlank()) {
-                    Log.d("Session", "🔁 Restoring session for $email")
-
-                    // Try Room first
-                    val localUser = employeeRepo.getEmployeeByEmail(email)
-                    if (localUser != null) {
-                        _currentUser.value = localUser.toEmployee()
-                        _isAdmin.value = localUser.isAdmin
-                        _isLoggedIn.value = true
-                        Log.d("Session", "✅ Loaded user ${localUser.name} (Admin=${localUser.isAdmin})")
-                    } else {
-                        // Fallback to Firestore if Room is empty
-                        when (val remoteResult = employeeRepo.getUserByEmail(email)) {
-                            is RepoResult.Success -> {
-                                remoteResult.data?.let { user ->
-                                    _currentUser.value = user
-                                    _isAdmin.value = user.isAdmin
-                                    _isLoggedIn.value = true
-                                    Log.d("Session", "✅ Loaded remote user ${user.name}")
-                                } ?: run {
-                                    Log.w("Session", "⚠️ No matching user found for $email — resetting session")
-                                    sessionManager.clearSession()
-                                    _isLoggedIn.value = false
-                                }
-                            }
-                            is RepoResult.Error -> {
-                                Log.e("Session", "❌ Error loading user: ${remoteResult.message}")
-                                sessionManager.clearSession()
-                                _isLoggedIn.value = false
-                            }
-                            else -> Unit
-                        }
-                    }
-
-                    // Refresh employees and officers after user restore
-                    refreshEmployees()
-                    refreshOfficers()
-                } else {
-                    Log.d("Session", "🔒 No stored email — user not logged in")
-                    // Only clear if not already cleared (avoid unnecessary updates)
-                    if (_currentUser.value != null || _isLoggedIn.value == true) {
-                        _currentUser.value = null
-                        _isAdmin.value = false
-                        _isLoggedIn.value = false
-                    }
+                Log.d("Session", "🔄 isAdmin (reactive) = $isAdmin")
+                // If admin status just confirmed, refresh pending registrations
+                if (isAdmin) {
+                    refreshPendingRegistrations()
                 }
             }
         }
 
-        // 5️⃣ Startup data prefetch
+        // 3️⃣ Ensure signed in if needed
         viewModelScope.launch {
             try {
                 ensureSignedInIfNeeded()
-                // Only fetch pending registrations if user is admin and logged in
-                // Wait for admin status to be determined (check once)
-                val isAdmin = _isAdmin.first()
-                if (isAdmin && _isLoggedIn.first()) {
-                    try {
-                        refreshPendingRegistrations()
-                    } catch (e: Exception) {
-                        // Silently handle permission errors - non-admins don't need pending registrations
-                        Log.d("PendingReg", "Could not load pending registrations: ${e.message}")
-                        // Reset status to Idle so errors don't persist
-                        _pendingStatus.value = OperationStatus.Idle
-                    }
-                }
             } catch (e: Exception) {
                 Log.e("Startup", "Startup failed: ${e.message}", e)
             }
         }
+
+        // 4️⃣ Startup data prefetch based on established session
+        // Note: Actual pending registration fetch now happens inside loadSession() 
+        // once admin status is confirmed via live check.
 
         viewModelScope.launch {
             currentUser.collectLatest { user ->
@@ -725,9 +758,6 @@ open class EmployeeViewModel @Inject constructor(
                                 _currentUser.value = refreshed
                                 _isAdmin.value = refreshed.isAdmin
                             }
-
-                            // ✅ Refresh admin status to ensure it's up to date
-                            checkIfAdmin()
 
                             _authStatus.value = OperationStatus.Success(user)
                             Log.d("Login", "✅ Logged in as ${user.name}, Admin=${user.isAdmin}")
@@ -1127,44 +1157,74 @@ open class EmployeeViewModel @Inject constructor(
             if (isLoggedIn) {
                 // If logged in, get the email and admin status.
                 val email = sessionManager.userEmail.first()
-                val isAdmin = sessionManager.isAdmin.first()
-                _isAdmin.value = isAdmin
+                val persistedAdmin = sessionManager.isAdmin.first()
+                _isAdmin.value = persistedAdmin
 
                 if (email.isNotBlank()) {
                     try {
-                        // Fetch the full user object from the repository.
+                        // 1. Fetch the full user object from the repository.
                         val userEntity = employeeRepo.getEmployeeByEmail(email)
                         val user = userEntity?.toEmployee()
 
                         if (user != null) {
                             _currentUser.value = user
-                            Log.d("Session", "✅ Session restored for user: ${user.name}, admin=$isAdmin")
-                            // Refresh data now that we have a valid user.
+                            _isAdmin.value = user.isAdmin || persistedAdmin
+                            Log.d("Session", "✅ Session restored for user: ${user.name}, admin=${_isAdmin.value}")
+                            
+                            // Refresh base data
                             refreshEmployees()
-                            // Only fetch pending registrations if user is admin
-                            if (isAdmin) {
-                                refreshPendingRegistrations()
+                            refreshOfficers()
+
+                            // 🔴 2. Background live Firestore check & Admin Sync on startup
+                            viewModelScope.launch {
+                                // Live check for account approval
+                                val liveApproved = employeeRepo.checkIsApprovedFromFirestore(email)
+                                if (liveApproved == false) {
+                                    Log.w("Session", "🔴 Account DISABLED in Firestore. Logging out.")
+                                    logout()
+                                    return@launch
+                                }
+
+                                // Live check and sync for Admin status
+                                val liveAdmin = employeeRepo.isAdminInFirestore(email)
+                                val finalAdminState = liveAdmin || user.isAdmin
+                                
+                                if (finalAdminState) {
+                                    Log.d("Session", "🛡️ EmployeeViewModel: Admin validated. Syncing UID & refreshing approvals...")
+                                    _isAdmin.value = true
+                                    
+                                    // satisfy Firestore security rules
+                                    com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid?.let { uid ->
+                                        employeeRepo.syncAdminUid(email, uid, null)
+                                        Log.d("EmployeeViewModel", "✅ Admin UID synced")
+                                    }
+                                    
+                                    // Now safe to refresh pending registrations
+                                    refreshPendingRegistrations()
+                                } else {
+                                    if (persistedAdmin) {
+                                        Log.w("Session", "🚫 Admin status revoked in Firestore for EmployeeViewModel.")
+                                        _isAdmin.value = false
+                                        sessionManager.saveLogin(email, false)
+                                    }
+                                }
                             }
                         } else {
-                            // Data is inconsistent (session exists but user not in DB).
-                            // This is a failure case, so log out.
                             Log.e("Session", "❌ Session exists for $email but user not found in DB. Forcing logout.")
                             logout()
                         }
                     } catch (e: Exception) {
-                        Log.e("Session", "❌ DB error during session restore: ${e.message}. Forcing logout.")
+                        Log.e("Session", "❌ Error during session restore: ${e.message}")
                         logout()
                     }
                 } else {
-                    // Session is invalid (isLoggedIn=true but no email). Force logout.
-                    Log.e("Session", "❌ Invalid session state. Forcing logout.")
                     logout()
                 }
             } else {
                 // Not logged in. Ensure all states are clean.
                 _isAdmin.value = false
                 _currentUser.value = null
-                Log.d("Session", "ℹ️ No active session. App is in Guest mode.")
+                Log.d("Session", "ℹ️ Guest Mode (EmployeeVM)")
             }
         }
     }
@@ -1234,6 +1294,10 @@ open class EmployeeViewModel @Inject constructor(
                     val list = result.data ?: emptyList()
                     _employees.value = list
                     _employeeStatus.value = OperationStatus.Success(list)
+                    // ✅ Intelligent Rating: Increment event count on successful data load
+                    if (list.isNotEmpty()) {
+                        sessionManager.incrementSuccessfulEventsCount()
+                    }
                 }
                 is RepoResult.Error -> _employeeStatus.value = OperationStatus.Error(result.message ?: "Failed to load employees")
                 else -> _employeeStatus.value = OperationStatus.Error("Failed to load employees")
@@ -1328,7 +1392,12 @@ open class EmployeeViewModel @Inject constructor(
     }
 
     fun addOrUpdateEmployee(emp: Employee) = viewModelScope.launch {
-        employeeRepo.addOrUpdateEmployee(emp).collect { refreshEmployees() }
+        employeeRepo.addOrUpdateEmployee(emp).collect { result ->
+            if (result is RepoResult.Success) {
+                sessionManager.incrementSuccessfulEventsCount() // ✅ Intelligent Rating
+            }
+            refreshEmployees() 
+        }
     }
 
     fun deleteEmployee(kgid: String, photoUrl: String?) = viewModelScope.launch {
@@ -1423,34 +1492,35 @@ open class EmployeeViewModel @Inject constructor(
         val emp = employeeRepo.getEmployeeByEmail(email) // returns entity or null
         return emp?.isApproved == true || emp?.toEmployee()?.isAdmin == true // adjust fields as per your model
     }
-
-
-
-    // =========================================================
-//  PENDING REGISTRATIONS (Final + Corrected)
-// =========================================================
-
     fun refreshPendingRegistrations() = viewModelScope.launch {
         try {
             _pendingStatus.value = OperationStatus.Loading
+            android.util.Log.d("PendingReg", "🔄 Triggering comprehensive background refresh...")
 
-            when (val result = pendingRepo.fetchPendingFromFirestore()) {
+            val result = pendingRepo.fetchPendingFromFirestore()
+            
+            when (result) {
                 is RepoResult.Success -> {
                     val list = result.data ?: emptyList()
-                    _pendingRegistrations.value = list
+                    android.util.Log.d("PendingReg", "✅ Success! Saving ${list.size} to Room from pending_registrations.")
                     pendingRepo.saveAllToLocal(list)   // sync to Room
-                    _pendingStatus.value = OperationStatus.Idle // Stop loading, don't trigger Success toast
                 }
 
                 is RepoResult.Error -> {
-                    _pendingRegistrations.value = emptyList()
                     val errorMsg = result.message ?: "Load failed"
-                    // Only set error status if it's not a permission issue (permission errors are handled silently)
+                    android.util.Log.w("PendingReg", "⚠️ Refresh failed: $errorMsg")
+                    
+                    // Only set error status if it's not a permission issue
                     if (errorMsg.contains("Permission", ignoreCase = true) || 
                         errorMsg.contains("permission denied", ignoreCase = true)) {
-                        // Silently handle permission errors - reset to Idle
-                        Log.d("PendingReg", "Permission denied loading pending registrations (expected for non-admins)")
-                        _pendingStatus.value = OperationStatus.Idle
+                        
+                        if (_isAdmin.value) {
+                            Log.e("PendingReg", "❌ Admin access denied to Firestore. Sync handshake might be pending.")
+                            _pendingStatus.value = OperationStatus.Error("Access Denied. Ensure your admin status is active.")
+                        } else {
+                            Log.d("PendingReg", "Permission denied loading pending registrations (expected for non-admins)")
+                            _pendingStatus.value = OperationStatus.Idle
+                        }
                     } else {
                         _pendingStatus.value = OperationStatus.Error(errorMsg)
                     }
@@ -1460,10 +1530,15 @@ open class EmployeeViewModel @Inject constructor(
                     _pendingStatus.value = OperationStatus.Idle
                 }
             }
+
+            // ✅ Trigger the combined StateFlow to re-run the employeeRepo.getPendingRegistrations() fetch
+            _pendingRefreshTrigger.value += 1
+            _pendingStatus.value = OperationStatus.Idle
+
         } catch (e: Exception) {
-            _pendingRegistrations.value = emptyList()
             val errorMsg = e.message ?: "Load failed"
-            if (errorMsg.contains("Permission", ignoreCase = true)) {
+            if (errorMsg.contains("Permission", ignoreCase = true) || 
+                errorMsg.contains("permission denied", ignoreCase = true)) {
                 Log.d("PendingReg", "Permission denied loading pending registrations (expected for non-admins)")
                 _pendingStatus.value = OperationStatus.Idle
             } else {
@@ -1479,6 +1554,7 @@ open class EmployeeViewModel @Inject constructor(
             when (val result = pendingRepo.approve(entity)) {
                 is RepoResult.Success -> {
                     _pendingStatus.value = OperationStatus.Success("Approved successfully")
+                    sessionManager.incrementSuccessfulEventsCount() // ✅ Intelligent Rating
                     refreshPendingRegistrations()
                 }
                 is RepoResult.Error -> {

@@ -36,9 +36,10 @@ class AdminDocumentsViewModel @Inject constructor(
     val editStatus: StateFlow<OperationStatus<String>> = _editStatus.asStateFlow()
 
     /**
-     * Get a unique identifier for a document (its resolved title)
+     * Get a unique identifier for a document (its resolved URL)
      */
-    override fun getItemIdentifier(item: Document): String = item.resolvedTitle
+    override fun getItemIdentifier(item: Document): String = item.resolvedUrl ?: ""
+
 
     /**
      * Fetch documents from the repository
@@ -56,6 +57,13 @@ class AdminDocumentsViewModel @Inject constructor(
         _uploadStatus.value = OperationStatus.Idle
         _deleteStatus.value = OperationStatus.Idle
         _editStatus.value = OperationStatus.Idle
+    }
+
+    /**
+     * Mark a document as broken. This will hide it from the UI.
+     */
+    fun markDocumentAsBroken(url: String) {
+        hideItem(url)
     }
 
     /**
@@ -154,20 +162,23 @@ class AdminDocumentsViewModel @Inject constructor(
     /**
      * Delete document with optimistic update and error handling
      */
-    fun deleteDocument(title: String) {
+    fun deleteDocument(title: String, url: String) {
         viewModelScope.launch {
             _deleteStatus.value = OperationStatus.Loading
             
             // Optimistic update
-            val documentToDelete = _items.value.find { getItemIdentifier(it) == title }
-            hideItem(title)
+            repository.markAsDeleting(url)
+            hideItem(url)
+
             
             try {
                 val userEmail = sessionManager.userEmail.first()
                 val request = DocumentDeleteRequest(
                     title = title,
+                    url = url,
                     userEmail = userEmail
                 )
+
                 
                 PerformanceLogger.measureNetworkOperation<ApiResponse<Unit>>("documents/delete", "POST") {
                     repository.deleteDocument(request)
@@ -179,9 +190,11 @@ class AdminDocumentsViewModel @Inject constructor(
                 invalidateCache()
 
             } catch (e: Exception) {
-                // Revert optimistic update on failure - tricky since we use hiddenItemIdentifiers
-                hiddenItemIdentifiers.remove(title)
+                // Revert optimistic update on failure
+                repository.clearDeletionMarker(url)
+                hiddenItemIdentifiers.remove(url)
                 applyFilterAndEmit(cachedItems ?: emptyList())
+
                 
                 val errorInfo = ErrorHandler.handleException(e, "AdminDocumentsViewModel.deleteDocument")
                 _deleteStatus.value = OperationStatus.Error(errorInfo.userFriendlyMessage)

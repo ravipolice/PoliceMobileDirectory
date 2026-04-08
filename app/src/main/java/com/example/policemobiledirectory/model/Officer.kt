@@ -2,6 +2,7 @@ package com.example.policemobiledirectory.model
 
 import com.google.firebase.firestore.PropertyName
 import com.google.firebase.firestore.Exclude
+import com.google.firebase.firestore.ServerTimestamp
 
 /**
  * Officer - Read-only contact information for police officers
@@ -14,20 +15,29 @@ data class Officer(
     val email: String? = null,
     val bloodGroup: String? = null,
     val mobile: String? = null,
+    val mobile2: String? = null,
     val landline: String? = null,
+    val landline2: String? = null,
     val rank: String? = null,
     val station: String? = null,
     val district: String? = null,
     val photoUrl: String? = null,
     val unit: String? = null,
+    val office: String? = null,
+    @ServerTimestamp
+    val createdAt: java.util.Date? = null,
+    @ServerTimestamp
+    val updatedAt: java.util.Date? = null,
     @get:PropertyName("isHidden")
     val isHidden: Boolean = false,
+    val subDivision: String? = null,
     @get:Exclude
     val searchBlob: String = ""
 ) {
     /**
      * ✅ Effective Unit: Hybrid Strategy
      */
+    @get:Exclude
     val effectiveUnit: String
         get() {
             if (!unit.isNullOrBlank()) return unit
@@ -47,9 +57,11 @@ data class Officer(
             }
         }
 
+    @get:Exclude
     val primaryPhone: String?
         get() = mobile ?: landline
 
+    @get:Exclude
     val secondaryPhone: String?
         get() = if (!mobile.isNullOrBlank() && !landline.isNullOrBlank()) landline else null
 
@@ -81,7 +93,7 @@ data class Officer(
             "email" -> (email ?: "").lowercase().contains(queryLower)
             "blood" -> (bloodGroup ?: "").lowercase().contains(queryLower)
             else -> listOfNotNull(
-                name, agid, rank, mobile, landline, district, station, email, bloodGroup, unit, effectiveUnit
+                name, agid, rank, mobile, landline, district, station, subDivision, email, bloodGroup, unit, effectiveUnit
             ).any { it.lowercase().contains(queryLower) }
         }
     }

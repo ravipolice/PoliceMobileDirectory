@@ -6,11 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.model.LeaveBalance
 import com.example.policemobiledirectory.model.LeaveEntry
+import com.example.policemobiledirectory.model.LeaveCreditLog
+import com.example.policemobiledirectory.model.LeaveStatistics
 import com.example.policemobiledirectory.repository.LeaveRepository
 import com.example.policemobiledirectory.utils.LeaveBalanceCalculator
 import com.example.policemobiledirectory.utils.LeaveCreditScheduler
 import com.example.policemobiledirectory.utils.LeaveValidationEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,8 +39,8 @@ class LeaveViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<LeaveUiState>(LeaveUiState.Idle)
     val uiState: StateFlow<LeaveUiState> = _uiState.asStateFlow()
 
-    private val _statistics = MutableStateFlow<com.example.policemobiledirectory.model.LeaveStatistics?>(null)
-    val statistics: StateFlow<com.example.policemobiledirectory.model.LeaveStatistics?> = _statistics.asStateFlow()
+    private val _statistics = MutableStateFlow<LeaveStatistics?>(null)
+    val statistics: StateFlow<LeaveStatistics?> = _statistics.asStateFlow()
 
     // Per-type entry flows
     private val _clEntries = MutableStateFlow<List<LeaveEntry>>(emptyList())
@@ -61,13 +64,23 @@ class LeaveViewModel @Inject constructor(
     private val _otherEntries = MutableStateFlow<List<LeaveEntry>>(emptyList())
     val otherEntries: StateFlow<List<LeaveEntry>> = _otherEntries.asStateFlow()
 
+    private val _isDrivePermissionGranted = MutableStateFlow(false)
+    val isDrivePermissionGranted: StateFlow<Boolean> = _isDrivePermissionGranted.asStateFlow()
+
+    private val _creditLogs = MutableStateFlow<List<LeaveCreditLog>>(emptyList())
+    val creditLogs: StateFlow<List<LeaveCreditLog>> = _creditLogs.asStateFlow()
+
+    private var refreshJob: Job? = null
+
     fun refreshData(employee: Employee) {
         if (employee.kgid.isBlank()) {
             Log.e(TAG, "refreshData: Profile for ${employee.name} is incomplete (Missing KGID)")
             _uiState.value = LeaveUiState.Error("Profile incomplete: Please update your KGID in My Profile")
             return
         }
-        viewModelScope.launch {
+        
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             _uiState.value = LeaveUiState.Loading
             try {
                 val currentBalance = leaveRepository.getLeaveBalance(employee.kgid)
@@ -85,16 +98,24 @@ class LeaveViewModel @Inject constructor(
                     val stats = leaveRepository.getLeaveStatistics(employee.kgid, currentYear)
                     _statistics.value = stats
 
-                    leaveRepository.getLeaveEntries(employee.kgid).collect { all ->
-                        _entries.value = all
-                        _clEntries.value = all.filter { it.leaveType == "CL" && !it.isMcl }
-                        _elEntries.value = all.filter { it.leaveType == "EL" }
-                        _hplEntries.value = all.filter { it.leaveType == "HPL" }
-                        _woEntries.value = all.filter { it.leaveType == "WO" }
-                        _cclEntries.value = all.filter { it.leaveType == "CCL" }
-                        _mclEntries.value = all.filter { it.isMcl || it.leaveType == "MCL" }
-                        _otherEntries.value = all.filter { it.leaveType in listOf("ML", "PL", "LWA") }
-                        _uiState.value = LeaveUiState.Success
+                    launch {
+                        leaveRepository.getLeaveEntries(employee.kgid).collect { all ->
+                            _entries.value = all
+                            _clEntries.value = all.filter { it.leaveType == "CL" && !it.isMcl }
+                            _elEntries.value = all.filter { it.leaveType == "EL" }
+                            _hplEntries.value = all.filter { it.leaveType == "HPL" }
+                            _woEntries.value = all.filter { it.leaveType == "WO" }
+                            _cclEntries.value = all.filter { it.leaveType == "CCL" }
+                            _mclEntries.value = all.filter { it.isMcl || it.leaveType == "MCL" }
+                            _otherEntries.value = all.filter { it.leaveType in listOf("ML", "PL", "LWA") }
+                            _uiState.value = LeaveUiState.Success
+                        }
+                    }
+
+                    launch {
+                        leaveRepository.getCreditLogs(employee.kgid).collect { logs ->
+                            _creditLogs.value = logs
+                        }
                     }
                 } else {
                     _uiState.value = LeaveUiState.Error("Failed to fetch leave balance for ${employee.kgid}")
@@ -237,6 +258,35 @@ class LeaveViewModel @Inject constructor(
         }
     }
 
+    fun backupData(employee: Employee) {
+        viewModelScope.launch {
+            _uiState.value = LeaveUiState.Loading
+            val success = leaveRepository.manualBackup(employee.kgid)
+            if (success) {
+                _uiState.value = LeaveUiState.BackupSuccess
+            } else {
+                _uiState.value = LeaveUiState.Error("Backup failed. Check network or Drive access.")
+            }
+        }
+    }
+
+    fun restoreData(employee: Employee) {
+        viewModelScope.launch {
+            _uiState.value = LeaveUiState.Loading
+            val success = leaveRepository.manualRestore(employee.kgid)
+            if (success) {
+                refreshData(employee)
+                _uiState.value = LeaveUiState.RestoreSuccess
+            } else {
+                _uiState.value = LeaveUiState.Error("Restore failed. No backup found for this KGID.")
+            }
+        }
+    }
+
+    fun checkDrivePermission() {
+        _isDrivePermissionGranted.value = leaveRepository.hasDrivePermission()
+    }
+
     fun resetUiState() {
         _uiState.value = LeaveUiState.Idle
     }
@@ -246,5 +296,7 @@ sealed class LeaveUiState {
     object Idle : LeaveUiState()
     object Loading : LeaveUiState()
     object Success : LeaveUiState()
+    object BackupSuccess : LeaveUiState()
+    object RestoreSuccess : LeaveUiState()
     data class Error(val message: String) : LeaveUiState()
 }

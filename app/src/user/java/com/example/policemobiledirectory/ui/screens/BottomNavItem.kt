@@ -44,9 +44,9 @@ val bottomNavItems = listOf(
         label = "Home"
     ),
     BottomNavItem(
-        route = Routes.DOCUMENTS,
-        icon = Icons.Default.Description,
-        label = "Docs"
+        route = Routes.LEAVE_DASHBOARD,
+        icon = Icons.Default.EventNote,
+        label = "Leaves"
     ),
     BottomNavItem(
         route = Routes.USEFUL_LINKS,

@@ -62,6 +62,13 @@ class GalleryViewModel @Inject constructor(
     }
 
     /**
+     * Mark an image as broken. This will hide it from the UI.
+     */
+    fun markImageAsBroken(url: String) {
+        hideItem(url)
+    }
+
+    /**
      * Upload gallery image with error handling and performance tracking
      */
     fun uploadGalleryImage(
@@ -96,7 +103,12 @@ class GalleryViewModel @Inject constructor(
                     val imageUrl = response.url ?: ""
                     if (imageUrl.isNotBlank()) {
                         launch {
-                            syncToFirestore(imageUrl)
+                            syncToFirestore(
+                                imageUrl = imageUrl,
+                                title = title,
+                                category = category,
+                                description = description
+                            )
                         }
                     }
                     
@@ -118,24 +130,33 @@ class GalleryViewModel @Inject constructor(
     /**
      * Delete gallery image with optimistic update and error handling
      */
-    fun deleteGalleryImage(title: String) {
+    fun deleteGalleryImage(title: String, url: String, source: String? = null) {
         viewModelScope.launch {
             _deleteStatus.value = OperationStatus.Loading
             
-            // Optimistic update
-            val imageToDelete = _items.value.find { getItemIdentifier(it) == title }
-            val urlToDelete = imageToDelete?.let { getItemIdentifier(it) }
+            // Optimistic update using URL as identifier
+            repository.markAsDeleting(url)
             
-            // Mark as pending deletion in repository (Singleton)
-            urlToDelete?.let { repository.markAsDeleting(it) }
-            
-            hideItem(title)
+            // Hide immediately in UI
+            hideItem(url)
             
             try {
+                // If it's a Firebase image, we only need to delete from Firestore
+                if (source == "firebase") {
+                    deleteFromFirestore(url)
+                    _deleteStatus.value = OperationStatus.Success("Image removed from gallery")
+                    
+                    // Invalidate cache and refresh
+                    invalidateCache()
+                    fetchGalleryImages(forceRefresh = true)
+                    return@launch
+                }
+
+                // Otherwise, delete from Google Drive via Apps Script API
                 val userEmail = sessionManager.userEmail.first()
                 val request = GalleryDeleteRequest(
                     title = title,
-                    url = urlToDelete,
+                    url = url,
                     userEmail = userEmail
                 )
                 
@@ -146,11 +167,9 @@ class GalleryViewModel @Inject constructor(
                 if (response.success) {
                     _deleteStatus.value = OperationStatus.Success("Image deleted successfully")
                     
-                    // Delete from Firestore (non-blocking)
-                    urlToDelete?.let { url ->
-                        launch {
-                            deleteFromFirestore(url)
-                        }
+                    // Also clean up from Firestore if it was mirrored there
+                    launch {
+                        deleteFromFirestore(url)
                     }
                     
                     // Invalidate cache and refresh
@@ -158,8 +177,8 @@ class GalleryViewModel @Inject constructor(
                     fetchGalleryImages(forceRefresh = true)
                 } else {
                     // Revert optimistic update on failure
-                    urlToDelete?.let { repository.clearDeletionMarker(it) }
-                    hiddenItemIdentifiers.remove(title)
+                    repository.clearDeletionMarker(url)
+                    hiddenItemIdentifiers.remove(url)
                     applyFilterAndEmit(cachedItems ?: emptyList())
                     
                     val errorMsg = response.error ?: "Delete failed"
@@ -167,8 +186,8 @@ class GalleryViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 // Revert optimistic update on failure
-                urlToDelete?.let { repository.clearDeletionMarker(it) }
-                hiddenItemIdentifiers.remove(title)
+                repository.clearDeletionMarker(url)
+                hiddenItemIdentifiers.remove(url)
                 applyFilterAndEmit(cachedItems ?: emptyList())
                 
                 val errorInfo = ErrorHandler.handleException(e, "GalleryViewModel.deleteGalleryImage")
@@ -197,11 +216,17 @@ class GalleryViewModel @Inject constructor(
     }
 
     // ✅ Sync uploaded image to Firestore for real-time updates
-    private suspend fun syncToFirestore(imageUrl: String) {
+    private suspend fun syncToFirestore(imageUrl: String, title: String? = null, category: String? = null, description: String? = null) {
         try {
+            val userEmail = sessionManager.userEmail.first()
             val data = hashMapOf(
                 "imageUrl" to imageUrl,
-                "uploadedAt" to com.google.firebase.Timestamp.now()
+                "title" to title,
+                "category" to category,
+                "description" to description,
+                "uploadedBy" to userEmail,
+                "createdAt" to com.google.firebase.Timestamp.now(),
+                "source" to "gdrive"
             )
             firestore.collection("gallery").add(data).await()
         } catch (e: Exception) {

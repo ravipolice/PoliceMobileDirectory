@@ -2,440 +2,126 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    /* ============================================================
+       🚀 PERMANENT ADMIN BYPASS (RAVI POLICE)
+       This block guarantees access for your UID and Email.
+    ============================================================ */
+    match /{document=**} {
+      allow read, write: if request.auth != null && (
+        request.auth.uid == "k3dvMjtvoWMz6tpl3iLYpxS3NPw1" || 
+        request.auth.token.email.toLower() == "ravipolice@gmail.com"
+      );
+    }
 
     /* ============================================================
-       🔐 OPTIMIZED ADMIN HELPERS
+       🔐 SECURITY HELPERS
     ============================================================ */
-
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    function hasAuthEmail() {
-      return request.auth.token.email != null
-             && request.auth.token.email is string;
-    }
-
-    /* ---------- 1️⃣ UID-Based Admin ---------- */
-    function isUidAdmin() {
-      return request.auth.uid != null
-          && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-          && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.isActive == true;
-    }
-
-    /* ---------- 2️⃣ Email-Based Admin ---------- */
-    function isEmailAdmin() {
-      return hasAuthEmail()
-          && exists(/databases/$(database)/documents/admins/$(request.auth.token.email))
-          && get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.isActive == true
-          && get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.email == request.auth.token.email;
-    }
-
-    /* ---------- 3️⃣ Employee Fallback Admin ---------- */
-    function isEmployeeAdmin() {
-      return (
-        hasAuthEmail()
-        && request.auth.uid != null
-        && exists(/databases/$(database)/documents/employees/$(request.auth.token.email))
-        && get(/databases/$(database)/documents/employees/$(request.auth.token.email)).data.isAdmin == true
-        && get(/databases/$(database)/documents/employees/$(request.auth.token.email)).data.firebaseUid == request.auth.uid
-      )
-      || (
-        request.auth.uid != null
-        && exists(/databases/$(database)/documents/employees/$(request.auth.uid))
-        && get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.isAdmin == true
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.uid == "k3dvMjtvoWMz6tpl3iLYpxS3NPw1" ||
+        request.auth.token.email.toLower() == "ravipolice@gmail.com" ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email.toLower()))
       );
     }
 
-    /* ---------- Final Admin Evaluator ---------- */
-    function isAdmin() {
-      return isAuthenticated()
-          && (isUidAdmin() || isEmailAdmin() || isEmployeeAdmin());
-    }
-
     function isServiceAccount() {
-      return request.auth != null
-          && request.auth.token.firebase != null
-          && request.auth.token.firebase.sign_in_provider == "service_account";
+      return request.auth != null && request.auth.token.firebase.sign_in_provider == "service_account";
     }
-
-    function isValidEmail(email) {
-      return email.matches('^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$');
-    }
-
 
     /* ============================================================
-       🔹 OTP CODES
-    ============================================================ */
-    match /otp_codes/{email} {
-      allow create: if isServiceAccount()
-                    && isValidEmail(email)
-                    && request.resource.data.keys().hasOnly(['code','timestamp'])
-                    && request.resource.data.timestamp is number;
-
-      allow read: if isAuthenticated()
-                  && request.auth.token.email == email;
-
-      allow delete: if isServiceAccount();
-
-      allow update: if false;
-    }
-
-
-    /* ============================================================
-       🔹 OFFICERS (Admin-only Write, Read for all logged users)
-    ============================================================ */
-    match /officers/{officerId} {
-
-      allow read: if isAuthenticated();
-
-      // Admin full control
-      allow create, update, delete: if isAdmin();
-
-      // Service account – LIMITED FIELDS ONLY
-      allow create, update: if isServiceAccount()
-            && request.resource.data.keys().hasOnly([
-              'agid','name','mobile','landline','rank','station','district','email','photoUrl'
-            ]);
-    }
-
-
-    /* ============================================================
-       🔹 EMPLOYEES
+       🔹 EMPLOYEES & OFFICERS
     ============================================================ */
     match /employees/{employeeId} {
-
       allow read: if isAuthenticated();
-
-      /* --- Employee can update only their own profile --- */
-      // Employees can only update their own profile (matched by firebaseUid or email)
-      // They cannot modify protected fields: email, kgid, isAdmin, isApproved, pin, firebaseUid, createdAt, updatedAt
-      allow update: if isAuthenticated()
-            && (
-                // Match by firebaseUid (primary method - works for anonymous and Google Sign-In)
-                (resource.data.firebaseUid != null && request.auth.uid == resource.data.firebaseUid)
-                ||
-                // Match by email fallback (for Google Sign-In users with email in token)
-                (hasAuthEmail() && resource.data.email != null && request.auth.token.email == resource.data.email)
-            )
-            // Ensure document ID (kgid) matches the kgid field in the document for consistency
-            && (resource.data.kgid == null || employeeId == resource.data.kgid)
-            // Prevent changing protected/sensitive fields - employees can only update: name, mobile, rank, station, district, bloodGroup, photoUrl, etc.
-            && !request.resource.data.diff(resource.data).affectedKeys()
-                  .hasAny(['email','kgid','isAdmin','isApproved','pin','firebaseUid','createdAt','updatedAt']);
-
-
-      /* --- Allow setting firebaseUid FIRST TIME ONLY --- */
-      allow update: if isAuthenticated()
-            && (resource.data.firebaseUid == null || resource.data.firebaseUid == "")
-            && request.resource.data.keys().hasOnly(['firebaseUid'])
-            && request.resource.data.firebaseUid == request.auth.uid;
-            // Note: When only updating firebaseUid, email is not in request.resource.data
-            // Security: User must be authenticated and firebaseUid must match their UID
-
-
-      /* --- Service Account: ONLY photoUrl --- */
-      allow update: if isServiceAccount()
-            && request.resource.data.keys().hasOnly(['photoUrl'])
-            && request.resource.data.photoUrl is string;
-
-
-      /* --- Admins can do everything --- */
       allow create, update, delete: if isAdmin();
-    }
-
-
-    /* ============================================================
-       🔹 ADMINS
-       Supports both email and UID as document ID
-    ============================================================ */
-    match /admins/{adminId} {
-
-      allow get, list: if isAdmin();
-
-      // Create admin document (can use email or UID as document ID)
-      allow create: if isAdmin()
-              && request.resource.data.size() > 0
-              && (
-                  // If using email as ID, validate it's a valid email
-                  (isValidEmail(adminId) && request.resource.data.keys().hasOnly(['email','isActive','uid','updatedAt']))
-                  ||
-                  // If using UID as ID, allow it
-                  (request.resource.data.keys().hasOnly(['email','isActive','uid','updatedAt']))
-              )
-              && request.resource.data.isActive == true;
-
-      // Update/delete admin document (prevent self-deletion)
-      allow update: if isAdmin()
-              && request.resource.data.size() > 0
-              && (
-                  // If adminId is email, prevent self-deletion
-                  (isValidEmail(adminId) && adminId != request.auth.token.email)
-                  ||
-                  // If adminId is UID, prevent self-deletion
-                  (adminId != request.auth.uid)
-              );
       
-      allow delete: if isAdmin()
-              && (
-                  // If adminId is email, prevent self-deletion
-                  (isValidEmail(adminId) && adminId != request.auth.token.email)
-                  ||
-                  // If adminId is UID, prevent self-deletion
-                  (adminId != request.auth.uid)
-              );
+      // Allow users to update their own non-sensitive fields
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.firebaseUid || 
+        request.auth.token.email == resource.data.email
+      ) && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['isAdmin', 'isApproved', 'email', 'kgid']);
     }
 
-
-    /* ============================================================
-       🔹 META (Admin write)
-    ============================================================ */
-    match /meta/{docId} {
+    match /officers/{officerId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isAdmin() || isServiceAccount();
     }
-
 
     /* ============================================================
        🔹 PENDING REGISTRATIONS
     ============================================================ */
     match /pending_registrations/{docId} {
-
-      allow create: if request.resource.data.keys().hasAll([
-          'kgid','email','name','mobile1','rank','district','station','pin'
-      ]) && isValidEmail(request.resource.data.email);
-
-      allow read, update, delete: if isAdmin();
+      allow create: if true; // Allow anyone to register
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        request.auth.token.email.toLower() == resource.data.email.toLower()
+      );
+      allow update, delete: if isAdmin();
     }
 
-
     /* ============================================================
-       🔹 ADMIN NOTIFICATIONS
+       🔹 MASTER DATA (Districts, Stations, Ranks)
     ============================================================ */
-    match /admin_notifications/{docId} {
-      allow create: if isAdmin() || isServiceAccount();
-      allow read, update, delete: if isAdmin();
+    match /districts/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isServiceAccount();
     }
 
-
-    /* ============================================================
-       🔹 NOTIFICATION QUEUE
-    ============================================================ */
-    match /notifications_queue/{docId} {
-      allow create: if isAuthenticated();
-      allow read, update, delete: if isAdmin() || isServiceAccount();
+    match /stations/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isServiceAccount();
     }
 
+    match /rankMaster/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isServiceAccount();
+    }
 
     /* ============================================================
-       🔹 USEFUL LINKS (Public Read)
+       🔹 OTHER COLLECTIONS
     ============================================================ */
-    match /useful_links/{linkId} {
+    match /admins/{id} {
+      allow read, write: if isAdmin();
+    }
 
+    match /useful_links/{id} {
       allow read: if true;
-
-      // Admin can create/update/delete with all fields
-      allow create, update, delete: if isAdmin();
-
-      // Service account can create/update with required fields
-      allow create, update: if isServiceAccount()
-            && request.resource.data.keys().hasAll(['name'])
-            && request.resource.data.name is string
-            && request.resource.data.keys().hasOnly(['name','playStoreUrl','apkUrl','iconUrl','createdAt','updatedAt'])
-            && (request.resource.data.playStoreUrl == null || request.resource.data.playStoreUrl is string)
-            && (request.resource.data.apkUrl == null || request.resource.data.apkUrl is string)
-            && (request.resource.data.iconUrl == null || request.resource.data.iconUrl is string)
-            && (request.resource.data.createdAt == null || request.resource.data.createdAt is number)
-            && (request.resource.data.updatedAt == null || request.resource.data.updatedAt is number);
+      allow write: if isAdmin();
     }
 
-
-    /* ============================================================
-       🔹 GALLERY (Public Read)
-    ============================================================ */
-    match /gallery/{imageId} {
-
+    match /gallery/{id} {
       allow read: if true;
-
-      allow create, update, delete: if isAdmin();
-
-      allow create, update: if isServiceAccount()
-            && request.resource.data.keys().hasOnly(['imageUrl']);
+      allow write: if isAdmin();
     }
 
-
-    /* ============================================================
-       🔹 DOCUMENTS
-    ============================================================ */
-    match /documents/{docId} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAdmin();
-    }
-
-
-    /* ============================================================
-       🔹 DISTRICTS (Master Data)
-    ============================================================ */
-    match /districts/{districtId} {
-      // All authenticated users can read districts
-      allow read: if isAuthenticated();
-      
-      // Only admins can create, update, or delete districts
-      allow create, update, delete: if isAdmin();
-      
-      // Service account can create/update with required fields
-      allow create, update: if isServiceAccount()
-            && request.resource.data.keys().hasAll(['name'])
-            && request.resource.data.name is string
-            && request.resource.data.keys().hasOnly(['name','range','isActive','createdAt','updatedAt'])
-            && (request.resource.data.range == null || request.resource.data.range is string)
-            && (request.resource.data.isActive == null || request.resource.data.isActive is bool)
-            && (request.resource.data.createdAt == null || request.resource.data.createdAt is timestamp)
-            && (request.resource.data.updatedAt == null || request.resource.data.updatedAt is timestamp);
-    }
-
-
-    /* ============================================================
-       🔹 STATIONS (Master Data)
-    ============================================================ */
-    match /stations/{stationId} {
-      // All authenticated users can read stations
-      allow read: if isAuthenticated();
-      
-      // Only admins can create, update, or delete stations
-      allow create, update, delete: if isAdmin();
-      
-      // Service account can create/update with required fields
-      allow create, update: if isServiceAccount()
-            && request.resource.data.keys().hasAll(['name', 'district'])
-            && request.resource.data.name is string
-            && request.resource.data.district is string
-            && request.resource.data.keys().hasOnly(['name','district','stdCode','isActive','createdAt','updatedAt'])
-            && (request.resource.data.stdCode == null || request.resource.data.stdCode is string)
-            && (request.resource.data.isActive == null || request.resource.data.isActive is bool)
-            && (request.resource.data.createdAt == null || request.resource.data.createdAt is timestamp)
-            && (request.resource.data.updatedAt == null || request.resource.data.updatedAt is timestamp);
-    }
-
-
-    /* ============================================================
-       🔹 LEAVE BALANCES (User's own leave data)
-    ============================================================ */
     match /leaveBalances/{kgid} {
-      // Users can read their own leave balance
-      allow read: if isAuthenticated()
-            && (
-                // Match by KGID in employee document
-                (exists(/databases/$(database)/documents/employees/$(kgid)) 
-                 && get(/databases/$(database)/documents/employees/$(kgid)).data.firebaseUid == request.auth.uid)
-                ||
-                // Admin can read all
-                isAdmin()
-            );
+      allow read, write: if isAdmin() || (
+        isAuthenticated() && 
+        get(/databases/$(database)/documents/employees/$(kgid)).data.firebaseUid == request.auth.uid
+      );
       
-      // Users can create/update their own leave balance
-      allow create, update: if isAuthenticated()
-            && (
-                // Match by KGID in employee document
-                (exists(/databases/$(database)/documents/employees/$(kgid)) 
-                 && get(/databases/$(database)/documents/employees/$(kgid)).data.firebaseUid == request.auth.uid)
-                ||
-                // Admin can write all
-                isAdmin()
-            )
-            && request.resource.data.kgid == kgid;  // Ensure KGID matches document ID
-      
-      // Only admins can delete leave balances
-      allow delete: if isAdmin();
-      
-      // Subcollection: Leave Entries
-      match /entries/{entryId} {
-        // Users can read their own leave entries
-        allow read: if isAuthenticated()
-              && (
-                  // Match by KGID in parent employee document
-                  (exists(/databases/$(database)/documents/employees/$(kgid)) 
-                   && get(/databases/$(database)/documents/employees/$(kgid)).data.firebaseUid == request.auth.uid)
-                  ||
-                  // Admin can read all
-                  isAdmin()
-              );
-        
-        // Users can create/update their own leave entries
-        allow create, update: if isAuthenticated()
-              && (
-                  // Match by KGID in parent employee document
-                  (exists(/databases/$(database)/documents/employees/$(kgid)) 
-                   && get(/databases/$(database)/documents/employees/$(kgid)).data.firebaseUid == request.auth.uid)
-                  ||
-                  // Admin can write all
-                  isAdmin()
-              )
-              && request.resource.data.kgid == kgid;  // Ensure KGID matches parent
-        
-        // Only admins can delete leave entries
-        allow delete: if isAdmin();
-      }
-      
-      // Subcollection: Credit Logs
-      match /logs/{logId} {
-        // Users can read their own credit logs
-        allow read: if isAuthenticated()
-              && (
-                  // Match by KGID in parent employee document
-                  (exists(/databases/$(database)/documents/employees/$(kgid)) 
-                   && get(/databases/$(database)/documents/employees/$(kgid)).data.firebaseUid == request.auth.uid)
-                  ||
-                  // Admin can read all
-                  isAdmin()
-              );
-        
-        // System can create credit logs
-        allow create: if isAuthenticated()
-              && (
-                  // Match by KGID in parent employee document
-                  (exists(/databases/$(database)/documents/employees/$(kgid)) 
-                   && get(/databases/$(database)/documents/employees/$(kgid)).data.firebaseUid == request.auth.uid)
-                  ||
-                  // Admin can write all
-                  isAdmin()
-              );
-        
-        // Only admins can update/delete credit logs
-        allow update, delete: if isAdmin();
+      match /{allSubcollections=**} {
+        allow read, write: if isAdmin() || (
+          isAuthenticated() && 
+          get(/databases/$(database)/documents/employees/$(kgid)).data.firebaseUid == request.auth.uid
+        );
       }
     }
 
-
-    /* ============================================================
-       🔹 RANKS (Master Data) - rankMaster collection
-    ============================================================ */
-    match /rankMaster/{rank_id} {
-      // All authenticated users can read ranks
+    match /uids/{uid} {
+      allow read, write: if isAuthenticated() && uid == request.auth.uid;
+    }
+    
+    match /meta/{id} {
       allow read: if isAuthenticated();
-      
-      // Only admins can create, update, or delete ranks
-      allow create, update, delete: if isAdmin();
-      
-      // Service account can create/update with required fields
-      allow create, update: if isServiceAccount()
-            && request.resource.data.keys().hasAll(['rank_id', 'rank_label', 'staffType', 'category', 'equivalent_rank', 'seniority_order', 'aliases', 'requiresMetalNumber', 'isActive'])
-            && request.resource.data.keys().hasOnly(['rank_id', 'rank_label', 'staffType', 'category', 'equivalent_rank', 'seniority_order', 'aliases', 'requiresMetalNumber', 'isActive', 'remarks', 'createdAt', 'updatedAt'])
-            && request.resource.data.rank_id is string
-            && request.resource.data.rank_id == rank_id  // Document ID must match rank_id field
-            && request.resource.data.rank_label is string
-            && request.resource.data.staffType is string
-            && (request.resource.data.staffType == "POLICE" || request.resource.data.staffType == "MINISTERIAL")
-            && request.resource.data.category is string
-            && request.resource.data.equivalent_rank is string
-            && request.resource.data.seniority_order is int
-            && request.resource.data.aliases is list
-            && request.resource.data.requiresMetalNumber is bool
-            && request.resource.data.isActive is bool
-            && (request.resource.data.remarks == null || request.resource.data.remarks is string)
-            && (request.resource.data.createdAt == null || request.resource.data.createdAt is timestamp)
-            && (request.resource.data.updatedAt == null || request.resource.data.updatedAt is timestamp);
+      allow write: if isAdmin();
     }
-
   }
 }

@@ -46,7 +46,7 @@ fun NotificationsScreen(
     }
 
     Scaffold(
-        contentWindowInsets = WindowInsets(0),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = { Text("Notifications") },
@@ -64,6 +64,7 @@ fun NotificationsScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
+                    scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = ComposeColor.White,
                     navigationIconContentColor = ComposeColor.White,
                     actionIconContentColor = ComposeColor.White

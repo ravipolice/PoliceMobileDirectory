@@ -2,6 +2,7 @@ package com.example.policemobiledirectory.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material3.*
@@ -15,14 +16,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.policemobiledirectory.R
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.AuthViewModel
 
 @Composable
 fun PendingApprovalScreen(
-    viewModel: EmployeeViewModel,
+    viewModel: AuthViewModel,
     onLogout: () -> Unit
 ) {
-    Scaffold { paddingValues ->
+    Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()

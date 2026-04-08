@@ -15,13 +15,13 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.policemobiledirectory.R
 import com.example.policemobiledirectory.navigation.Routes
-import com.example.policemobiledirectory.viewmodel.EmployeeViewModel
+import com.example.policemobiledirectory.viewmodel.AuthViewModel
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashVideoScreen(
     navController: NavController,
-    viewModel: EmployeeViewModel
+    viewModel: AuthViewModel
 ) {
     val context = LocalContext.current
 
