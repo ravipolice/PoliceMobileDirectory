@@ -214,13 +214,13 @@ fun MissionDetailFormCard(mission: Mission) {
             // Form Body
             Column(modifier = Modifier.padding(16.dp)) {
                 FormField(label = "Mission City", value = mission.city, icon = Icons.Default.Place)
-                Divider(modifier = Modifier.padding(vertical = 8.dp), alpha = 0.5f)
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 
                 FormField(label = "Mission Type", value = mission.type, icon = Icons.Default.Info)
-                Divider(modifier = Modifier.padding(vertical = 8.dp), alpha = 0.5f)
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 
                 FormField(label = "Mission Name", value = mission.name)
-                Divider(modifier = Modifier.padding(vertical = 8.dp), alpha = 0.5f)
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.weight(1f)) {
