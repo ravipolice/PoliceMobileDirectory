@@ -435,10 +435,26 @@ abstract class BaseConstantsRepository(
     }
 
     fun getDistrictsForUnit(unitName: String): List<String> {
-        val json = prefs.getString(UNIT_MAPPINGS_CACHE_KEY, null) ?: return getDistricts() + "HQ"
+        val isBattalionUnit = unitName.contains("KSRP", ignoreCase = true) || unitName.contains("IRB", ignoreCase = true)
+        
+        val normalizedBattalions = Constants.allBattalions.map { it.replace("–", "-").trim() }
+        val isNotBattalion = { district: String ->
+            val normalizedDistrict = district.replace("–", "-").trim()
+            !district.contains("Bn", ignoreCase = true) &&
+            !district.contains("Battalion", ignoreCase = true) &&
+            normalizedDistrict !in normalizedBattalions
+        }
+
+        val defaultDistricts = if (isBattalionUnit) {
+            getDistricts()
+        } else {
+            getDistricts().filter(isNotBattalion)
+        }
+
+        val json = prefs.getString(UNIT_MAPPINGS_CACHE_KEY, null) ?: return sortDistricts(defaultDistricts + "HQ")
         return try {
             val mappings: Map<String, UnitMapping> = gson.fromJson(json, object : TypeToken<Map<String, UnitMapping>>() {}.type)
-            val mapping = mappings[unitName] ?: return sortDistricts(getDistricts() + "HQ")
+            val mapping = mappings[unitName] ?: return sortDistricts(defaultDistricts + "HQ")
             
             val hasAreaScope = mapping.scopes.any { it in listOf("district", "battalion", "commissionerate", "district_stations") }
             
@@ -447,8 +463,9 @@ abstract class BaseConstantsRepository(
             } else {
                 when (mapping.mappingType) {
                     "subset", "single" -> mapping.mappedDistricts
+                    "district" -> getDistricts().filter(isNotBattalion)
                     "none" -> listOf("No District Required")
-                    else -> getDistricts()
+                    else -> defaultDistricts
                 }
             }
             if (mapping.scopes.contains("state") || mapping.scopes.contains("hq") || mapping.isHqLevel) {
@@ -456,7 +473,7 @@ abstract class BaseConstantsRepository(
             }
             sortDistricts(districts)
         } catch (e: Exception) {
-            sortDistricts(getDistricts() + "HQ")
+            sortDistricts(defaultDistricts + "HQ")
         }
     }
 

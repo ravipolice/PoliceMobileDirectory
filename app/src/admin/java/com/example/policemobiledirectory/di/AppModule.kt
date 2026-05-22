@@ -114,4 +114,16 @@ object AppModule {
     fun provideSessionManager(
         @ApplicationContext context: Context
     ): SessionManager = SessionManager(context)
+
+    @Provides
+    @Singleton
+    fun provideAdminEmployeeRepository(
+        dao: com.example.policemobiledirectory.data.local.AdminEmployeeDao,
+        firestore: FirebaseFirestore,
+        @IoDispatcher ioDispatcher: CoroutineDispatcher
+    ): com.example.policemobiledirectory.repository.AdminEmployeeRepository = com.example.policemobiledirectory.repository.AdminEmployeeRepository(
+        adminEmployeeDao = dao,
+        firestore = firestore,
+        ioDispatcher = ioDispatcher
+    )
 }

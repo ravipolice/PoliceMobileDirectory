@@ -79,7 +79,10 @@ class PendingRegistrationRepository @Inject constructor(
             // Using lowercase for KGID and Email ensures case-insensitive deduplication.
             val deduplicated = rawList
                 .sortedByDescending { it.createdAt?.time ?: it.submittedAt?.time ?: 0L }
-                .distinctBy { it.kgid.trim().lowercase().ifBlank { it.email.trim().lowercase() } }
+                .distinctBy { 
+                    val key = it.kgid.trim().lowercase().ifBlank { it.email.trim().lowercase() }
+                    if (key.isBlank()) it.firestoreId ?: java.util.UUID.randomUUID().toString() else key
+                }
 
             android.util.Log.d("PendingReg", "✅ Final deduplicated count: ${deduplicated.size}")
             RepoResult.Success(deduplicated)
@@ -249,6 +252,64 @@ class PendingRegistrationRepository @Inject constructor(
             val result = employeeRepository.addOrUpdateEmployee(employee).last()
             if (result !is RepoResult.Success)
                 return RepoResult.Error(message = "Failed to save employee")
+
+            // 1.5️⃣ 🔗 ADMIN-EMPLOYEE MERGE: Check if this person exists in admin_employees
+            try {
+                val adminCollection = firestore.collection("admin_employees")
+                
+                // Search by KGID first, then email as fallback
+                val adminSnap = adminCollection.document(kgid).get().await()
+                val matchedDocId: String? = if (adminSnap.exists()) {
+                    kgid
+                } else if (entity.email.isNotBlank()) {
+                    val emailSnap = adminCollection
+                        .whereEqualTo("email", entity.email.trim())
+                        .get().await()
+                    emailSnap.documents.firstOrNull()?.id
+                } else null
+
+                if (matchedDocId != null) {
+                    val adminDoc = adminCollection.document(matchedDocId).get().await()
+                    val adminData = adminDoc.data ?: emptyMap()
+
+                    // Merge HR fields from admin_employees into the employee record
+                    // Registration data takes priority; admin_employees fills any BLANK fields
+                    val mergeFields = mutableMapOf<String, Any>()
+                    fun mergeIfBlank(field: String, currentValue: String?) {
+                        if (currentValue.isNullOrBlank()) {
+                            val adminValue = adminData[field] as? String
+                            if (!adminValue.isNullOrBlank()) mergeFields[field] = adminValue
+                        }
+                    }
+                    mergeIfBlank("metalNumber", entity.metalNumber)
+                    mergeIfBlank("bloodGroup", entity.bloodGroup)
+                    mergeIfBlank("mobile2", entity.mobile2)
+                    mergeIfBlank("landline", entity.landline)
+                    mergeIfBlank("landline2", entity.landline2)
+                    mergeIfBlank("subSection", entity.subSection)
+                    mergeIfBlank("dutyRole", entity.dutyRole)
+                    mergeIfBlank("gender", entity.gender.ifBlank { null })
+
+                    // Apply merged fields to the employee in Firestore if any
+                    if (mergeFields.isNotEmpty()) {
+                        mergeFields["updatedAt"] = FieldValue.serverTimestamp()
+                        firestore.collection("employees")
+                            .document(kgid)
+                            .update(mergeFields)
+                            .await()
+                        Log.d("PendingRepo", "✅ Merged ${mergeFields.size} HR fields from admin_employees into employee $kgid")
+                    }
+
+                    // Remove from admin_employees — they are now in the common database
+                    adminCollection.document(matchedDocId).delete().await()
+                    Log.d("PendingRepo", "🗑️ Removed $matchedDocId from admin_employees after merge")
+                } else {
+                    Log.d("PendingRepo", "ℹ️ No matching record found in admin_employees for kgid=$kgid")
+                }
+            } catch (e: Exception) {
+                // Non-fatal: if admin merge fails, approval still succeeds
+                Log.e("PendingRepo", "⚠️ admin_employees merge failed (non-fatal): ${e.message}", e)
+            }
 
             // 2️⃣ Firestore update
             firestore.collection("pending_registrations")

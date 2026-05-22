@@ -2,11 +2,9 @@
 
 package com.example.policemobiledirectory.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -15,14 +13,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -39,12 +35,11 @@ import coil.compose.AsyncImage
 import com.example.policemobiledirectory.R
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.model.Officer
-import com.example.policemobiledirectory.ui.theme.PrimaryTeal
-import com.example.policemobiledirectory.ui.theme.SecondaryYellow
 import com.example.policemobiledirectory.utils.Constants
 import com.example.policemobiledirectory.utils.IntentUtils
 import com.example.policemobiledirectory.viewmodel.EmployeeListViewModel
 import com.example.policemobiledirectory.viewmodel.SettingsViewModel
+import com.example.policemobiledirectory.utils.OperationStatus
 
 @Composable
 fun EmployeeDetailScreen(
@@ -57,8 +52,17 @@ fun EmployeeDetailScreen(
     val context = LocalContext.current
     val allContacts by viewModel.allContacts.collectAsStateWithLifecycle()
     val fontScale by settingsViewModel.fontScale.collectAsStateWithLifecycle()
+    val employeeStatus by viewModel.employeeStatus.collectAsStateWithLifecycle()
+    val officerStatus by viewModel.officerStatus.collectAsStateWithLifecycle()
 
-    // Find the contact
+    val isLoading = remember(isOfficer, employeeStatus, officerStatus) {
+        if (isOfficer) {
+            officerStatus is OperationStatus.Loading
+        } else {
+            employeeStatus is OperationStatus.Loading
+        }
+    }
+
     val contact = remember(id, isOfficer, allContacts) {
         if (isOfficer) {
             allContacts.find { it.officer?.agid == id }?.officer
@@ -71,7 +75,7 @@ fun EmployeeDetailScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = { Text("Contact Details", fontWeight = FontWeight.Bold) },
+                title = { Text("Contact Details", fontWeight = FontWeight.SemiBold, fontSize = 20.sp) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -104,7 +108,7 @@ fun EmployeeDetailScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
+                    containerColor = Color.Transparent,
                     scrolledContainerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
@@ -112,11 +116,15 @@ fun EmployeeDetailScreen(
                 )
             )
         },
-        containerColor = Color(0xFFF7F7F7) // Light background
+        containerColor = Color(0xFFFBFBFB)
     ) { innerPadding ->
         if (contact == null) {
             Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Text("Contact not found")
+                if (isLoading) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                } else {
+                    Text("Contact not found")
+                }
             }
         } else {
             val name = if (contact is Employee) contact.name else (contact as? Officer)?.name ?: ""
@@ -131,216 +139,266 @@ fun EmployeeDetailScreen(
             val station = if (contact is Employee) contact.station else (contact as? Officer)?.station
             val district = if (contact is Employee) contact.district else (contact as? Officer)?.district
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp), // Increased spacing
-                contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp)
-            ) {
-                // 🔹 Profile Header
-                item {
-                    val bloodGroup = if (contact is Employee) contact.bloodGroup else (contact as? Officer)?.bloodGroup
-                    val range = if (district != null) Constants.getRangeForDistrict(district) else ""
+            var visible by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) { visible = true }
 
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        // 🩸 Blood Group Badge (Top Right)
-                        if (!bloodGroup.isNullOrBlank() && bloodGroup != "??") {
-                            Surface(
-                                modifier = Modifier
-                                    .padding(top = 4.dp, end = 4.dp)
-                                    .size(40.dp)
-                                    .align(Alignment.TopEnd),
-                                color = Color(0xFFC62828), // Deep Red
-                                shape = CircleShape,
-                                shadowElevation = 4.dp
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = bloodGroup,
-                                        color = Color.White,
-                                        fontSize = (12 * fontScale).sp,
-                                        fontWeight = FontWeight.Bold
+            Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(MaterialTheme.colorScheme.primary, Color(0xFFFBFBFB))
+                            )
+                        )
+                )
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(top = 100.dp, bottom = 40.dp)
+                ) {
+                    item {
+                        AnimatedVisibility(
+                            visible = visible,
+                            enter = fadeIn() + slideInVertically(initialOffsetY = { 40 })
+                        ) {
+                            ProfileHeader(
+                                name = name,
+                                rank = rank,
+                                photoUrl = photoUrlVal,
+                                placeholderRes = placeholderRes,
+                                unit = unit,
+                                station = station,
+                                district = district,
+                                bloodGroup = if (contact is Employee) contact.bloodGroup else (contact as? Officer)?.bloodGroup,
+                                fontScale = fontScale
+                            )
+                        }
+                    }
+
+                    item {
+                        AnimatedVisibility(
+                            visible = visible,
+                            enter = fadeIn(animationSpec = tween(600)) + slideInVertically(initialOffsetY = { 60 })
+                        ) {
+                            val metalNumber = if (contact is Employee) contact.metalNumber else null
+                            val gender = if (contact is Employee) contact.gender else "N/A"
+
+                            DetailSection(title = "Contact info", fontScale = fontScale) {
+                                if (!metalNumber.isNullOrBlank()) {
+                                    InfoRow(
+                                        label = "Metal Number",
+                                        value = metalNumber,
+                                        icon = Icons.Default.Badge,
+                                        fontScale = fontScale,
+                                        onAction = { IntentUtils.copyToClipboard(context, "Metal Number", metalNumber) }
+                                    )
+                                    CustomDivider()
+                                }
+
+                                if (gender != "N/A") {
+                                    val genderIcon = if (gender.contains("Female", ignoreCase = true)) Icons.Default.Woman else Icons.Default.Man
+                                    InfoRow(
+                                        label = "Gender",
+                                        value = gender,
+                                        icon = genderIcon,
+                                        fontScale = fontScale
+                                    )
+                                    CustomDivider()
+                                }
+
+                                if (!mobile.isNullOrBlank()) {
+                                    InfoRow(
+                                        label = "Mobile",
+                                        value = mobile,
+                                        icon = Icons.Default.Call,
+                                        fontScale = fontScale,
+                                        onAction = { IntentUtils.dial(context, mobile) },
+                                        secondaryActionIcon = painterResource(R.drawable.ic_whatsapp),
+                                        onSecondaryAction = { IntentUtils.openWhatsApp(context, mobile) },
+                                        onSmsAction = { IntentUtils.sendSms(context, mobile) }
+                                    )
+                                    if (!landline.isNullOrBlank() || !email.isNullOrBlank()) {
+                                        CustomDivider()
+                                    }
+                                }
+
+                                if (!landline.isNullOrBlank()) {
+                                    InfoRow(
+                                        label = "Landline",
+                                        value = landline,
+                                        icon = Icons.Default.Phone,
+                                        fontScale = fontScale,
+                                        onAction = { IntentUtils.dial(context, landline) }
+                                    )
+                                    if (!email.isNullOrBlank()) {
+                                        CustomDivider()
+                                    }
+                                }
+
+                                if (!email.isNullOrBlank()) {
+                                    InfoRow(
+                                        label = "Email",
+                                        value = email,
+                                        icon = Icons.Default.Email,
+                                        fontScale = fontScale,
+                                        onAction = { IntentUtils.sendEmail(context, email) }
                                     )
                                 }
                             }
                         }
-
-                        Column(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(140.dp) // Slightly larger
-                                    .shadow(8.dp, CircleShape)
-                                    .border(4.dp, Color.White, CircleShape)
-                                    .clip(CircleShape)
-                                    .background(Color.White)
-                            ) {
-                                AsyncImage(
-                                    model = photoUrlVal,
-                                    contentDescription = "Profile Photo",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop,
-                                    placeholder = painterResource(placeholderRes),
-                                    error = painterResource(placeholderRes)
-                                )
-                            }
-                            
-                            Spacer(Modifier.height(20.dp))
-                            
-                            // Name and Rank on same line
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)
-                            ) {
-                                Text(
-                                    text = name,
-                                    fontSize = (26 * fontScale).sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF8B1A1A), // Maroon
-                                    textAlign = TextAlign.Center
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    text = rank,
-                                    fontSize = (18 * fontScale).sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color.Gray,
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                            
-                            Spacer(Modifier.height(8.dp))
-
-                            // Subtitle Line 1: Duty Role, Unit / Station
-                            val line1 = buildString {
-                                val dr = if (contact is Employee) contact.subSection else {
-                                    // Check if Officer has subSection/dutyRole equivalent
-                                    // Based on previous views, Officer model might not have it yet, 
-                                    // but we can check if it was added or used.
-                                    "" 
-                                }
-                                if (!dr.isNullOrBlank()) {
-                                    append(dr)
-                                    append(", ")
-                                }
-                                if (!unit.isNullOrBlank()) {
-                                    append(unit)
-                                }
-                                if (!station.isNullOrBlank()) {
-                                    append(" / ")
-                                    append(station)
-                                }
-                            }
-                            
-                            if (line1.isNotBlank()) {
-                                Text(
-                                    text = line1,
-                                    fontSize = (17 * fontScale).sp,
-                                    color = Color(0xFF546E7A), // Blue-Grey
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-
-                            // Subtitle Line 2: District - Range
-                            val line2 = buildString {
-                                if (!district.isNullOrBlank()) {
-                                    append(district)
-                                }
-                                if (range.isNotBlank()) {
-                                    append(" - ")
-                                    append(range)
-                                }
-                            }
-
-                            if (line2.isNotBlank()) {
-                                Text(
-                                    text = line2,
-                                    fontSize = (17 * fontScale).sp,
-                                    color = Color(0xFF546E7A),
-                                    textAlign = TextAlign.Center,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
                     }
                 }
-
-                // 🔹 Contact Information Section
-                item {
-                    val metalNumber = if (contact is Employee) contact.metalNumber else null
-                    val gender = if (contact is Employee) contact.gender else "N/A"
-
-                    DetailSection(title = "Contact info", fontScale = fontScale) {
-                        if (!metalNumber.isNullOrBlank()) {
-                            InfoRow(
-                                label = "Metal Number",
-                                value = metalNumber,
-                                icon = Icons.Default.Badge,
-                                fontScale = fontScale,
-                                onAction = { IntentUtils.copyToClipboard(context, "Metal Number", metalNumber) }
-                            )
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
-                        }
-
-                        if (gender != "N/A") {
-                            val genderIcon = if (gender.contains("Female", ignoreCase = true)) Icons.Default.Woman else Icons.Default.Man
-                            InfoRow(
-                                label = "Gender",
-                                value = gender,
-                                icon = genderIcon,
-                                fontScale = fontScale
-                            )
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
-                        }
-
-                        if (!mobile.isNullOrBlank()) {
-                            InfoRow(
-                                label = "Mobile",
-                                value = mobile,
-                                icon = Icons.Default.Call,
-                                fontScale = fontScale,
-                                onAction = { IntentUtils.dial(context, mobile) },
-                                secondaryActionIcon = painterResource(R.drawable.ic_whatsapp),
-                                onSecondaryAction = { IntentUtils.openWhatsApp(context, mobile) },
-                                onSmsAction = { IntentUtils.sendSms(context, mobile) }
-                            )
-                            if (!landline.isNullOrBlank() || !email.isNullOrBlank()) {
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
-                            }
-                        }
-
-                        if (!landline.isNullOrBlank()) {
-                            InfoRow(
-                                label = "Landline",
-                                value = landline,
-                                icon = Icons.Default.Phone,
-                                fontScale = fontScale,
-                                onAction = { IntentUtils.dial(context, landline) }
-                            )
-                            if (!email.isNullOrBlank()) {
-                                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
-                            }
-                        }
-
-                        if (!email.isNullOrBlank()) {
-                            InfoRow(
-                                label = "Email",
-                                value = email,
-                                icon = Icons.Default.Email,
-                                fontScale = fontScale,
-                                onAction = { IntentUtils.sendEmail(context, email) }
-                            )
-                        }
-                    }
-                }
-
             }
+        }
+    }
+}
+
+@Composable
+private fun ProfileHeader(
+    name: String,
+    rank: String,
+    photoUrl: String?,
+    placeholderRes: Int,
+    unit: String?,
+    station: String?,
+    district: String?,
+    bloodGroup: String?,
+    fontScale: Float
+) {
+    val isCid = remember(unit, name) {
+        val u = unit?.uppercase() ?: ""
+        val n = name.uppercase()
+        u.contains("CID") || n.contains("CID")
+    }
+
+    val range = remember(district, isCid) {
+        if (isCid) "" else (if (district != null) Constants.getRangeForDistrict(district) else "")
+    }
+
+    val isStateHq = remember(unit) {
+        val u = unit?.uppercase() ?: ""
+        u.contains("INTELLIGENCE") || u.contains("KSRP") || u.contains("ISD") || u.contains("SCRB") || u.contains("INT.")
+    }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box {
+            Box(
+                modifier = Modifier
+                    .size(150.dp)
+                    .shadow(12.dp, CircleShape)
+                    .border(4.dp, Color.White, CircleShape)
+                    .clip(CircleShape)
+                    .background(Color.White)
+            ) {
+                AsyncImage(
+                    model = photoUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(placeholderRes),
+                    error = painterResource(placeholderRes)
+                )
+            }
+
+            if (!bloodGroup.isNullOrBlank() && bloodGroup != "??") {
+                Surface(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .align(Alignment.BottomEnd)
+                        .offset(x = (-4).dp, y = (-4).dp),
+                    color = Color(0xFFC62828),
+                    shape = CircleShape,
+                    shadowElevation = 6.dp,
+                    border = BorderStroke(2.dp, Color.White)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = bloodGroup,
+                            color = Color.White,
+                            fontSize = (13 * fontScale).sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        Text(
+            text = name,
+            fontSize = (28 * fontScale).sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF8B1A1A),
+            textAlign = TextAlign.Center,
+            lineHeight = (34 * fontScale).sp
+        )
+        Text(
+            text = rank,
+            fontSize = (20 * fontScale).sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF455A64),
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        // Subtitle Line 1: Unit / Station
+        val line1 = buildString {
+            if (!unit.isNullOrBlank()) append(unit)
+            if (!station.isNullOrBlank() && station != unit && !unit?.contains(station, ignoreCase = true)!!) {
+                if (this.isNotEmpty()) append(" / ")
+                append(station)
+            }
+        }
+        
+        if (line1.isNotBlank()) {
+            Text(
+                text = line1,
+                fontSize = (17 * fontScale).sp,
+                color = Color(0xFF607D8B),
+                textAlign = TextAlign.Center,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        // Subtitle Line 2: District - Range
+        val line2 = buildString {
+            val d = district?.trim() ?: ""
+            val u = unit?.trim() ?: ""
+            
+            // For state units, we usually don't need to show "Bengaluru City" if they are HQ
+            val showDistrict = if (isStateHq && d.contains("Bengaluru", ignoreCase = true)) {
+                false
+            } else if (d.isNotBlank() && !u.contains(d, ignoreCase = true) && !d.contains(u, ignoreCase = true)) {
+                true
+            } else {
+                false
+            }
+
+            if (showDistrict) {
+                append(d)
+            }
+
+            if (range.isNotBlank() && !u.contains(range, ignoreCase = true) && !d.contains(range, ignoreCase = true)) {
+                if (this.isNotEmpty()) append(" - ")
+                append(range)
+            }
+        }
+
+        if (line2.isNotBlank()) {
+            Text(
+                text = line2,
+                fontSize = (16 * fontScale).sp,
+                color = Color(0xFF78909C),
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
@@ -351,22 +409,23 @@ private fun DetailSection(
     fontScale: Float,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Column(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(1.dp, RoundedCornerShape(16.dp))
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .padding(16.dp)
+            .shadow(2.dp, RoundedCornerShape(24.dp)),
+        color = Color.White,
+        shape = RoundedCornerShape(24.dp)
     ) {
-        Text(
-            text = title,
-            fontSize = (18 * fontScale).sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
-        )
-        Spacer(Modifier.height(16.dp))
-        content()
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = title,
+                fontSize = (18 * fontScale).sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            content()
+        }
     }
 }
 
@@ -374,7 +433,7 @@ private fun DetailSection(
 private fun InfoRow(
     label: String,
     value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     fontScale: Float,
     onAction: (() -> Unit)? = null,
     secondaryActionIcon: androidx.compose.ui.graphics.painter.Painter? = null,
@@ -387,15 +446,36 @@ private fun InfoRow(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = { onAction?.invoke() },
-                onLongClick = { 
-                    IntentUtils.copyToClipboard(context, label, value)
-                }
-            ),
+                onLongClick = { IntentUtils.copyToClipboard(context, label, value) }
+            )
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Surface(
+            modifier = Modifier.size(40.dp),
+            color = Color(0xFFF5F7F8),
+            shape = CircleShape
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color(0xFF37474F),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        Spacer(Modifier.width(16.dp))
+
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = label, fontSize = (13 * fontScale).sp, color = Color.Gray.copy(alpha = 0.7f))
-            Text(text = value, fontSize = (15 * fontScale).sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+            Text(text = label, fontSize = (12 * fontScale).sp, color = Color.Gray)
+            Text(
+                text = value,
+                fontSize = (16 * fontScale).sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF263238)
+            )
         }
         
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -405,10 +485,9 @@ private fun InfoRow(
                         painter = secondaryActionIcon,
                         contentDescription = "WhatsApp",
                         tint = Color.Unspecified, 
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(26.dp)
                     )
                 }
-                Spacer(Modifier.width(4.dp))
             }
             
             if (onSmsAction != null) {
@@ -416,21 +495,40 @@ private fun InfoRow(
                     Icon(
                         imageVector = Icons.Default.Sms,
                         contentDescription = "SMS",
-                        tint = Color.Gray,
+                        tint = Color(0xFF546E7A),
                         modifier = Modifier.size(22.dp)
                     )
                 }
-                Spacer(Modifier.width(4.dp))
             }
             
-            IconButton(onClick = { onAction?.invoke() }) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = Color(0xFF37474F),
-                    modifier = Modifier.size(22.dp)
-                )
+            if (onAction != null && icon != Icons.Default.Call) {
+                 IconButton(onClick = onAction) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = "Action",
+                        tint = Color(0xFF546E7A),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            } else if (onAction != null && icon == Icons.Default.Call) {
+                IconButton(onClick = onAction) {
+                    Icon(
+                        imageVector = Icons.Default.Call,
+                        contentDescription = "Call",
+                        tint = Color(0xFF2E7D32),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun CustomDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 56.dp, top = 12.dp, bottom = 12.dp),
+        thickness = 0.5.dp,
+        color = Color.LightGray.copy(alpha = 0.3f)
+    )
 }

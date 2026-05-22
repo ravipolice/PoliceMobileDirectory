@@ -25,7 +25,7 @@ class OfficerRepository @Inject constructor(
     private val officerDao: OfficerDao
 ) {
     private val TAG = "OfficerRepository"
-    private val officersCollection = firestore.collection("officers_v2")
+    private val officersCollection = firestore.collection("officers")
     private val ioDispatcher = Dispatchers.IO
 
     fun getOfficers(): Flow<RepoResult<List<Officer>>> = officerDao.getAllOfficers()
@@ -39,27 +39,96 @@ class OfficerRepository @Inject constructor(
      */
     suspend fun syncAllOfficers(): RepoResult<Unit> = withContext(ioDispatcher) {
         try {
-            Log.d(TAG, "🔄 Syncing Officers from Firestore to Room...")
-            val snapshot = officersCollection.get().await()
-            val entities = snapshot.documents.mapNotNull { doc ->
-                val off = safeOfficerFromDoc(doc)
-                if (off != null) {
-                    val blob = SearchUtils.generateSearchBlob(
-                        off.agid, off.name, off.mobile, off.rank, off.unit, off.district, off.subDivision, off.station, off.email, off.bloodGroup
-                    )
-                    off.toEntity(blob)
-                } else null
+            Log.d(TAG, "🔄 Syncing Unified Directory (Officers + Employees)...")
+            
+            // 1. Fetch Directory Officers
+            val officerSnapshot = firestore.collection("officers").get().await()
+            val directoryOfficers = officerSnapshot.documents.mapNotNull { doc ->
+                safeOfficerFromDoc(doc)
             }
+            Log.d(TAG, "Fetched ${directoryOfficers.size} directory officers")
+
+            // 2. Fetch Registered Employees
+            val employeeSnapshot = firestore.collection("employees")
+                .whereEqualTo("isApproved", true)
+                .get().await()
+            
+            val registeredEmployees = employeeSnapshot.documents.mapNotNull { doc ->
+                try {
+                    doc.toObject(com.example.policemobiledirectory.model.Employee::class.java)?.copy(kgid = doc.id)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to parse employee ${doc.id}: ${e.message}")
+                    null
+                }
+            }
+            Log.d(TAG, "Fetched ${registeredEmployees.size} registered employees")
+
+            // 3. Merge Logic
+            val unifiedMap = mutableMapOf<String, OfficerEntity>()
+
+            // Helper to normalize mobile numbers for matching
+            fun normalizeMobile(m: String?): String? {
+                if (m.isNullOrBlank()) return null
+                val digits = m.replace(Regex("\\D"), "")
+                return if (digits.length >= 10) digits.takeLast(10) else digits
+            }
+
+            // Process Directory
+            directoryOfficers.forEach { off ->
+                val blob = SearchUtils.generateSearchBlob(
+                    off.agid, off.name, off.mobile, off.rank, off.unit, off.district, off.subDivision, off.station, off.email, off.bloodGroup
+                )
+                val entity = off.toEntity(blob)
+                unifiedMap[off.agid] = entity
+                
+                val normMobile = normalizeMobile(off.mobile)
+                if (normMobile != null) unifiedMap["TEL_$normMobile"] = entity
+            }
+
+            // Process Employees
+            registeredEmployees.forEach { emp ->
+                if (emp.isHidden) return@forEach
+                val blob = SearchUtils.generateSearchBlob(
+                    emp.kgid, emp.name, emp.mobile1, emp.rank, emp.unit, emp.district, "", emp.station, emp.email, emp.bloodGroup
+                )
+                val entity = OfficerEntity(
+                    agid = emp.kgid,
+                    name = emp.name,
+                    email = emp.email,
+                    rank = emp.rank,
+                    mobile = emp.mobile1,
+                    landline = emp.landline,
+                    station = emp.station,
+                    district = emp.district,
+                    unit = emp.unit,
+                    photoUrl = emp.photoUrl ?: emp.photoUrlFromGoogle,
+                    bloodGroup = emp.bloodGroup,
+                    isHidden = emp.isHidden,
+                    searchBlob = blob
+                )
+                
+                val normMobile = normalizeMobile(emp.mobile1)
+                if (normMobile != null && unifiedMap.containsKey("TEL_$normMobile")) {
+                    val existingEntity = unifiedMap["TEL_$normMobile"]
+                    if (existingEntity != null) {
+                        unifiedMap.remove(existingEntity.agid)
+                    }
+                }
+                
+                unifiedMap[emp.kgid] = entity
+            }
+
+            val finalEntities = unifiedMap.filter { !it.key.startsWith("TEL_") }.values.toList()
             
             officerDao.clearOfficers()
-            if (entities.isNotEmpty()) {
-                officerDao.insertOfficers(entities)
-                Log.d(TAG, "✅ Synced ${entities.size} officers to Room")
+            if (finalEntities.isNotEmpty()) {
+                officerDao.insertOfficers(finalEntities)
+                Log.d(TAG, "✅ Synced ${finalEntities.size} unified contacts to Room")
             }
             RepoResult.Success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Error syncing officers: ${e.message}", e)
-            RepoResult.Error(e, "Failed to sync officers")
+            Log.e(TAG, "Error during unified sync: ${e.message}", e)
+            RepoResult.Error(e, "Failed to sync directory")
         }
     }
 
@@ -192,6 +261,15 @@ class OfficerRepository @Inject constructor(
             val isHidden = getBoolean("isHidden", false)
             if (isHidden) return null
 
+            // Helper for dates
+            fun safeGetDate(key: String): java.util.Date? {
+                return try {
+                    doc.getDate(key)
+                } catch (e: Exception) {
+                    null // Ignore malformed dates (e.g. strings)
+                }
+            }
+
             return Officer(
                 agid = doc.id,
                 name = getString("name") ?: "",
@@ -205,8 +283,8 @@ class OfficerRepository @Inject constructor(
                 subDivision = getString("subDivision"),
                 photoUrl = getString("photoUrl"),
                 unit = getString("unit"),
-                createdAt = doc.getDate("createdAt"),
-                updatedAt = doc.getDate("updatedAt"),
+                createdAt = safeGetDate("createdAt"),
+                updatedAt = safeGetDate("updatedAt"),
                 isHidden = isHidden
             )
 

@@ -19,7 +19,7 @@ class OfficerRepository @Inject constructor(
     private val officerDao: OfficerDao
 ) {
     private val TAG = "OfficerRepository"
-    private val officersCollection = firestore.collection("officers_v2")
+    private val officersCollection = firestore.collection("officers")
     private val ioDispatcher = Dispatchers.IO
 
     fun getOfficers(): Flow<RepoResult<List<Officer>>> = officerDao.getAllOfficers()
@@ -84,28 +84,110 @@ class OfficerRepository @Inject constructor(
      */
     suspend fun syncAllOfficers(): RepoResult<Unit> = withContext(ioDispatcher) {
         try {
-            Log.d(TAG, "🔄 Syncing Officers from Firestore to Room...")
-            val snapshot = officersCollection.get().await()
-            val entities = snapshot.documents.mapNotNull { doc ->
-                val off = safeOfficerFromDoc(doc)
-                if (off != null) {
-                    off.toEntity()
-                } else null
-            }
+            Log.d(TAG, "🔄 Syncing Unified Directory (Officers + Employees)...")
             
-            officerDao.insertOfficers(entities)
-            
-            // Cleanup stale officers: if Firestore list is significantly large, assume it's the source of truth
-            if (entities.size > 100) {
-                 val firestoreAgids = entities.map { it.agid }
-                 officerDao.deleteStaleOfficers(firestoreAgids)
+            // 1. Fetch Directory Officers
+            val officerSnapshot = firestore.collection("officers").get().await()
+            val directoryOfficers = officerSnapshot.documents.mapNotNull { doc ->
+                safeOfficerFromDoc(doc)
             }
+            Log.d(TAG, "Fetched ${directoryOfficers.size} directory officers")
+
+            // 2. Fetch Registered Employees
+            val employeeSnapshot = firestore.collection("employees")
+                .whereEqualTo("isApproved", true)
+                .get().await()
+            
+            val registeredEmployees = employeeSnapshot.documents.mapNotNull { doc ->
+                try {
+                    doc.toObject(com.example.policemobiledirectory.model.Employee::class.java)?.copy(kgid = doc.id)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to parse employee ${doc.id}: ${e.message}")
+                    null
+                }
+            }
+            Log.d(TAG, "Fetched ${registeredEmployees.size} registered employees")
+
+            // 3. Merge Logic (Deduplicate by normalized mobile number)
+            val unifiedMap = mutableMapOf<String, OfficerEntity>()
+
+            // Helper to normalize mobile numbers for matching
+            fun normalizeMobile(m: String?): String? {
+                if (m.isNullOrBlank()) return null
+                val digits = m.replace(Regex("\\D"), "")
+                return if (digits.length >= 10) digits.takeLast(10) else digits
+            }
+
+            // Process Directory first
+            directoryOfficers.forEach { off ->
+                val entity = off.toEntity()
+                unifiedMap[off.agid] = entity // Use AGID as primary key
                 
-            Log.d(TAG, "✅ Synced ${entities.size} officers to Room")
+                // Track by normalized mobile for deduplication
+                val normMobile = normalizeMobile(off.mobile)
+                if (normMobile != null) {
+                    unifiedMap["TEL_$normMobile"] = entity
+                }
+            }
+
+            // Process Employees (they take priority)
+            registeredEmployees.forEach { emp ->
+                if (emp.isHidden) return@forEach
+                
+                val blob = SearchUtils.generateSearchBlob(
+                    emp.kgid, emp.name, emp.mobile1, emp.rank, emp.unit, emp.district, "", emp.station, emp.email, emp.bloodGroup
+                )
+                val entity = OfficerEntity(
+                    agid = emp.kgid,
+                    name = emp.name,
+                    email = emp.email,
+                    rank = emp.rank,
+                    mobile = emp.mobile1,
+                    landline = emp.landline,
+                    station = emp.station,
+                    district = emp.district,
+                    unit = emp.unit,
+                    photoUrl = emp.photoUrl ?: emp.photoUrlFromGoogle,
+                    bloodGroup = emp.bloodGroup,
+                    isHidden = emp.isHidden,
+                    searchBlob = blob
+                )
+
+                // Overwrite any directory record with the same normalized mobile
+                val normMobile = normalizeMobile(emp.mobile1)
+                if (normMobile != null && unifiedMap.containsKey("TEL_$normMobile")) {
+                    val existingEntity = unifiedMap["TEL_$normMobile"]
+                    if (existingEntity != null) {
+                        // Remove the directory record by its AGID to prevent double-entry
+                        unifiedMap.remove(existingEntity.agid)
+                    }
+                }
+                
+                // Ensure the Employee record exists by KGID
+                unifiedMap[emp.kgid] = entity
+            }
+
+            // Final set of entities
+            val finalEntities = unifiedMap.filter { !it.key.startsWith("TEL_") }.values.toList()
+            
+            Log.d(TAG, "Final Unified Directory Size: ${finalEntities.size}")
+
+            officerDao.insertOfficers(finalEntities)
+            
+            // Cleanup stale officers in Room
+            if (finalEntities.size > 100) {
+                 val allIds = finalEntities.map { it.agid }
+                 val roomCount = officerDao.getOfficerCount()
+                 if (roomCount > finalEntities.size) {
+                     Log.d(TAG, "Cleaning up stale records in Room...")
+                     officerDao.deleteOfficersNotInList(allIds)
+                 }
+            }
+
             RepoResult.Success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Error syncing officers: ${e.message}", e)
-            RepoResult.Error(e, "Failed to sync officers")
+            Log.e(TAG, "Error during unified sync: ${e.message}", e)
+            RepoResult.Error(e, "Failed to sync directory")
         }
     }
 

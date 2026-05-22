@@ -1,0 +1,54 @@
+package com.example.policemobiledirectory.data.local
+
+import androidx.room.Entity
+import androidx.room.Index
+import androidx.room.PrimaryKey
+import java.util.Date
+
+@Entity(
+    tableName = "admin_employees",
+    indices = [
+        Index(value = ["email"]),
+        Index(value = ["name"]),
+        Index(value = ["station"]),
+        Index(value = ["district"]),
+        Index(value = ["rank"]),
+        Index(value = ["mobile1"]),
+        Index(value = ["mobile2"]),
+        Index(value = ["metalNumber"]),
+        Index(value = ["searchBlob"])
+    ]
+)
+data class AdminEmployeeEntity(
+    @PrimaryKey
+    val kgid: String = "",
+    val name: String = "",
+    val email: String = "",
+    val pin: String? = null,
+    val mobile1: String? = null,
+    val mobile2: String? = null,
+    val rank: String? = null,
+    val metalNumber: String? = null,
+    val district: String? = null,
+    val station: String? = null,
+    val bloodGroup: String? = null,
+    val photoUrl: String? = null,
+    val fcmToken: String? = null,
+    val isAdmin: Boolean = false,
+    val createdAt: Date? = null,
+    val updatedAt: Date? = null,
+    val firebaseUid: String? = null,
+    val photoUrlFromGoogle: String? = null,
+    val isApproved: Boolean = true,
+    val unit: String? = null,
+    val searchBlob: String = "",
+    val landline: String? = null,
+    val landline2: String? = null,
+    val isManualStation: Boolean = false,
+    val isManualSubSection: Boolean = false,
+    val gender: String = "Male",
+    val serviceStartDate: Date? = null,
+    val dateOfBirth: Date? = null,
+    val subSection: String? = null,
+    val dutyRole: String? = null
+)

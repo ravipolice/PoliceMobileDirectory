@@ -13,7 +13,7 @@ const db = admin.firestore();
 const collectionRef = db.collection('officers_v2');
 
 // 2. Read and Parse CSV
-const csvPath = '../KSP_Officers_App.csv';
+const csvPath = '../KSP_Officers_App_FINAL.csv';
 const fileContent = fs.readFileSync(csvPath, 'utf8');
 
 const records = parse(fileContent, {

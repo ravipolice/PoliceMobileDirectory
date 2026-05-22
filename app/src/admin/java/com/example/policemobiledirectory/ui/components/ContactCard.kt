@@ -54,10 +54,25 @@ fun ContactCard(
 ) {
     val context = LocalContext.current
     
-    val name = employee?.name ?: officer?.name ?: ""
+    val rawName = employee?.name ?: officer?.name ?: ""
     val rank = employee?.displayRank ?: officer?.rank
     val station = employee?.station ?: officer?.station ?: officer?.unit // station/section for subtitle
     val district = employee?.district ?: officer?.district
+    
+    val displayName = if (rawName.isNotBlank() && rawName.equals(rank, ignoreCase = true)) {
+        val parts = mutableListOf(rawName)
+        if (!station.isNullOrBlank()) {
+            val cleanStation = station.replace("(?i)\\bPS\\b".toRegex(), "").replace("(?i)\\bPolice Station\\b".toRegex(), "").trim()
+            if (cleanStation.isNotBlank()) parts.add(cleanStation)
+        }
+        if (!district.isNullOrBlank() && !district.equals(station, ignoreCase = true)) {
+            parts.add(district)
+        }
+        parts.joinToString(" ")
+    } else {
+        rawName
+    }
+
     val photoUrl = employee?.photoUrl ?: employee?.photoUrlFromGoogle ?: officer?.photoUrl
     val bloodGroup = employee?.bloodGroup ?: officer?.bloodGroup
     val placeholderRes = if (employee != null) R.drawable.officer else R.drawable.ic_officer_building
@@ -88,7 +103,7 @@ fun ContactCard(
                 Color(0xFF1565C0), // Royal Blue
                 Color(0xFF6D4C41), // Brown
             )
-            val avatarBg = avatarColors[Math.abs(name.hashCode()) % avatarColors.size]
+            val avatarBg = avatarColors[Math.abs(displayName.hashCode()) % avatarColors.size]
 
             Box(
                 modifier = Modifier
@@ -107,7 +122,7 @@ fun ContactCard(
                         error = painterResource(placeholderRes)
                     )
                 } else {
-                    val initial = name.takeIf { it.isNotBlank() }?.first()?.uppercase() ?: "?"
+                    val initial = displayName.takeIf { it.isNotBlank() }?.first()?.uppercase() ?: "?"
                     Text(
                         text = initial.toString(),
                         fontSize = 18.sp,
@@ -129,14 +144,14 @@ fun ContactCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = name,
+                        text = displayName,
                         fontWeight = FontWeight.Bold,
                         fontSize = (15 * fontScale).sp,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f, fill = false)
                     )
 
-                    if (!rank.isNullOrBlank()) {
+                    if (!rank.isNullOrBlank() && !rawName.equals(rank, ignoreCase = true)) {
                         Spacer(Modifier.width(6.dp))
                         Text(
                             text = rank,

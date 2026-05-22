@@ -519,6 +519,34 @@ class AuthViewModel @Inject constructor(
                     return@launch
                 }
 
+                // 2️⃣ ⭐ UPDATED: PREVENT REGISTRATION WITH DEPARTMENTAL NUMBERS
+                // Rule: If the number exists in 'officers' OR 'officers_v2', it's departmental.
+                if (entity.email.lowercase().trim() != "ravipolice@gmail.com") {
+                    val mobileToMatch = entity.mobile1.trim()
+                    if (mobileToMatch.isNotBlank()) {
+                        try {
+                            Log.d("RegisterUser", "🔍 Checking '$mobileToMatch' against 'officers'...")
+                            
+                            // Check production officers
+                            val officerMatch = firestore.collection("officers")
+                                .whereEqualTo("mobile", mobileToMatch)
+                                .limit(1).get().await()
+
+                            if (!officerMatch.isEmpty) {
+                                Log.w("RegisterUser", "❌ Blocked departmental number: $mobileToMatch")
+                                _pendingStatus.value = OperationStatus.Error(
+                                    "Registration Blocked: The mobile number ($mobileToMatch) is an official Departmental number. " +
+                                    "Please register using your personal mobile number."
+                                )
+                                return@launch
+                            }
+                            Log.d("RegisterUser", "✅ Mobile number cleared (not departmental)")
+                        } catch (e: Exception) {
+                            Log.e("RegisterUser", "⚠️ Departmental check error: ${e.message}")
+                        }
+                    }
+                }
+
                 // 2️⃣ Prepare safe PendingRegistration object
                 var finalPin = entity.pin
                 if (finalPin.length == 6 && !finalPin.contains(":")) {

@@ -1237,6 +1237,7 @@ open class EmployeeRepository @Inject constructor(
     suspend fun getEmployeeByEmail(email: String): EmployeeEntity? = withContext(ioDispatcher) {
         val normalizedEmail = email.trim().lowercase()
         val rawEmail = email.trim()
+        val currentUser = auth.currentUser
 
         Log.d(TAG, "🔍 getEmployeeByEmail: Searching for '$normalizedEmail' (raw: '$rawEmail')")
 
@@ -1258,7 +1259,6 @@ open class EmployeeRepository @Inject constructor(
         }
 
         // 2. Fallback: Firestore (GATED: Only if authenticated)
-        val currentUser = auth.currentUser
         Log.d(TAG, "📡 Fetching from Firestore... Current Auth UID: ${currentUser?.uid}, Email: ${currentUser?.email}")
 
         var snapshot = try {
@@ -1284,8 +1284,8 @@ open class EmployeeRepository @Inject constructor(
         var finalDoc = snapshot?.documents?.firstOrNull()
 
         // --- 🆕 3. ALWAYS CHECK ADMINS COLLECTION AS FINAL FALLBACK ---
+        // A. Try Query by Email (requires broader read permissions)
         try {
-            // A. Check by email (where email is a FIELD)
             val adminSnapshot = firestore.collection("admins").whereEqualTo(FIELD_EMAIL, normalizedEmail).limit(1).get().await()
             if (!adminSnapshot.isEmpty) {
                 isAdminCollection = true
@@ -1293,53 +1293,117 @@ open class EmployeeRepository @Inject constructor(
                     Log.d(TAG, "✅ Found user in 'admins' collection by email field")
                     finalDoc = adminSnapshot.documents.first()
                 }
-            } else {
-                // B. Check by normalized email (as DOCUMENT ID)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ Admins query failed: ${e.message}")
+        }
+
+        // B. Try Document ID = Email (often works when queries are blocked)
+        if (finalDoc == null) {
+            try {
                 val adminDocByEmail = firestore.collection("admins").document(normalizedEmail).get().await()
                 if (adminDocByEmail.exists()) {
                     Log.d(TAG, "✅ Found user in 'admins' collection by Email ID: $normalizedEmail")
                     isAdminCollection = true
-                    if (finalDoc == null) {
-                        finalDoc = adminDocByEmail
-                    }
-                } else if (currentUser != null) {
-                    // C. Check by UID (as DOCUMENT ID)
-                    val adminDocByUid = firestore.collection("admins").document(currentUser.uid).get().await()
-                    if (adminDocByUid.exists()) {
-                        Log.d(TAG, "✅ Found user in 'admins' collection by UID ID: ${currentUser.uid}")
-                        isAdminCollection = true
-                        if (finalDoc == null) {
-                            finalDoc = adminDocByUid
-                        }
-                    }
+                    finalDoc = adminDocByEmail
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ Admins email doc lookup failed: ${e.message}")
+            }
+        }
+
+        // C. Try Document ID = UID (Critical for security rules 'exists' check)
+        if (finalDoc == null && currentUser != null) {
+            try {
+                val adminDocByUid = firestore.collection("admins").document(currentUser.uid).get().await()
+                if (adminDocByUid.exists()) {
+                    Log.d(TAG, "✅ Found user in 'admins' collection by UID ID: ${currentUser.uid}")
+                    isAdminCollection = true
+                    finalDoc = adminDocByUid
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ Admins UID doc lookup failed: ${e.message}")
+            }
+        }
+
+        if (finalDoc != null) {
+            // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
+            val docKgid = finalDoc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: finalDoc.id
+            
+            Log.d(TAG, "✅ Found Firestore doc: ${finalDoc.id} (KGID: $docKgid)")
+
+            // Convert to Entity
+            var entity = buildEmployeeEntityFromDoc(finalDoc, pinHash = finalDoc.getString(FIELD_PIN_HASH).orEmpty())
+            
+            if (isAdminCollection) {
+                Log.d(TAG, "⭐ User identified as ADMIN from collection")
+                // Admins are always approved and have admin rights
+                entity = entity.copy(
+                    isAdmin = true, 
+                    isApproved = true,
+                    // Ensure email is set even if missing in admins doc
+                    email = if (entity.email.isBlank()) normalizedEmail else entity.email
+                )
+                
+                // ✅ Ensure current UID is synchronized as admin (for rules)
+                if (currentUser != null) {
+                    syncAdminUid(normalizedEmail, currentUser.uid, docKgid)
                 }
             }
+            
+            // Update local cache
+            employeeDao.insertEmployee(entity)
+            return@withContext entity
+        } else if (isAdminCollection) {
+             // Create an ad-hoc entity for the admin if they aren't in employees but found in admins
+             Log.d(TAG, "🛠️ Creating ad-hoc Admin entity for ${currentUser?.uid ?: "Unknown UID"}")
+             val adminEntity = EmployeeEntity(
+                 kgid = if (currentUser != null) "ADMIN_" + currentUser.uid else "ADMIN_SUPER",
+                 name = "Administrator",
+                 email = normalizedEmail,
+                 isAdmin = true,
+                 isApproved = true,
+                 firebaseUid = currentUser?.uid ?: ""
+             )
+             employeeDao.insertEmployee(adminEntity)
+             return@withContext adminEntity
+        }
+
+        Log.w(TAG, "❌ No record found in Firestore for $email after all checks")
+        return@withContext null
+    }
+
+    /**
+     * Ensures the 'admins' collection contains a document with ID = firebaseUid.
+     * This is required for the Firestore security rule 'isAdmin()' to work.
+     */
+    suspend fun syncAdminUid(email: String, firebaseUid: String, kgid: String? = null) {
+        try {
+            val normalizedEmail = email.trim().lowercase()
+            var finalKgid = kgid
+            
+            if (finalKgid.isNullOrBlank()) {
+                val snapshot = employeesCollection.whereEqualTo(FIELD_EMAIL, normalizedEmail).limit(1).get().await()
+                finalKgid = snapshot.documents.firstOrNull()?.id
+            }
+
+            val adminData = mutableMapOf(
+                "email" to normalizedEmail,
+                "isActive" to true,
+                "uid" to firebaseUid,
+                "updatedAt" to System.currentTimeMillis()
+            )
+            
+            if (!finalKgid.isNullOrBlank()) {
+                adminData["kgid"] = finalKgid
+            }
+            
+            // Use firebaseUid as the document ID so rules can find it easily via exists()
+            firestore.collection("admins").document(firebaseUid).set(adminData, com.google.firebase.firestore.SetOptions.merge()).await()
+            Log.d(TAG, "✅ Synchronized admin UID ($firebaseUid) for $normalizedEmail")
         } catch (e: Exception) {
-            Log.w(TAG, "⚠️ Failed to check admins collection: ${e.message}")
+            Log.w(TAG, "⚠️ Failed to sync admin UID: ${e.message}")
         }
-
-        if (finalDoc == null) {
-            Log.w(TAG, "❌ No record found in Firestore for $email")
-            return@withContext null
-        }
-
-        // ✅ CRITICAL FIX: Ensure kgid is set from document ID if field is missing
-        val docId = finalDoc.id
-        val docKgid = finalDoc.getString(FIELD_KGID)?.takeIf { it.isNotBlank() } ?: docId
-        
-        Log.d(TAG, "✅ Found Firestore doc: $docId (KGID: $docKgid)")
-
-        // Convert to Entity
-        var entity = buildEmployeeEntityFromDoc(finalDoc, pinHash = finalDoc.getString(FIELD_PIN_HASH).orEmpty())
-        
-        if (isAdminCollection) {
-            // Admins are always approved and have admin rights
-            entity = entity.copy(isAdmin = true, isApproved = true)
-        }
-        
-        // Update local cache
-        employeeDao.insertEmployee(entity)
-        return@withContext entity
     }
 
     // Fetch current logged in user from Firebase and cache locally

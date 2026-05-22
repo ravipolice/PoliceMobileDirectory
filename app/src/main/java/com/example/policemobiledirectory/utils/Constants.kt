@@ -19,8 +19,8 @@ object Constants {
         // PI Group
         "PI", "PIW", "RPI", "S.RPI", "CPI", "WPI",
         // Officers
-        "ACP", "DSP", "ADDL_SP", "SP", "ASST.CMDT", "DEPT.CMDT", "CMDT",
-        "DCP", "DIG", "IGP", "ADGP", "DG", "DG & IGP",
+        "ACP", "DySP", "ASP", "Addl.SP", "SP", "ASST.CMDT", "DEPT.CMDT", "CMDT",
+        "DCP", "DIG", "IGP", "ADGP", "DGP", "DG", "DG & IGP",
         // Ministerial / Support
         "FDA", "SDA", "SS", "STENO", "TYPIST", "PA", "FOLLOWER",
         // Intelligence / Others
@@ -58,9 +58,9 @@ object Constants {
     )
 
     val ksrpBattalions = listOf(
-        "1st Bn – Bengaluru", "2nd Bn – Belagavi", "3rd Bn – Bengaluru", "4th Bn – Bengaluru",
-        "5th Bn – Mysuru", "6th Bn – Kalaburagi", "7th Bn – Mangaluru", "8th Bn – Shivamogga",
-        "9th Bn – Bengaluru", "10th Bn – Shiggavi", "11th Bn – Hassan", "12th Bn – Tumakuru"
+        "1st Bn - Bengaluru", "2nd Bn - Belagavi", "3rd Bn - Bengaluru", "4th Bn - Bengaluru",
+        "5th Bn - Mysuru", "6th Bn - Kalaburagi", "7th Bn - Mangaluru", "8th Bn - Shivamogga",
+        "9th Bn - Bengaluru", "10th Bn - Shiggavi", "11th Bn - Hassan", "12th Bn - Tumakuru"
     ).sorted()
 
     val irbBattalions = listOf(
@@ -82,13 +82,13 @@ object Constants {
     // Functional Units for filtering
     val defaultUnitsList = listOf(
         // High Priority Units
-        "L&O", "DAR", "CAR", "Ministrial", "KSRP", "ISD", "State INT", "CEN", "DCRE", "FSL", "CID",
+        "L&O", "DAR", "CAR", "Ministerial", "KSRP", "ISD", "Intelligence", "CEN", "DCRE", "FSL", "CID",
         // Other Units
-        "Admin", "ASC Team", "BDDS", "C Room", "CCB", "CCRB", "CDR", "Coast Guard", "Computer", 
+        "Admin", "ASC Team", "BDDS", "Control Room", "CCB", "CCRB", "CDR", "Coast Guard", "Computer", 
         "Court", "CSB", "CSP", "DCIB", "DCRB", "Dog Squad", "DSB", "ERSS", "ESCOM", 
         "Excise", "Fire", "Forest", "FPB", "FRRO", "Guest House", "Health", "Home Guard", 
-        "INT", "IPS", "Lokayukta", "Minisrial", "Others", "Prison", "PTS", 
-        "Railway", "RTO", "S INT", "SCRB", "Social Media", "Toll", "Traffic", "VVIP", "Wireless"
+        "IPS", "Lokayukta", "Others", "Prison", 
+        "Railway", "RTO", "SCRB", "Social Media", "Toll", "Traffic", "VVIP", "Wireless", "Training"
     )
 
 

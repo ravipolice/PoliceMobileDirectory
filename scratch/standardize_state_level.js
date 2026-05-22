@@ -1,50 +1,89 @@
-const xlsx = require('xlsx');
+const fs = require('fs');
 
-const filePath = '../KSP_Contacts_UnitWise_Final.xlsx';
-const wb = xlsx.readFile(filePath);
-const sheetName = 'ALL';
-const sheet = wb.Sheets[sheetName];
-const data = xlsx.utils.sheet_to_json(sheet);
+const DATA_FILE = 'officers_merge_ready.json';
 
-const genericUnits = ['HQ', 'State HQ', 'Administration', 'Crime', 'Statelevel', 'Admin', ''];
-
-let updatedCount = 0;
-
-data.forEach(row => {
-    // Only target State Level records with generic unit values
-    if (row.Range === 'State Level' && genericUnits.includes(row.Unit)) {
-        const name = (row.Name || '').toLowerCase();
-        const station = (row.Station || '').toLowerCase();
-        
-        // 1. Districts (Regional or specific cell offices)
-        if (name.includes('division') || name.includes('cell') || name.includes('district') || station.includes('division')) {
-            // Keep top leadership/admin as HQ
-            if (name.includes('admin') || name.includes('chief') || name.includes('dg & igp')) {
-                row.Unit = 'HQ';
-            } else {
-                row.Unit = 'Districts';
-            }
-            updatedCount++;
-        }
-        // 2. HQ (Everything else in State Level HQ)
-        else {
-            row.Unit = 'HQ';
-            updatedCount++;
-        }
+function standardizeData() {
+    if (!fs.existsSync(DATA_FILE)) {
+        console.error('Data file not found');
+        return;
     }
-});
 
-console.log(`Standardized ${updatedCount} generic State Level records into 'HQ' and 'Districts'.`);
+    const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    let modifiedCount = 0;
 
-const headers = ['agid', 'Section', 'Unit', 'Range', 'District', 'Sub Division', 'Name', 'Rank', 'Station', 'Office 1', 'Office 2', 'Mobile 1', 'Mobile 2', 'Email', 'Email2', 'searchBlob'];
-const wsData = [headers];
-data.forEach(row => {
-    wsData.push(headers.map(h => row[h] || ''));
-});
+    const standardized = data.map(officer => {
+        const name = (officer.name || "").toUpperCase();
+        const unit = (officer.unit || "").toUpperCase();
+        const district = (officer.district || "").toUpperCase();
+        
+        let changed = false;
 
-const newSheet = xlsx.utils.aoa_to_sheet(wsData);
-newSheet['!cols'] = headers.map(() => ({wch: 25}));
-wb.Sheets[sheetName] = newSheet;
-xlsx.writeFile(wb, filePath);
+        // CID Standardisation
+        if (name.includes('CID') || unit.includes('CID') || district.includes('CID')) {
+            if (officer.unit !== 'CID' || officer.district !== 'Bengaluru City') {
+                officer.unit = 'CID';
+                officer.district = 'Bengaluru City';
+                officer.subDivision = '';
+                changed = true;
+            }
+        }
 
-console.log('Successfully updated Excel. Refreshing all sheets...');
+        // Intelligence Standardisation (INT)
+        else if (name.includes('INT.') || name.includes('INTELLIGENCE') || unit.includes('INT.') || unit.includes('INTELLIGENCE')) {
+            if (officer.unit !== 'Intelligence' || officer.district !== 'Bengaluru City') {
+                officer.unit = 'Intelligence';
+                officer.district = 'Bengaluru City';
+                officer.subDivision = '';
+                changed = true;
+            }
+        }
+
+        // KSRP Standardisation
+        else if (name.includes('KSRP') || unit.includes('KSRP')) {
+            if (officer.unit !== 'KSRP' || officer.district !== 'Bengaluru City') {
+                officer.unit = 'KSRP';
+                officer.district = 'Bengaluru City';
+                officer.subDivision = '';
+                changed = true;
+            }
+        }
+
+        // ISD Standardisation
+        else if (name.includes('ISD') || unit.includes('ISD')) {
+            if (officer.unit !== 'ISD' || officer.district !== 'Bengaluru City') {
+                officer.unit = 'ISD';
+                officer.district = 'Bengaluru City';
+                officer.subDivision = '';
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            modifiedCount++;
+            // Update searchBlob
+            const searchTerms = [
+                officer.name,
+                officer.rank,
+                officer.unit,
+                officer.district,
+                officer.subDivision,
+                officer.station,
+                officer.mobile,
+                officer.landline,
+                officer.email
+            ].filter(Boolean).map(s => s.toString().toLowerCase());
+            officer.searchBlob = searchTerms.join(' ');
+        }
+
+        return officer;
+    });
+
+    if (modifiedCount > 0) {
+        fs.writeFileSync(DATA_FILE, JSON.stringify(standardized, null, 2));
+        console.log(`Successfully updated ${modifiedCount} state-level records.`);
+    } else {
+        console.log('No records needed updating.');
+    }
+}
+
+standardizeData();

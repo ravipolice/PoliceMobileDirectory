@@ -18,12 +18,15 @@ interface OfficerDao {
     @Query("DELETE FROM officers")
     suspend fun clearOfficers()
 
+    @Query("SELECT COUNT(*) FROM officers")
+    suspend fun getOfficerCount(): Int
+
     /**
      * Delete all officers NOT in the provided list of AGIDs.
      * Used for full sync cleanup.
      */
     @Query("DELETE FROM officers WHERE agid NOT IN (:agids)")
-    suspend fun deleteStaleOfficers(agids: List<String>)
+    suspend fun deleteOfficersNotInList(agids: List<String>)
 
     @Query("DELETE FROM officers WHERE agid = :agid")
     suspend fun deleteByAgid(agid: String)

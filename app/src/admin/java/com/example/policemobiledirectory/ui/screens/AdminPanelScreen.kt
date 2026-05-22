@@ -349,6 +349,15 @@ fun AdminUnifiedDashboard(
         }
         item {
             DashboardActionCardLarge(
+                title = "Upload Roster",
+                icon = Icons.Default.CloudUpload,
+                colorStart = Color(0xFF008080),
+                colorEnd = Color(0xFF00BFA5),
+                onClick = { navController.navigate(Routes.UPLOAD_CSV) }
+            )
+        }
+        item {
+            DashboardActionCardLarge(
                 title = "Manage Resources",
                 icon = Icons.Default.Category,
                 colorStart = Color(0xFFFF9800),

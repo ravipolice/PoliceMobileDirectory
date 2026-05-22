@@ -54,6 +54,10 @@ service cloud.firestore {
       allow write: if isAdmin() || isServiceAccount();
     }
 
+    match /admin_employees/{employeeId} {
+      allow read, write: if isAdmin() || isServiceAccount();
+    }
+
     /* ============================================================
        🔹 PENDING REGISTRATIONS
     ============================================================ */

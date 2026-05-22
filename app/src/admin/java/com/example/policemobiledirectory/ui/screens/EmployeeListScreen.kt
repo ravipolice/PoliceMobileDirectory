@@ -356,7 +356,9 @@ private fun EmployeeListContent(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 16.dp)
                     ) {
-                        items(filteredContacts, key = { it.id }) { contact ->
+                        items(filteredContacts, key = { 
+                            if (it.officer != null) "officer_${it.id}" else "employee_${it.id}"
+                        }) { contact ->
                             ContactCard(
                                 employee = contact.employee,
                                 officer = contact.officer,
@@ -368,6 +370,7 @@ private fun EmployeeListContent(
                                     } else if (contact.officer != null) {
                                         navController.navigate("${com.example.policemobiledirectory.navigation.Routes.ADD_OFFICER}?officerId=${contact.id}")
                                     }
+                                    // adminEmployee contacts are read-only until they register
                                 },
                                 onDelete = { 
                                     if (contact.employee != null) {
@@ -375,6 +378,7 @@ private fun EmployeeListContent(
                                     } else if (contact.officer != null) {
                                         viewModel.deleteOfficer(contact.id)
                                     }
+                                    // adminEmployee deletion not exposed from list view
                                 },
                                 onToggleApproval = if (contact.employee != null) {
                                     { viewModel.updateEmployeeStatus(contact.id, !contact.employee.isApproved) }

@@ -45,14 +45,18 @@ data class Officer(
             val stationName = station ?: ""
             return when {
                 listOf("Traffic").any { stationName.contains(it, ignoreCase = true) } -> "Traffic"
-                Regex("\\b(Control Room)\\b", RegexOption.IGNORE_CASE).containsMatchIn(stationName) -> "C Room"
+                Regex("\\b(Control Room|Wireless|W/L)\\b", RegexOption.IGNORE_CASE).containsMatchIn(stationName) -> "Wireless"
                 Regex("\\b(CEN|Cyber)\\b", RegexOption.IGNORE_CASE).containsMatchIn(stationName) -> "CEN"
-                listOf("Women").any { stationName.contains(it, ignoreCase = true) } -> "Women"
+                listOf("Women").any { stationName.contains(it, ignoreCase = true) } -> "Women PS"
                 listOf("DPO", "Computer", "Admin", "Office").any { stationName.contains(it, ignoreCase = true) } -> "Admin"
                 Regex("\\bDAR\\b", RegexOption.IGNORE_CASE).containsMatchIn(stationName) -> "DAR"
                 listOf("DCRB").any { stationName.contains(it, ignoreCase = true) } -> "DCRB"
-                Regex("\\b(DSB|Intelligence|INT)\\b", RegexOption.IGNORE_CASE).containsMatchIn(stationName) -> "DSB"
-                listOf("FPB", "MCU", "SMMC", "DCRE", "Lokayukta", "ESCOM").any { stationName.contains(it, ignoreCase = true) } -> "Special"
+                Regex("\\b(DSB)\\b", RegexOption.IGNORE_CASE).containsMatchIn(stationName) -> "DSB"
+                Regex("\\b(Intelligence|INT)\\b", RegexOption.IGNORE_CASE).containsMatchIn(stationName) -> "Intelligence"
+                listOf("DCRE").any { stationName.contains(it, ignoreCase = true) } -> "DCRE"
+                listOf("Lokayukta", "KLA").any { stationName.contains(it, ignoreCase = true) } -> "Lokayukta"
+                listOf("Training", "PTS", "KPA").any { stationName.contains(it, ignoreCase = true) } -> "Training"
+                listOf("FPB", "MCU", "SMMC", "ESCOM").any { stationName.contains(it, ignoreCase = true) } -> "Special"
                 else -> "L&O"
             }
         }

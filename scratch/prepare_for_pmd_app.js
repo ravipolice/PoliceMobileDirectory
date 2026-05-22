@@ -36,6 +36,15 @@ data.forEach((row, index) => {
     const unit = (row.Unit || '').trim();
     const district = (row.District || '').trim();
     const subDivision = (row['Sub Division'] || '').trim();
+    
+    // ✅ Ensure Name is populated (use Rank + Station as fallback)
+    if (!row.Name || row.Name.trim() === '') {
+        if (rank && station) {
+            row.Name = `${rank}, ${station}`;
+        } else {
+            row.Name = rank || station || 'Police Officer';
+        }
+    }
     const name = (row.Name || '').trim();
     
     // Generate searchBlob (concatenation of all relevant fields for easy search)

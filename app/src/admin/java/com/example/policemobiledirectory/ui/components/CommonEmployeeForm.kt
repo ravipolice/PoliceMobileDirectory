@@ -12,8 +12,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,11 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddAPhoto
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.core.content.FileProvider
 import coil.compose.rememberAsyncImagePainter
 import androidx.compose.ui.graphics.Color
@@ -99,6 +98,8 @@ fun CommonEmployeeForm(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var isSubmitting by remember { mutableStateOf(false) } // ✅ Track submission state
+    var pinVisible by remember { mutableStateOf(false) }
+    var confirmPinVisible by remember { mutableStateOf(false) }
 
     // Get constants from ViewModel
     val ranks by constantsViewModel.ranks.collectAsStateWithLifecycle()
@@ -118,6 +119,10 @@ fun CommonEmployeeForm(
     val globalHiddenFields by constantsViewModel.globalHiddenFields.collectAsStateWithLifecycle() // ✅ Global Hidden Fields
     val ksrpBattalions by constantsViewModel.ksrpBattalions.collectAsStateWithLifecycle()
     val unitSections by constantsViewModel.currentUnitSections.collectAsStateWithLifecycle() // ✅ Fix: Collect unitSections
+
+    LaunchedEffect(Unit) {
+        constantsViewModel.forceRefresh()
+    }
 
     // Identify if it has custom sections (e.g. State INT or manual sections)
     // Need this early for visibility logic
@@ -170,6 +175,10 @@ fun CommonEmployeeForm(
     // ✅ Get selected Unit Model to check for hidden fields (Unit Level)
     val selectedUnitModel = remember(unit, fullUnits) {
         fullUnits.find { it.name == unit }
+    }
+
+    val isSpecialUnit = remember(selectedUnitModel) {
+        selectedUnitModel?.mappingType == "none"
     }
 
     // Helper to check if field is visible (Hybrid Logic: Global OR Unit)
@@ -233,6 +242,14 @@ fun CommonEmployeeForm(
     // Check if rank triggers Auto-generate AGID and hide field
     val isAutoAgidRank = remember(rank) {
         Constants.ranksWithAutoAgid.contains(rank)
+    }
+
+    val isAutoAgid = isAutoAgidRank
+    val isDistrictLevelUnit = isDistrictLevelByModel
+    val hasSections = remember(unitSections, unit, district) { unitSections.isNotEmpty() || unit == "State INT" || district == "HQ" }
+
+    LaunchedEffect(unit) {
+        constantsViewModel.loadSectionsForUnit(unit)
     }
 
     // Auto-generate AGID for high-ranking officers if it's empty
@@ -414,249 +431,1253 @@ fun CommonEmployeeForm(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // photo
-        Box(contentAlignment = Alignment.BottomEnd) {
-            Box(
-                modifier = Modifier
-                    .size(140.dp)
-                    .shadow(6.dp, CircleShape)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .clickable { showSourceDialog = true },
-                contentAlignment = Alignment.Center
-            ) {
-                when {
-                    croppedPhotoUri != null -> {
-                        Image(
-                            painter = rememberAsyncImagePainter(croppedPhotoUri),
-                            contentDescription = "Selected Photo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                        // Edit icon overlay
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Change Photo",
-                            tint = androidx.compose.ui.graphics.Color.White,
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.4f), CircleShape)
-                                .padding(8.dp)
-                        )
-                    }
+        val textFieldColors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            focusedLabelColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+            focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+            unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
-                    !currentPhotoUrl.isNullOrBlank() -> {
-                        Image(
-                            painter = rememberAsyncImagePainter(currentPhotoUrl),
-                            contentDescription = "Existing Photo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                         // Edit icon overlay for existing photo too
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Change Photo",
-                            tint = androidx.compose.ui.graphics.Color.White,
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.4f), CircleShape)
-                                .padding(8.dp)
-                        )
-                    }
+        // Upgraded Profile Photo selector area (premium circular design)
+        Box(
+            modifier = Modifier
+                .padding(bottom = 16.dp)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(contentAlignment = Alignment.BottomEnd) {
+                Box(
+                    modifier = Modifier
+                        .size(140.dp)
+                        .shadow(8.dp, CircleShape)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable { showSourceDialog = true }
+                        .border(3.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when {
+                        croppedPhotoUri != null -> {
+                            Image(
+                                painter = rememberAsyncImagePainter(croppedPhotoUri),
+                                contentDescription = "Selected Photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.3f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Change Photo",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                        }
 
-                    else -> {
-                        // Empty State
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.AddAPhoto,
-                                contentDescription = "Select Photo",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(40.dp)
+                        !currentPhotoUrl.isNullOrBlank() -> {
+                            Image(
+                                painter = rememberAsyncImagePainter(currentPhotoUrl),
+                                contentDescription = "Existing Photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
                             )
-                            Text(
-                                "Add Photo",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.3f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Change Photo",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                        }
+
+                        else -> {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AddAPhoto,
+                                    contentDescription = "Select Photo",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "Add Photo",
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
+                }
+                
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .border(2.dp, Color.White, CircleShape)
+                        .clickable { showSourceDialog = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (croppedPhotoUri != null || !currentPhotoUrl.isNullOrBlank()) Icons.Default.Edit else Icons.Default.AddAPhoto,
+                        contentDescription = "Edit Photo",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         }
 
-        Spacer(Modifier.height(sectionSpacing))
-
-        // Registration form custom order
         if (isRegistration) {
-            // Row 2: Name
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Name*") },
-                modifier = Modifier.fillMaxWidth(),
-                isError = showValidationErrors && name.isBlank()
-            )
-            if (showValidationErrors && name.isBlank()) {
-                Text("Name required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            }
-            Spacer(Modifier.height(fieldSpacing))
-
-            // Row 3: Email — pre-filled from login/signup, read-only
-            OutlinedTextField(
-                value = email,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Email*") },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = false,
-                colors = OutlinedTextFieldDefaults.colors(
-                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                    disabledBorderColor = MaterialTheme.colorScheme.outline,
-                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            )
-            Spacer(Modifier.height(fieldSpacing))
-
-            // Row 4: Mobile 1
-            OutlinedTextField(
-                value = mobile1,
-                onValueChange = { mobile1 = it.filter { ch -> ch.isDigit() } },
-                label = { Text("Mobile 1*") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                isError = showValidationErrors && !isValidMobile(mobile1)
-            )
-            if (showValidationErrors && !isValidMobile(mobile1)) {
-                Text("Enter valid mobile", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            }
-            Spacer(Modifier.height(fieldSpacing))
-
-            // Row 5: Mobile 2
-            if (isFieldVisible("mobile2")) {
-                OutlinedTextField(
-                    value = mobile2,
-                    onValueChange = { mobile2 = it.filter { ch -> ch.isDigit() } },
-                    label = { Text("Mobile 2 (Optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
-                )
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-
-
-
-
-
-            // Row 6: Unit + District (FIRST — so rank can be filtered by unit)
-            val isSpecialUnit = remember(selectedUnitModel) {
-                selectedUnitModel?.mappingType == "none"
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // ==================== REGISTRATION FORM ====================
+            
+            // 1. Personal Info Card
+            FormSectionCard(
+                title = "Personal Information",
+                icon = Icons.Default.Person
             ) {
-                // Unit
-                ExposedDropdownMenuBox(
-                    expanded = unitExpanded,
-                    onExpandedChange = { unitExpanded = !unitExpanded },
-                    modifier = Modifier.weight(0.35f)
-                ) {
-                    OutlinedTextField(
-                        value = unit.ifEmpty { "Unit" },
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Unit") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
-                        isError = showValidationErrors && unit.isBlank()
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name*") },
+                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                    colors = textFieldColors,
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = showValidationErrors && name.isBlank()
+                )
+                if (showValidationErrors && name.isBlank()) {
+                    Text("Name required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                }
+                
+                Spacer(Modifier.height(12.dp))
+
+                // Gender Selection (Full Width)
+                if (isFieldVisible("gender")) {
+                    ExposedDropdownMenuBox(
+                        expanded = genderExpanded,
+                        onExpandedChange = { genderExpanded = !genderExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = gender,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Gender*") },
+                            leadingIcon = { Icon(Icons.Default.Face, contentDescription = null) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) },
+                            colors = textFieldColors,
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                        )
+                        ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
+                            listOf("Male", "Female").forEach { selection ->
+                                DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                    gender = selection
+                                    genderExpanded = false
+                                })
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                // Row for Date of Birth & Blood Group
+                val showDob = isFieldVisible("dob")
+                val showBlood = !isOfficer && isFieldVisible("bloodGroup")
+                if (showDob || showBlood) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (showDob) {
+                            val dobCalendar = Calendar.getInstance()
+                            dateOfBirth?.let { dobCalendar.time = it }
+                            val dobDatePicker = DatePickerDialog(
+                                context,
+                                { _, year, month, dayOfMonth ->
+                                    val cal = Calendar.getInstance()
+                                    cal.set(year, month, dayOfMonth)
+                                    dateOfBirth = cal.time
+                                },
+                                dobCalendar.get(Calendar.YEAR),
+                                dobCalendar.get(Calendar.MONTH),
+                                dobCalendar.get(Calendar.DAY_OF_MONTH)
+                            )
+                            
+                            Box(modifier = Modifier.weight(1f)) {
+                                OutlinedTextField(
+                                    value = dateOfBirth?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "",
+                                    onValueChange = { },
+                                    label = { Text("Date of Birth") },
+                                    readOnly = true,
+                                    leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+                                    trailingIcon = {
+                                        Icon(Icons.Default.Edit, contentDescription = "Select Date", modifier = Modifier.clickable { dobDatePicker.show() })
+                                    },
+                                    modifier = Modifier.fillMaxWidth().clickable { dobDatePicker.show() },
+                                    enabled = false,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledLeadingIconColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            }
+                        }
+                        
+                        if (showBlood) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                ExposedDropdownMenuBox(
+                                    expanded = bloodGroupExpanded,
+                                    onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    OutlinedTextField(
+                                        value = bloodGroup.ifEmpty { "Select Group" },
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("Blood Group*") },
+                                        leadingIcon = { Icon(Icons.Default.Favorite, contentDescription = null) },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) },
+                                        colors = textFieldColors,
+                                        isError = showValidationErrors && bloodGroup.isBlank(),
+                                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                                    )
+                                    ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
+                                        bloodGroups.forEach { selection ->
+                                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                                bloodGroup = selection
+                                                bloodGroupExpanded = false
+                                            })
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (showBlood && showValidationErrors && bloodGroup.isBlank()) {
+                        Text("Blood Group is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                    }
+                }
+            }
+
+            // 2. Contact Details Card
+            Spacer(Modifier.height(8.dp))
+            FormSectionCard(
+                title = "Contact Details",
+                icon = Icons.Default.Phone
+            ) {
+                // Email (Pre-filled and read-only)
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Email*") },
+                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledLeadingIconColor = MaterialTheme.colorScheme.primary
                     )
-                    ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
-                        filteredUnits.forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                unit = selection
-                                unitExpanded = false
-                            })
+                )
+                
+                Spacer(Modifier.height(12.dp))
+
+                // Mobile 1 only
+                OutlinedTextField(
+                    value = mobile1,
+                    onValueChange = { mobile1 = it.filter { ch -> ch.isDigit() } },
+                    label = { Text("Mobile 1*") },
+                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                    colors = textFieldColors,
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    isError = showValidationErrors && !isValidMobile(mobile1)
+                )
+                
+                if (showValidationErrors && !isValidMobile(mobile1)) {
+                    Text("Enter valid mobile", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                }
+            }
+
+            // 3. Official Details Card
+            Spacer(Modifier.height(8.dp))
+            FormSectionCard(
+                title = "Official Position",
+                icon = Icons.Default.Work
+            ) {
+                // Row 1: Unit & District
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(modifier = Modifier.weight(0.4f)) {
+                        ExposedDropdownMenuBox(
+                            expanded = unitExpanded,
+                            onExpandedChange = { unitExpanded = !unitExpanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = unit.ifEmpty { "Unit" },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Unit", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
+                                colors = textFieldColors,
+                                isError = showValidationErrors && unit.isBlank(),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
+                                filteredUnits.forEach { selection ->
+                                    DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                        unit = selection
+                                        unitExpanded = false
+                                    })
+                                }
+                            }
+                        }
+                    }
+
+                    if (!isHighRankingOfficer && !isSpecialUnit) {
+                        val isDistrictLocked = availableDistricts.size == 1 && district.isNotBlank()
+                        Box(modifier = Modifier.weight(0.6f)) {
+                            ExposedDropdownMenuBox(
+                                expanded = districtExpanded && !isDistrictLocked,
+                                onExpandedChange = {
+                                    if (!isSelfEdit && !isDistrictLocked) districtExpanded = !districtExpanded
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                OutlinedTextField(
+                                    value = district.ifEmpty { if (isSelfEdit) district else "Select District" },
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("District*") },
+                                    leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                    enabled = !isDistrictLocked,
+                                    colors = if (isDistrictLocked) {
+                                        OutlinedTextFieldDefaults.colors(
+                                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            disabledLeadingIconColor = MaterialTheme.colorScheme.primary
+                                        )
+                                    } else textFieldColors,
+                                    trailingIcon = {
+                                        if (!isDistrictLocked) {
+                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded)
+                                        }
+                                    },
+                                    isError = showValidationErrors && district.isBlank() && !isHighRankingOfficer
+                                )
+                                if (!isSelfEdit && !isDistrictLocked) {
+                                    ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
+                                        availableDistricts.forEach { selection ->
+                                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                                if (district != selection) station = ""
+                                                district = selection
+                                                districtExpanded = false
+                                            })
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+                
                 if (showValidationErrors && unit.isBlank()) {
-                    Text("Unit req.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text("Unit is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                }
+                if (showValidationErrors && district.isBlank() && !isHighRankingOfficer && !isSpecialUnit) {
+                    Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
                 }
 
-                // District
-                if (!isHighRankingOfficer && !isSpecialUnit) {
-                    ExposedDropdownMenuBox(
-                        expanded = districtExpanded,
-                        onExpandedChange = {
-                            if (!isSelfEdit) districtExpanded = !districtExpanded
-                        },
-                        modifier = Modifier.weight(0.65f)
-                    ) {
+                Spacer(Modifier.height(12.dp))
+
+                // Row 2: KGID / ID & Rank
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val showKgid = !isAutoAgid && isFieldVisible("kgid")
+                    if (showKgid) {
                         OutlinedTextField(
-                            value = district.ifEmpty { if (isSelfEdit) district else "Select District" },
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("District*") },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded) },
-                            isError = showValidationErrors && district.isBlank()
+                            value = kgid,
+                            onValueChange = { newValue ->
+                                kgid = when {
+                                    isOfficer || isHighRankingOfficer -> newValue
+                                    newValue.all { it.isDigit() } -> newValue
+                                    else -> kgid
+                                }
+                            },
+                            label = { Text(identifierLabel) },
+                            leadingIcon = { Icon(Icons.Default.Fingerprint, contentDescription = null) },
+                            colors = textFieldColors,
+                            modifier = Modifier.weight(0.6f),
+                            keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer || isHighRankingOfficer) KeyboardType.Text else KeyboardType.Number),
+                            isError = showValidationErrors && !isKgidValid(kgid),
+                            enabled = (isAdmin || isRegistration) && !isEdit
                         )
-                        if (!isSelfEdit) {
-                            ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
-                                availableDistricts.forEach { selection ->
+                    }
+
+                    Box(modifier = Modifier.weight(0.4f)) {
+                        ExposedDropdownMenuBox(
+                            expanded = rankExpanded,
+                            onExpandedChange = { rankExpanded = !rankExpanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value = rank,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Rank*", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                placeholder = { Text(if (unit.isBlank()) "Select Unit First" else "Select Rank", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
+                                colors = textFieldColors,
+                                isError = showValidationErrors && rank.isBlank(),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
+                                filteredRanks.forEach { selection ->
                                     DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                        if (district != selection) station = ""
-                                        district = selection
-                                        districtExpanded = false
+                                        rank = selection
+                                        if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
+                                        if (ministerialRanks.any { it.equals(selection, ignoreCase = true) }) {
+                                            station = ""
+                                        }
+                                        if (highRankingOfficers.contains(selection)) {
+                                            district = ""
+                                            station = ""
+                                        }
+                                        rankExpanded = false
                                     })
                                 }
                             }
                         }
                     }
                 }
-            }
-            if (showValidationErrors && district.isBlank() && !isHighRankingOfficer && !isSpecialUnit) {
-                Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            }
-            Spacer(Modifier.height(fieldSpacing))
+                
+                if (showValidationErrors) {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        if (!isAutoAgid && !isKgidValid(kgid) && isFieldVisible("kgid")) {
+                            Text(if(isOfficer) "ID required" else "KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f).padding(start = 4.dp, top = 4.dp))
+                        }
+                        if (rank.isBlank()) {
+                            Text("Rank required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1.2f).padding(start = 4.dp, top = 4.dp))
+                        }
+                    }
+                }
 
-            // Row 7: KGID + Rank (Rank now filtered by selected unit)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Metal Number (conditional)
+                if (showMetalNumberField && !isOfficer && isFieldVisible("metalNumber")) {
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = metalNumber,
+                        onValueChange = { metalNumber = it.filter { ch -> ch.isDigit() } },
+                        label = { Text("Metal No") },
+                        leadingIcon = { Icon(Icons.Default.Fingerprint, contentDescription = null) },
+                        colors = textFieldColors,
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = showValidationErrors && metalNumber.isBlank()
+                    )
+                    if (showValidationErrors && metalNumber.isBlank()) {
+                        Text("Metal no. required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                    }
+                }
+
+                // Row 3: Station / Section
+                if (!isHighRankingOfficer && !isDistrictLevelUnit && !isSpecialUnit && !isMinisterial) {
+                    val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks) {
+                        val isPoliceStationRank = policeStationRanks.any { it.equals(rank, ignoreCase = true) }
+                        if (isPoliceStationRank) {
+                            stationsForSelectedDistrict.filter { 
+                                !it.contains("PS", ignoreCase = true) || it.contains(" PS", ignoreCase = true) 
+                            }
+                        } else {
+                            stationsForSelectedDistrict
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            ExposedDropdownMenuBox(
+                                expanded = stationExpanded,
+                                onExpandedChange = {
+                                    if (district.isNotBlank() && filteredStations.isNotEmpty()) stationExpanded = !stationExpanded
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                OutlinedTextField(
+                                    value = station.ifEmpty { 
+                                        if (district.isNotBlank() || stationsForSelectedDistrict.isNotEmpty()) "Select $stationLabel" 
+                                        else "Select District First" 
+                                    },
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text(stationLabel) },
+                                    leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
+                                    enabled = district.isNotBlank() && filteredStations.isNotEmpty(),
+                                    colors = textFieldColors,
+                                    isError = showValidationErrors && station.isBlank(),
+                                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                                )
+                                ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
+                                    filteredStations.forEach { selection ->
+                                        DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                            station = selection
+                                            stationExpanded = false
+                                        })
+                                    }
+                                }
+                            }
+                        }
+
+                        if (station == "Others") {
+                            OutlinedTextField(
+                                value = manualSection,
+                                onValueChange = { manualSection = it },
+                                label = { Text("Specify Name*") },
+                                leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+                                colors = textFieldColors,
+                                modifier = Modifier.weight(1f),
+                                isError = showValidationErrors && manualSection.isBlank(),
+                                singleLine = true
+                            )
+                        }
+                    }
+                    
+                    if (showValidationErrors) {
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            if (station.isBlank()) {
+                                Text("$stationLabel required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f).padding(start = 4.dp, top = 4.dp))
+                            }
+                            if (station == "Others" && manualSection.isBlank()) {
+                                Text("Name required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f).padding(start = 4.dp, top = 4.dp))
+                            }
+                        }
+                    }
+                }
+
+                // Row 4: Duty Role / Sub-Section & Date of Appointment (DOA)
+                val registrationDutyRoles = remember(unit, subSectionList, fullUnits) {
+                    constantsViewModel.getDutyRolesForUnit(unit, isRegistration)
+                }
+                val showDutyRole = registrationDutyRoles.isNotEmpty()
+                val showDoa = isFieldVisible("doa")
+                
+                if (showDutyRole || showDoa) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (showDutyRole) {
+                            Box(modifier = Modifier.weight(1.1f)) {
+                                ExposedDropdownMenuBox(
+                                    expanded = subSectionExpanded,
+                                    onExpandedChange = { subSectionExpanded = !subSectionExpanded },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    OutlinedTextField(
+                                        value = subSection.ifEmpty { "Select Duty Role" },
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("Duty Role / Sub-Section") },
+                                        leadingIcon = { Icon(Icons.Default.Work, contentDescription = null) },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subSectionExpanded) },
+                                        colors = textFieldColors,
+                                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                                    )
+                                    ExposedDropdownMenu(expanded = subSectionExpanded, onDismissRequest = { subSectionExpanded = false }) {
+                                        registrationDutyRoles.forEach { selection ->
+                                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                                subSection = selection
+                                                subSectionExpanded = false
+                                            })
+                                        }
+                                        if (subSection.isNotEmpty()) {
+                                            DropdownMenuItem(
+                                                text = { Text("None", color = MaterialTheme.colorScheme.error) },
+                                                onClick = {
+                                                    subSection = ""
+                                                    subSectionExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (showDoa) {
+                            val apptCalendar = Calendar.getInstance()
+                            serviceStartDate?.let { apptCalendar.time = it }
+                            val apptDatePicker = DatePickerDialog(
+                                context,
+                                { _, year, month, dayOfMonth ->
+                                    val cal = Calendar.getInstance()
+                                    cal.set(year, month, dayOfMonth)
+                                    serviceStartDate = cal.time
+                                },
+                                apptCalendar.get(Calendar.YEAR),
+                                apptCalendar.get(Calendar.MONTH),
+                                apptCalendar.get(Calendar.DAY_OF_MONTH)
+                            )
+                            
+                            Box(modifier = Modifier.weight(0.9f)) {
+                                OutlinedTextField(
+                                    value = serviceStartDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "",
+                                    onValueChange = { },
+                                    label = { Text("Appt Date") },
+                                    readOnly = true,
+                                    leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+                                    trailingIcon = {
+                                        Icon(Icons.Default.Edit, contentDescription = "Select Date", modifier = Modifier.clickable { apptDatePicker.show() })
+                                    },
+                                    modifier = Modifier.fillMaxWidth().clickable { apptDatePicker.show() },
+                                    enabled = false,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledLeadingIconColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. Security PIN Card
+            if (!isOfficer && isFieldVisible("pin")) {
+                Spacer(Modifier.height(8.dp))
+                FormSectionCard(
+                    title = "Security PIN",
+                    icon = Icons.Default.Lock
+                ) {
+                    Text(
+                        text = "Create a 6-digit PIN to secure your profile and login access.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = pin,
+                            onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) pin = it },
+                            label = { Text("Create PIN*", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                            trailingIcon = {
+                                val image = if (pinVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                                IconButton(onClick = { pinVisible = !pinVisible }) {
+                                    Icon(image, contentDescription = if (pinVisible) "Hide PIN" else "Show PIN")
+                                }
+                            },
+                            visualTransformation = if (pinVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                            colors = textFieldColors,
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            isError = showValidationErrors && (pin.length != 6 || (pin.isNotEmpty() && pin != confirmPin)),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = confirmPin,
+                            onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) confirmPin = it },
+                            label = { Text("Confirm PIN*", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                            trailingIcon = {
+                                val image = if (confirmPinVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                                IconButton(onClick = { confirmPinVisible = !confirmPinVisible }) {
+                                    Icon(image, contentDescription = if (confirmPinVisible) "Hide PIN" else "Show PIN")
+                                }
+                            },
+                            visualTransformation = if (confirmPinVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                            colors = textFieldColors,
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            isError = showValidationErrors && (confirmPin.length != 6 || (confirmPin.isNotEmpty() && pin != confirmPin)),
+                            singleLine = true
+                        )
+                    }
+                    if (showValidationErrors && (pin.length != 6 || pin != confirmPin)) {
+                        Text("PIN must be 6 digits and match", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                    }
+                }
+            }
+
+            // 5. Terms & Submission Card
+            Spacer(Modifier.height(8.dp))
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
             ) {
-                // KGID / ID (respect visibility)
-                if (!isAutoAgidRank && isFieldVisible("kgid")) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Checkbox(
+                            checked = acceptedTerms, 
+                            onCheckedChange = { acceptedTerms = it },
+                            colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("I accept ")
+                            Text(
+                                text = "Terms & Conditions",
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = Modifier.clickable {
+                                    onNavigateToTerms?.invoke()
+                                }
+                            )
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            if (isSubmitting || isLoading) return@Button
+                            isSubmitting = true
+                            showValidationErrors = true
+                            
+                            val isEmailValid = if (!isFieldVisible("email")) true else if (isOfficer && email.isNullOrBlank()) true else isValidEmail(email ?: "")
+                            if (!isEmailValid || !isValidMobile(mobile1) || name.isBlank()) {
+                                Toast.makeText(context, "Please fix validation errors", Toast.LENGTH_SHORT).show()
+                                isSubmitting = false
+                                return@Button
+                            }
+                            if (!isSelfEdit && !isAutoAgid && kgid.isBlank() && isFieldVisible("kgid")) {
+                                Toast.makeText(context, "Please fix validation errors", Toast.LENGTH_SHORT).show()
+                                isSubmitting = false
+                                return@Button
+                            }
+                            if (rank.isBlank()) {
+                                Toast.makeText(context, "Rank is required", Toast.LENGTH_SHORT).show()
+                                isSubmitting = false
+                                return@Button
+                            }
+                            if (showMetalNumberField && metalNumber.isBlank() && !isOfficer && isFieldVisible("metalNumber")) {
+                                Toast.makeText(context, "Metal number is required for this rank", Toast.LENGTH_SHORT).show()
+                                isSubmitting = false
+                                return@Button
+                            }
+                            if (district.isBlank() && !isHighRankingOfficer) {
+                                Toast.makeText(context, "District is required", Toast.LENGTH_SHORT).show()
+                                isSubmitting = false
+                                return@Button
+                            }
+                            if (station.isBlank() && !isHighRankingOfficer && !isDistrictLevelUnit && !isMinisterial) {
+                                Toast.makeText(context, "${if(unit == "State INT" || unitSections.isNotEmpty()) "Section" else "Station"} is required", Toast.LENGTH_SHORT).show()
+                                isSubmitting = false
+                                return@Button
+                            }
+                            if (station == "Others" && manualSection.isBlank()) {
+                                Toast.makeText(context, "Please specify your section name", Toast.LENGTH_SHORT).show()
+                                isSubmitting = false
+                                return@Button
+                            }
+                            if (bloodGroup.isBlank() && !isOfficer && isFieldVisible("bloodGroup")) {
+                                Toast.makeText(context, "Blood Group is required", Toast.LENGTH_SHORT).show()
+                                isSubmitting = false
+                                return@Button
+                            }
+                            if (!isOfficer && isFieldVisible("pin") && (pin.length != 6 || pin != confirmPin)) {
+                                Toast.makeText(context, "PIN mismatch or invalid", Toast.LENGTH_SHORT).show()
+                                isSubmitting = false
+                                return@Button
+                            }
+                            if (!acceptedTerms) {
+                                Toast.makeText(context, "Accept terms to continue", Toast.LENGTH_SHORT).show()
+                                isSubmitting = false
+                                return@Button
+                            }
+                            if (subSection == "Others" && manualSubSection.isBlank()) {
+                                Toast.makeText(context, "Please specify your duty role", Toast.LENGTH_SHORT).show()
+                                isSubmitting = false
+                                return@Button
+                            }
+
+                            val finalKgid = if (kgid.isBlank()) "TEMP-${System.currentTimeMillis()}" else kgid
+                            val isManual = station == "Others"
+
+                            val emp = Employee(
+                                kgid = finalKgid,
+                                name = name.trim(),
+                                email = email.trim().lowercase(),
+                                mobile1 = mobile1.trim(),
+                                mobile2 = mobile2.trim().takeIf { it.isNotBlank() },
+                                landline = landline.trim().takeIf { it.isNotBlank() },
+                                landline2 = landline2.trim().takeIf { it.isNotBlank() },
+                                rank = rank.trim(),
+                                district = district.trim(),
+                                station = when {
+                                    isManual -> manualSection.trim()
+                                    station.isNotBlank() -> station.trim()
+                                    isDistrictLevelUnit -> district.trim()
+                                    else -> ""
+                                },
+                                unit = unit.trim().takeIf { it.isNotBlank() },
+                                bloodGroup = bloodGroup.ifBlank { null },
+                                metalNumber = metalNumber.trim().takeIf { it.isNotBlank() },
+                                isAdmin = initialEmployee?.isAdmin ?: false,
+                                photoUrl = croppedPhotoUri?.toString() ?: currentPhotoUrl,
+                                isManualStation = isManual,
+                                gender = gender,
+                                serviceStartDate = serviceStartDate,
+                                dateOfBirth = dateOfBirth,
+                                subSection = if (subSection == "Others") manualSubSection.trim() else subSection.trim().takeIf { it.isNotBlank() },
+                                isManualSubSection = subSection == "Others"
+                            )
+
+                            android.util.Log.d("CommonEmployeeForm", "🚀 Launching coroutine for submission...")
+                            coroutineScope.launch {
+                                try {
+                                    val pending = PendingRegistrationEntity(
+                                        name = emp.name,
+                                        kgid = emp.kgid,
+                                        email = emp.email,
+                                        mobile1 = emp.mobile1 ?: "",
+                                        mobile2 = emp.mobile2,
+                                        landline = emp.landline,
+                                        landline2 = emp.landline2,
+                                        pin = pin,
+                                        rank = emp.rank ?: "",
+                                        metalNumber = emp.metalNumber,
+                                        district = emp.district.orEmpty(),
+                                        station = if (station == "Others") manualSection.trim() else emp.station.orEmpty(),
+                                        unit = emp.unit,
+                                        bloodGroup = emp.bloodGroup.orEmpty(),
+                                        firebaseUid = "",
+                                        photoUrl = emp.photoUrl,
+                                        isManualStation = emp.isManualStation,
+                                        gender = emp.gender,
+                                        serviceStartDate = emp.serviceStartDate,
+                                        dateOfBirth = emp.dateOfBirth,
+                                        subSection = emp.subSection,
+                                        isManualSubSection = emp.isManualSubSection
+                                    )
+                                    onRegisterSubmit?.invoke(pending, croppedPhotoUri)
+                                    delay(3000)
+                                    isSubmitting = false
+                                } catch (e: Exception) {
+                                    android.util.Log.e("CommonEmployeeForm", "Submission error: ${e.message}", e)
+                                    isSubmitting = false
+                                }
+                            }
+                        },
+                        enabled = !isSubmitting && !isLoading,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (isSubmitting || isLoading) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("Submitting...")
+                            }
+                        } else {
+                            Text("Submit for approval", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+        } else {
+            // ==================== EDIT / ADMIN FORM ====================
+
+            // 1. Personal Info Card
+            FormSectionCard(
+                title = "Personal Information",
+                icon = Icons.Default.Person
+            ) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name*") },
+                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                    colors = textFieldColors,
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = showValidationErrors && name.isBlank()
+                )
+                if (showValidationErrors && name.isBlank()) {
+                    Text("Name required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // Gender Selection (Full Width)
+                if (isFieldVisible("gender")) {
+                    ExposedDropdownMenuBox(
+                        expanded = genderExpanded,
+                        onExpandedChange = { genderExpanded = !genderExpanded },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = gender,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Gender*") },
+                            leadingIcon = { Icon(Icons.Default.Face, contentDescription = null) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) },
+                            colors = textFieldColors,
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                        )
+                        ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
+                            listOf("Male", "Female").forEach { selection ->
+                                DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                    gender = selection
+                                    genderExpanded = false
+                                })
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                // Row for Date of Birth & Blood Group
+                val showDob = isFieldVisible("dob")
+                val showBlood = !isOfficer && isFieldVisible("bloodGroup")
+                if (showDob || showBlood) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (showDob) {
+                            val dobCalendar = Calendar.getInstance()
+                            dateOfBirth?.let { dobCalendar.time = it }
+                            val dobDatePicker = DatePickerDialog(
+                                context,
+                                { _, year, month, dayOfMonth ->
+                                    val cal = Calendar.getInstance()
+                                    cal.set(year, month, dayOfMonth)
+                                    dateOfBirth = cal.time
+                                },
+                                dobCalendar.get(Calendar.YEAR),
+                                dobCalendar.get(Calendar.MONTH),
+                                dobCalendar.get(Calendar.DAY_OF_MONTH)
+                            )
+                            
+                            Box(modifier = Modifier.weight(1f)) {
+                                OutlinedTextField(
+                                    value = dateOfBirth?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "",
+                                    onValueChange = { },
+                                    label = { Text("Date of Birth") },
+                                    readOnly = true,
+                                    leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+                                    trailingIcon = {
+                                        Icon(Icons.Default.Edit, contentDescription = "Select Date", modifier = Modifier.clickable { dobDatePicker.show() })
+                                    },
+                                    modifier = Modifier.fillMaxWidth().clickable { dobDatePicker.show() },
+                                    enabled = false,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledLeadingIconColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
+                            }
+                        }
+                        
+                        if (showBlood) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                ExposedDropdownMenuBox(
+                                    expanded = bloodGroupExpanded,
+                                    onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    OutlinedTextField(
+                                        value = bloodGroup.ifEmpty { "Select Group" },
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("Blood Group*") },
+                                        leadingIcon = { Icon(Icons.Default.Favorite, contentDescription = null) },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) },
+                                        colors = textFieldColors,
+                                        isError = showValidationErrors && bloodGroup.isBlank(),
+                                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                                    )
+                                    ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
+                                        bloodGroups.forEach { selection ->
+                                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                                bloodGroup = selection
+                                                bloodGroupExpanded = false
+                                            })
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (showBlood && showValidationErrors && bloodGroup.isBlank()) {
+                        Text("Blood Group is required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                    }
+                }
+            }
+
+            // 2. Contact Details Card
+            Spacer(Modifier.height(8.dp))
+            FormSectionCard(
+                title = "Contact Details",
+                icon = Icons.Default.Phone
+            ) {
+                // Email field (conditional)
+                if (isFieldVisible("email")) {
+                    OutlinedTextField(
+                        value = email ?: "",
+                        onValueChange = { email = it },
+                        label = { Text(if (isOfficer) "Email (Optional)" else "Email*") },
+                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                        colors = textFieldColors,
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        isError = showValidationErrors && !isOfficer && !isValidEmail(email ?: "")
+                    )
+                    if (showValidationErrors && !isOfficer && !isValidEmail(email ?: "")) {
+                        Text("Enter valid email", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+
+                // Mobile 1 only
+                OutlinedTextField(
+                    value = mobile1,
+                    onValueChange = { mobile1 = it.filter { ch -> ch.isDigit() } },
+                    label = { Text("Mobile 1*") },
+                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                    colors = textFieldColors,
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    isError = showValidationErrors && !isValidMobile(mobile1)
+                )
+                if (showValidationErrors && !isValidMobile(mobile1)) {
+                    Text("Enter valid mobile", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                }
+
+                // Landlines (conditional)
+                val showLandline1 = isFieldVisible("landline")
+                val showLandline2 = isFieldVisible("landline2")
+                if (showLandline1 || showLandline2) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (showLandline1) {
+                            OutlinedTextField(
+                                value = landline,
+                                onValueChange = { landline = it.filter { ch -> ch.isDigit() || ch == '-' } },
+                                label = { Text("Landline (Opt)") },
+                                leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                                colors = textFieldColors,
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                            )
+                        }
+                        if (showLandline2) {
+                            OutlinedTextField(
+                                value = landline2,
+                                onValueChange = { landline2 = it.filter { ch -> ch.isDigit() || ch == '-' } },
+                                label = { Text("Landline 2 (Opt)") },
+                                leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null) },
+                                colors = textFieldColors,
+                                modifier = Modifier.weight(1f),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 3. Official Details Card
+            Spacer(Modifier.height(8.dp))
+            FormSectionCard(
+                title = "Official Position",
+                icon = Icons.Default.Work
+            ) {
+                // KGID Field (admin only)
+                if (!isSelfEdit && !isAutoAgid && isFieldVisible("kgid")) {
                     OutlinedTextField(
                         value = kgid,
-                        onValueChange = {
-                            if (isOfficer || isHighRankingOfficer) kgid = it else if (it.all { ch -> ch.isDigit() }) kgid = it
+                        onValueChange = { newValue ->
+                            kgid = when {
+                                isOfficer || isHighRankingOfficer -> newValue
+                                newValue.all { ch -> ch.isDigit() } -> newValue
+                                else -> kgid
+                            }
                         },
                         label = { Text(identifierLabel) },
-                        modifier = Modifier.weight(1f),
+                        leadingIcon = { Icon(Icons.Default.Fingerprint, contentDescription = null) },
+                        colors = textFieldColors,
+                        modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer || isHighRankingOfficer) KeyboardType.Text else KeyboardType.Number),
                         isError = showValidationErrors && !isKgidValid(kgid),
                         enabled = (isAdmin || isRegistration) && !isEdit
                     )
+                    if (showValidationErrors && !isKgidValid(kgid)) {
+                        Text(if(isOfficer || isHighRankingOfficer) "ID required" else "KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                    }
+                    Spacer(Modifier.height(12.dp))
                 }
 
-                // Rank (filtered by selected unit)
-                ExposedDropdownMenuBox(
-                    expanded = rankExpanded,
-                    onExpandedChange = { rankExpanded = !rankExpanded },
-                    modifier = Modifier.weight(1f)
+                // Row: Unit & District
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    Box(modifier = Modifier.weight(0.4f)) {
+                        ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = !unitExpanded }) {
+                            OutlinedTextField(
+                                value = unit.ifEmpty { "Unit" },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Unit", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
+                                colors = textFieldColors,
+                                isError = showValidationErrors && unit.isBlank(),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
+                                filteredUnits.forEach { selection ->
+                                    DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                        unit = selection
+                                        unitExpanded = false
+                                    })
+                                }
+                            }
+                        }
+                    }
+
+                    if (!isHighRankingOfficer && !isSpecialUnit) {
+                        val isDistrictLocked = availableDistricts.size == 1 && district.isNotBlank()
+                        Box(modifier = Modifier.weight(0.6f)) {
+                            ExposedDropdownMenuBox(expanded = districtExpanded && !isDistrictLocked, onExpandedChange = {
+                                if (!isSelfEdit && !isDistrictLocked) districtExpanded = !districtExpanded
+                            }) {
+                                OutlinedTextField(
+                                    value = district.ifEmpty { if (isSelfEdit) district else "Select District" },
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("District*") },
+                                    leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                    enabled = !isDistrictLocked,
+                                    colors = if (isDistrictLocked) {
+                                        OutlinedTextFieldDefaults.colors(
+                                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                            disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            disabledLeadingIconColor = MaterialTheme.colorScheme.primary
+                                        )
+                                    } else textFieldColors,
+                                    trailingIcon = { 
+                                        if (!isDistrictLocked) {
+                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded)
+                                        }
+                                    },
+                                    isError = showValidationErrors && district.isBlank()
+                                )
+                                if (!isSelfEdit && !isDistrictLocked) {
+                                    ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
+                                        availableDistricts.forEach { selection ->
+                                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                                if (district != selection) station = ""
+                                                district = selection
+                                                districtExpanded = false
+                                            })
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (showValidationErrors && unit.isBlank()) {
+                    Text("Unit required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                }
+                if (showValidationErrors && district.isBlank() && !isHighRankingOfficer && !isSpecialUnit) {
+                    Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // Rank selection
+                ExposedDropdownMenuBox(expanded = rankExpanded, onExpandedChange = { rankExpanded = !rankExpanded }) {
                     OutlinedTextField(
-                        value = rank,
+                        value = rank.ifEmpty { "Select Rank" },
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Rank") },
-                        placeholder = { Text(if (unit.isBlank()) "Select Unit First" else "Select Rank") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
+                        label = { Text("Rank*") },
+                        leadingIcon = { Icon(Icons.Default.Work, contentDescription = null) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
+                        colors = textFieldColors,
+                        isError = showValidationErrors && rank.isBlank(),
+                        modifier = Modifier.fillMaxWidth().menuAnchor()
                     )
                     ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
                         filteredRanks.forEach { selection ->
@@ -675,1073 +1696,441 @@ fun CommonEmployeeForm(
                         }
                     }
                 }
+                if (showValidationErrors && rank.isBlank()) {
+                    Text("Rank required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                }
 
-                // Metal Number (Dynamic)
-                if (showMetalNumberField && !isOfficer && isFieldVisible("metalNumber")) {
+                // Metal number
+                if (showMetalNumberField && !isOfficer) {
+                    Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = metalNumber,
                         onValueChange = { metalNumber = it.filter { ch -> ch.isDigit() } },
-                        label = { Text("Metal No.*") },
-                        modifier = Modifier.weight(1f),
+                        label = { Text("Metal Number") },
+                        leadingIcon = { Icon(Icons.Default.Fingerprint, contentDescription = null) },
+                        colors = textFieldColors,
+                        modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         isError = showValidationErrors && metalNumber.isBlank()
                     )
-                }
-            }
-            // Error messages below the row
-            if (showValidationErrors) {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    if (!isKgidValid(kgid)) {
-                        Text(if(isOfficer) "ID required" else "KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    }
-                    if (rank.isBlank()) {
-                        Text("Rank required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    }
-                    if (showMetalNumberField && metalNumber.isBlank() && !isOfficer) {
-                        Text("Metal no. required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                    }
-                }
-            }
-            Spacer(Modifier.height(fieldSpacing))
-
-            // Row 8: Station/Section (Full Width)
-            // District-level units (e.g. DAR) always hide this field - hasSections must not override
-            if (!isHighRankingOfficer && !isDistrictLevelByModel && !isSpecialUnit && !isMinisterial) {
-                val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks) {
-                    val isPoliceStationRank = policeStationRanks.contains(rank)
-                    // Apply rank-based filtering to reduce noise for PS ranks ONLY if useStationLabel is true
-                    if (isPoliceStationRank && useStationLabel) {
-                         stationsForSelectedDistrict.filter { it.contains(" PS", ignoreCase = true) || !it.contains(" PS", ignoreCase = true) }
-                         // Actually, same logic as User flavor for consistency
-                         stationsForSelectedDistrict.filter { s ->
-                            val isPS = s.contains(" PS", ignoreCase = true)
-                            if (isPoliceStationRank && s.contains(" PS", ignoreCase = true)) true
-                            else if (!s.contains(" PS", ignoreCase = true)) true 
-                            else false
-                        }
-                    } else {
-                        stationsForSelectedDistrict
+                    if (showValidationErrors && metalNumber.isBlank()) {
+                        Text("Metal number required for this rank", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
                     }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ExposedDropdownMenuBox(
-                        expanded = stationExpanded,
-                        onExpandedChange = {
-                            if (district.isNotBlank() && filteredStations.isNotEmpty()) stationExpanded = !stationExpanded
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        OutlinedTextField(
-                            value = station.ifEmpty { 
-                                if (stationsForSelectedDistrict.isNotEmpty()) "Select ${if(useStationLabel) "Station" else "Section"}" 
-                                else "Select District First" 
-                            },
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text(if (useStationLabel) "Station *" else "Section / Branch *") },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
-                            enabled = district.isNotBlank() && filteredStations.isNotEmpty(),
-                            isError = showValidationErrors && station.isBlank()
-                        )
-                        ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
-                            filteredStations.forEach { selection ->
-                                DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                    station = selection
-                                    stationExpanded = false
-                                })
-                            }
-                        }
-                    }
-
-                    // Manual Section Entry
-                    if (station == "Others") {
-                        OutlinedTextField(
-                            value = manualSection,
-                            onValueChange = { manualSection = it },
-                            label = { Text("Specify Name*") },
-                            placeholder = { Text("Section Name") },
-                            modifier = Modifier.weight(1f),
-                            isError = showValidationErrors && manualSection.isBlank(),
-                            singleLine = true
-                        )
-                    }
+                // Row: Station / Section
+                val hasSectionsEdit = remember(unitSections, unit, district) {
+                    unitSections.isNotEmpty() || unit == "State INT" || district == "HQ"
                 }
-                
-                if (showValidationErrors) {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        if (station.isBlank() && stationsForSelectedDistrict.isNotEmpty()) {
-                            Text(
-                                if (useStationLabel) "Station required" else "Section required", 
-                                color = MaterialTheme.colorScheme.error, 
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.weight(1f)
-                            )
+
+                if (!isHighRankingOfficer && (!isDistrictLevelUnit || hasSectionsEdit) && !isSpecialUnit) {
+                    val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks, unit, unitSections) {
+                        if (unitSections.isNotEmpty()) {
+                            unitSections + listOf("Others")
+                        } else if (unit == "State INT") {
+                             Constants.stateIntSections + listOf("Others")
                         } else {
-                           Spacer(modifier = Modifier.weight(1f))
-                        }
-                        
-                         if (station == "Others" && manualSection.isBlank()) {
-                            Text(
-                                "Name required", 
-                                color = MaterialTheme.colorScheme.error, 
-                                style = MaterialTheme.typography.bodySmall,
-                                 modifier = Modifier.weight(1f).padding(start = 8.dp)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(fieldSpacing))
-
-                // Duty Role Dropdown (Sub-Section)
-                val registrationDutyRoles = remember(unit, subSectionList, fullUnits) {
-                    constantsViewModel.getDutyRolesForUnit(unit, isRegistration)
-                }
-
-                // Row for Duty Role and Blood Group
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Duty Role Dropdown (Sub-Section)
-                    if (registrationDutyRoles.isNotEmpty()) {
-                        ExposedDropdownMenuBox(
-                            expanded = subSectionExpanded,
-                            onExpandedChange = { subSectionExpanded = !subSectionExpanded },
-                            modifier = Modifier.weight(0.65f)
-                        ) {
-                            OutlinedTextField(
-                                value = subSection.ifEmpty { "Select Duty Role" },
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Duty Role / Sub-Section") },
-                                modifier = Modifier.fillMaxWidth().menuAnchor(),
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subSectionExpanded) }
-                            )
-                            ExposedDropdownMenu(expanded = subSectionExpanded, onDismissRequest = { subSectionExpanded = false }) {
-                                registrationDutyRoles.forEach { selection ->
-                                    DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                        subSection = selection
-                                        subSectionExpanded = false
-                                    })
-                                }
-                                if (subSection.isNotEmpty()) {
-                                    DropdownMenuItem(
-                                        text = { Text("None", color = MaterialTheme.colorScheme.error) },
-                                        onClick = {
-                                            subSection = ""
-                                            subSectionExpanded = false
-                                        }
-                                    )
-                                }
+                            val isPoliceStationRank = policeStationRanks.contains(rank)
+                            val baseStations = if (isPoliceStationRank) {
+                                stationsForSelectedDistrict
+                            } else {
+                                stationsForSelectedDistrict.filter { !it.endsWith(" PS", ignoreCase = true) }
+                            }
+                            if (hasSections || district == "HQ") {
+                                baseStations + listOf("Others")
+                            } else {
+                                baseStations
                             }
                         }
                     }
 
-                    // Blood Group row (Hide for Officer, Hide if configured hidden)
-                    if (!isOfficer && isFieldVisible("bloodGroup")) {
-                        ExposedDropdownMenuBox(
-                            expanded = bloodGroupExpanded,
-                            onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded },
-                            modifier = Modifier.weight(0.35f)
-                        ) {
-                            OutlinedTextField(
-                                value = bloodGroup.ifEmpty { "Blood Group" },
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("Blood Group") },
-                                modifier = Modifier.fillMaxWidth().menuAnchor(),
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) }
-                            )
-                            ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
-                                bloodGroups.forEach { selection ->
-                                    DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                        bloodGroup = selection
-                                        bloodGroupExpanded = false
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
+                    Spacer(Modifier.height(12.dp))
 
-                if (showValidationErrors && subSection == "Others" && manualSubSection.isBlank()) {
-                     // Error managed below for the manual field
-                }
-
-                // Manual Duty Role Entry (Common for All)
-                if (subSection == "Others") {
-                    Spacer(Modifier.height(fieldSpacing))
-                    OutlinedTextField(
-                        value = manualSubSection,
-                        onValueChange = { manualSubSection = it },
-                        label = { Text("Specify Duty Role*") },
-                        placeholder = { Text("Duty Role Name") },
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        isError = showValidationErrors && manualSubSection.isBlank(),
-                        singleLine = true
-                    )
-                    if (showValidationErrors && manualSubSection.isBlank()) {
-                        Text("Duty role name required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
-
-            // KCSR Fields: Gender
-            if (isFieldVisible("gender")) {
-                ExposedDropdownMenuBox(
-                    expanded = genderExpanded,
-                    onExpandedChange = { genderExpanded = !genderExpanded },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = gender,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Gender*") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }
-                    )
-                    ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
-                        listOf("Male", "Female").forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                gender = selection
-                                genderExpanded = false
-                            })
-                        }
-                    }
-                }
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-            // KCSR Fields: Date of Birth and Date of Appointment
-            if (isFieldVisible("dob")) {
-                val dobCalendar = Calendar.getInstance()
-                dateOfBirth?.let { dobCalendar.time = it }
-
-                val dobPickerDialog = DatePickerDialog(
-                    context,
-                    { _, year, month, dayOfMonth ->
-                        val cal = Calendar.getInstance()
-                        cal.set(year, month, dayOfMonth)
-                        dateOfBirth = cal.time
-                    },
-                    dobCalendar.get(Calendar.YEAR),
-                    dobCalendar.get(Calendar.MONTH),
-                    dobCalendar.get(Calendar.DAY_OF_MONTH)
-                )
-
-                OutlinedTextField(
-                    value = dateOfBirth?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "",
-                    onValueChange = {},
-                    label = { Text("Date of Birth") },
-                    modifier = Modifier.fillMaxWidth().clickable { dobPickerDialog.show() },
-                    readOnly = true,
-                    enabled = false,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                        disabledBorderColor = MaterialTheme.colorScheme.outline,
-                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-            if (isFieldVisible("doa")) {
-                val apptCalendar = Calendar.getInstance()
-                serviceStartDate?.let { apptCalendar.time = it }
-
-                val apptPickerDialog = DatePickerDialog(
-                    context,
-                    { _, year, month, dayOfMonth ->
-                        val cal = Calendar.getInstance()
-                        cal.set(year, month, dayOfMonth)
-                        serviceStartDate = cal.time
-                    },
-                    apptCalendar.get(Calendar.YEAR),
-                    apptCalendar.get(Calendar.MONTH),
-                    apptCalendar.get(Calendar.DAY_OF_MONTH)
-                )
-
-                OutlinedTextField(
-                    value = serviceStartDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "",
-                    onValueChange = {},
-                    label = { Text("Date of Appointment") },
-                    modifier = Modifier.fillMaxWidth().clickable { apptPickerDialog.show() },
-                    readOnly = true,
-                    enabled = false,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                        disabledBorderColor = MaterialTheme.colorScheme.outline,
-                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-            // Row 9: Create PIN, Confirm PIN (on same row) - Hide for Officer
-            if (!isOfficer && isFieldVisible("pin")) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = pin,
-                        onValueChange = { if (it.length <= 6) pin = it.filter { ch -> ch.isDigit() } },
-                        label = { Text("Create PIN*") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                        isError = showValidationErrors && pin.length != 6
-                    )
-                    OutlinedTextField(
-                        value = confirmPin,
-                        onValueChange = { if (it.length <= 6) confirmPin = it.filter { ch -> ch.isDigit() } },
-                        label = { Text("Confirm PIN*") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
-                        isError = showValidationErrors && confirmPin != pin
-                    )
-                }
-                if (showValidationErrors && (pin.length != 6 || pin != confirmPin)) {
-                    Text("PIN must be 6 digits and match", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-            // Row 10: Terms and condition
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = acceptedTerms, onCheckedChange = { acceptedTerms = it })
-                Spacer(Modifier.width(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("I accept ")
-                    Text(
-                        text = "Terms & Conditions",
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        modifier = Modifier.clickable {
-                            onNavigateToTerms?.invoke()
-                        }
-                    )
-                }
-            }
-            Spacer(Modifier.height(sectionSpacing))
-        } else {
-            // Non-registration form (admin/self-edit) - keep original order
-            // KGID (admin & registration only)
-            // KGID (admin & registration only)
-            if (!isSelfEdit && !isAutoAgidRank && isFieldVisible("kgid")) {
-                OutlinedTextField(
-                     value = kgid,
-                     onValueChange = { newValue ->
-                          kgid = when {
-                                // Allow anything for high-ranking officers
-                                isOfficer || isHighRankingOfficer -> newValue
-                                // Otherwise, only allow digits
-                                newValue.all { it.isDigit() } -> newValue
-                                // If new input contains non-digits, keep the old value
-                                else -> kgid
-                          }
-                     },
-                    label = { Text(identifierLabel) },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = if (isOfficer || isHighRankingOfficer) KeyboardType.Text else KeyboardType.Number),
-                    isError = showValidationErrors && !isKgidValid(kgid),
-                    enabled = (isAdmin || isRegistration) && !isEdit
-                )
-                if (showValidationErrors && !isKgidValid(kgid)) {
-                    Text(if(isOfficer) "ID required" else "KGID required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-            // Name
-            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name*") }, modifier = Modifier.fillMaxWidth(), isError = showValidationErrors && name.isBlank())
-            Spacer(Modifier.height(fieldSpacing))
-
-            // Email (Optional/Hidden for Officers if needed, but let's keep it optional)
-            if (isFieldVisible("email")) {
-                OutlinedTextField(
-                    value = email ?: "",
-                    onValueChange = { email = it },
-                    label = { Text(if (isOfficer) "Email (Optional)" else "Email*") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    isError = showValidationErrors && !isOfficer && !isValidEmail(email ?: "")
-                )
-                if (showValidationErrors && !isOfficer && !isValidEmail(email ?: "")) Text("Enter valid email", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-            // Mobile1
-            OutlinedTextField(
-                value = mobile1,
-                onValueChange = { mobile1 = it.filter { ch -> ch.isDigit() } },
-                label = { Text("Mobile 1*") },
-                modifier = Modifier.fillMaxWidth(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                isError = showValidationErrors && !isValidMobile(mobile1)
-            )
-            if (showValidationErrors && !isValidMobile(mobile1)) Text("Enter valid mobile", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(fieldSpacing))
-
-            // Mobile2
-            if (isFieldVisible("mobile2")) {
-                OutlinedTextField(value = mobile2, onValueChange = { mobile2 = it.filter { ch -> ch.isDigit() } }, label = { Text("Mobile 2 (Optional)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-            // Landline
-            if (isFieldVisible("landline")) {
-                OutlinedTextField(value = landline, onValueChange = { landline = it.filter { ch -> ch.isDigit() || ch == '-' } }, label = { Text("Landline (Optional)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-            // Landline 2
-            if (isFieldVisible("landline2")) {
-                OutlinedTextField(value = landline2, onValueChange = { landline2 = it.filter { ch -> ch.isDigit() || ch == '-' } }, label = { Text("Landline 2 (Optional)") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-            // Rank
-            ExposedDropdownMenuBox(expanded = rankExpanded, onExpandedChange = { rankExpanded = !rankExpanded }) {
-                OutlinedTextField(
-                    value = rank.ifEmpty { "Select Rank" },
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Rank*") },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = rankExpanded) },
-                    isError = showValidationErrors && rank.isBlank()
-                )
-                ExposedDropdownMenu(expanded = rankExpanded, onDismissRequest = { rankExpanded = false }) {
-                    filteredRanks.forEach { selection ->
-                        DropdownMenuItem(text = { Text(selection) }, onClick = {
-                            rank = selection
-                            if (!ranksRequiringMetalNumber.contains(selection)) metalNumber = ""
-                            if (ministerialRanks.any { it.equals(selection, ignoreCase = true) }) {
-                                station = ""
-                            }
-                            if (highRankingOfficers.contains(selection)) {
-                                district = ""
-                                station = ""
-                            }
-                            rankExpanded = false
-                        })
-                    }
-                }
-            }
-            if (showValidationErrors && rank.isBlank()) Text("Rank required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(fieldSpacing))
-
-            // Metal number
-            if (showMetalNumberField && !isOfficer) {
-                OutlinedTextField(
-                    value = metalNumber,
-                    onValueChange = { metalNumber = it.filter { ch -> ch.isDigit() } },
-                    label = { Text("Metal Number") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    isError = showValidationErrors && metalNumber.isBlank()
-                )
-                if (showValidationErrors && metalNumber.isBlank()) Text("Metal number required for this rank", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-            // Unit (Moved here for proper dependency flow: Unit -> District -> Station)
-            ExposedDropdownMenuBox(expanded = unitExpanded, onExpandedChange = { unitExpanded = !unitExpanded }) {
-                OutlinedTextField(
-                    value = unit.ifEmpty { "Unit" },
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Unit") },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = unitExpanded) },
-                    isError = showValidationErrors && unit.isBlank()
-                )
-                if (showValidationErrors && unit.isBlank()) {
-                    Text("Unit required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                }
-                ExposedDropdownMenu(expanded = unitExpanded, onDismissRequest = { unitExpanded = false }) {
-                    units.forEach { selection ->
-                        DropdownMenuItem(text = { Text(selection) }, onClick = {
-                            unit = selection
-                            unitExpanded = false
-                        })
-                    }
-                }
-            }
-            Spacer(Modifier.height(fieldSpacing))
-
-            // District (admin & registration editable; self-edit disabled)
-            val isSpecialUnit = remember(selectedUnitModel) {
-                selectedUnitModel?.mappingType == "none"
-            }
-
-            if (!isHighRankingOfficer && !isSpecialUnit) {
-                val isDistrictLocked = availableDistricts.size == 1 && district.isNotBlank()
-                ExposedDropdownMenuBox(expanded = districtExpanded && !isDistrictLocked, onExpandedChange = {
-                    if (!isSelfEdit && !isDistrictLocked) districtExpanded = !districtExpanded
-                }) {
-                    OutlinedTextField(
-                        value = district.ifEmpty { if (isSelfEdit) district else "Select District / HQ*" },
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("District / HQ*") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        enabled = !isDistrictLocked,
-                        trailingIcon = { 
-                            if (!isDistrictLocked) {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = districtExpanded)
-                            }
-                        },
-                        isError = showValidationErrors && district.isBlank()
-                    )
-                    if (!isSelfEdit && !isDistrictLocked) {
-                        ExposedDropdownMenu(expanded = districtExpanded, onDismissRequest = { districtExpanded = false }) {
-                            availableDistricts.forEach { selection ->
-                                DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                    if (district != selection) station = ""
-                                    district = selection
-                                    districtExpanded = false
-                                })
-                            }
-                        }
-                    }
-                }
-                if (showValidationErrors && district.isBlank()) Text("District required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-            // Station/Section (Full Width)
-            // District-level units (e.g. DAR) always hide this field - hasSections must not override
-            if (!isHighRankingOfficer && !isDistrictLevelByModel && !isSpecialUnit && !isMinisterial) {
-                val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks) {
-                    val isPoliceStationRank = policeStationRanks.contains(rank)
-                    // Apply rank-based filtering to reduce noise for PS ranks ONLY if useStationLabel is true
-                    if (isPoliceStationRank && useStationLabel) {
-                         stationsForSelectedDistrict.filter { it.contains(" PS", ignoreCase = true) || !it.contains(" PS", ignoreCase = true) }
-                         // Actually, same logic as User flavor for consistency
-                         stationsForSelectedDistrict.filter { s ->
-                            val isPS = s.contains(" PS", ignoreCase = true)
-                            if (isPoliceStationRank && s.contains(" PS", ignoreCase = true)) true
-                            else if (!s.contains(" PS", ignoreCase = true)) true 
-                            else false
-                        }
-                    } else {
-                        stationsForSelectedDistrict
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ExposedDropdownMenuBox(
-                        expanded = stationExpanded,
-                        onExpandedChange = {
-                            if (district.isNotBlank() && filteredStations.isNotEmpty()) stationExpanded = !stationExpanded
-                        },
-                        modifier = Modifier.weight(1f)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedTextField(
-                            value = station.ifEmpty { 
-                                if (stationsForSelectedDistrict.isNotEmpty()) "Select ${if(useStationLabel) "Station" else "Section"}" 
-                                else "Select District First" 
-                            },
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text(if (useStationLabel) "Station*" else "Section / Branch*") },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
-                            enabled = district.isNotBlank() && filteredStations.isNotEmpty(),
-                            isError = showValidationErrors && station.isBlank()
-                        )
-                        ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
-                            filteredStations.forEach { selection ->
-                                DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                    station = selection
-                                    stationExpanded = false
-                                })
+                        Box(modifier = Modifier.weight(1f)) {
+                            ExposedDropdownMenuBox(expanded = stationExpanded, onExpandedChange = {
+                                if ((district.isNotBlank() || hasSections) && filteredStations.isNotEmpty()) stationExpanded = !stationExpanded
+                            }) {
+                                OutlinedTextField(
+                                    value = station.ifEmpty { 
+                                        if (hasSections) "Select Section" 
+                                        else if (district.isNotBlank()) "Select Station" 
+                                        else "Select District First" 
+                                    },
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text(stationLabel) },
+                                    leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = stationExpanded) },
+                                    enabled = (district.isNotBlank() || hasSections) && filteredStations.isNotEmpty(),
+                                    colors = textFieldColors,
+                                    isError = showValidationErrors && station.isBlank(),
+                                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                                )
+                                ExposedDropdownMenu(expanded = stationExpanded, onDismissRequest = { stationExpanded = false }) {
+                                    filteredStations.forEach { selection ->
+                                        DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                            station = selection
+                                            stationExpanded = false
+                                        })
+                                    }
+                                }
+                            }
+                        }
+
+                        if (station == "Others") {
+                            OutlinedTextField(
+                                value = manualSection,
+                                onValueChange = { manualSection = it },
+                                label = { Text("Specify ${if (hasSections) "Section" else "Station"} Name*") },
+                                leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+                                colors = textFieldColors,
+                                modifier = Modifier.weight(1f),
+                                isError = showValidationErrors && manualSection.isBlank()
+                            )
+                        }
+                    }
+                    
+                    if (showValidationErrors) {
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            if (station.isBlank()) {
+                                Text(if (hasSections) "Section required" else "Station required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f).padding(start = 4.dp, top = 4.dp))
+                            }
+                            if (station == "Others" && manualSection.isBlank()) {
+                                Text("Please specify name", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f).padding(start = 4.dp, top = 4.dp))
                             }
                         }
                     }
-
-                    // Manual Section Entry
-                    if (station == "Others") {
-                        OutlinedTextField(
-                            value = manualSection,
-                            onValueChange = { manualSection = it },
-                            label = { Text("Specify Name*") },
-                            placeholder = { Text("Section Name") },
-                            modifier = Modifier.weight(1f),
-                            isError = showValidationErrors && manualSection.isBlank(),
-                            singleLine = true
-                        )
-                    }
-                }
-                
-                if (showValidationErrors) {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        if (station.isBlank() && stationsForSelectedDistrict.isNotEmpty()) {
-                            Text(
-                                if (useStationLabel) "Station required" else "Section required", 
-                                color = MaterialTheme.colorScheme.error, 
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.weight(1f)
-                            )
-                        } else {
-                           Spacer(modifier = Modifier.weight(1f))
-                        }
-                        
-                         if (station == "Others" && manualSection.isBlank()) {
-                            Text(
-                                "Name required", 
-                                color = MaterialTheme.colorScheme.error, 
-                                style = MaterialTheme.typography.bodySmall,
-                                 modifier = Modifier.weight(1f).padding(start = 8.dp)
-                            )
-                        }
-                    }
                 }
 
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-                // Duty Role Dropdown (Sub-Section) - Admin/Self-Edit
+                // Row: Duty Role & Date of Appointment (DOA)
                 val otherDutyRoles = remember(unit, subSectionList, fullUnits) {
                     constantsViewModel.getDutyRolesForUnit(unit, isRegistration)
                 }
-
-                if (otherDutyRoles.isNotEmpty()) {
-                    ExposedDropdownMenuBox(
-                        expanded = subSectionExpanded,
-                        onExpandedChange = { subSectionExpanded = !subSectionExpanded },
-                        modifier = Modifier.fillMaxWidth()
+                val showDutyRole = otherDutyRoles.isNotEmpty()
+                val showDoa = isFieldVisible("doa")
+                
+                if (showDutyRole || showDoa) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedTextField(
-                            value = subSection.ifEmpty { "Select Duty Role" },
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Duty Role / Sub-Section") },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subSectionExpanded) }
-                        )
-                        ExposedDropdownMenu(expanded = subSectionExpanded, onDismissRequest = { subSectionExpanded = false }) {
-                            otherDutyRoles.forEach { selection ->
-                                DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                    subSection = selection
-                                    subSectionExpanded = false
-                                })
-                            }
-                            if (subSection.isNotEmpty()) {
-                                DropdownMenuItem(
-                                    text = { Text("None", color = MaterialTheme.colorScheme.error) },
-                                    onClick = {
-                                        subSection = ""
-                                        subSectionExpanded = false
+                        if (showDutyRole) {
+                            Box(modifier = Modifier.weight(1.1f)) {
+                                ExposedDropdownMenuBox(
+                                    expanded = subSectionExpanded,
+                                    onExpandedChange = { subSectionExpanded = !subSectionExpanded },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    OutlinedTextField(
+                                        value = subSection.ifEmpty { "Select Duty Role" },
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text("Duty Role / Sub-Section") },
+                                        leadingIcon = { Icon(Icons.Default.Work, contentDescription = null) },
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = subSectionExpanded) },
+                                        colors = textFieldColors,
+                                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                                    )
+                                    ExposedDropdownMenu(expanded = subSectionExpanded, onDismissRequest = { subSectionExpanded = false }) {
+                                        otherDutyRoles.forEach { selection ->
+                                            DropdownMenuItem(text = { Text(selection) }, onClick = {
+                                                subSection = selection
+                                                subSectionExpanded = false
+                                            })
+                                        }
+                                        if (subSection.isNotEmpty()) {
+                                            DropdownMenuItem(
+                                                text = { Text("None", color = MaterialTheme.colorScheme.error) },
+                                                onClick = {
+                                                    subSection = ""
+                                                    subSectionExpanded = false
+                                                }
+                                            )
+                                        }
                                     }
+                                }
+                            }
+                        }
+
+                        if (showDoa) {
+                            val apptCalendar = Calendar.getInstance()
+                            serviceStartDate?.let { apptCalendar.time = it }
+                            val apptDatePicker = DatePickerDialog(
+                                context,
+                                { _, year, month, dayOfMonth ->
+                                    val cal = Calendar.getInstance()
+                                    cal.set(year, month, dayOfMonth)
+                                    serviceStartDate = cal.time
+                                },
+                                apptCalendar.get(Calendar.YEAR),
+                                apptCalendar.get(Calendar.MONTH),
+                                apptCalendar.get(Calendar.DAY_OF_MONTH)
+                            )
+                            
+                            Box(modifier = Modifier.weight(0.9f)) {
+                                OutlinedTextField(
+                                    value = serviceStartDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "",
+                                    onValueChange = { },
+                                    label = { Text("Appt Date") },
+                                    readOnly = true,
+                                    leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+                                    trailingIcon = {
+                                        Icon(Icons.Default.Edit, contentDescription = "Select Date", modifier = Modifier.clickable { apptDatePicker.show() })
+                                    },
+                                    modifier = Modifier.fillMaxWidth().clickable { apptDatePicker.show() },
+                                    enabled = false,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        disabledLeadingIconColor = MaterialTheme.colorScheme.primary
+                                    )
                                 )
                             }
                         }
                     }
                 }
 
-                // Manual Duty Role Entry (Admin/Self-Edit)
+                // Handle manual entry for Duty Role below the row if "Others" is selected
                 if (subSection == "Others") {
-                    Spacer(Modifier.height(fieldSpacing))
+                    Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = manualSubSection,
                         onValueChange = { manualSubSection = it },
                         label = { Text("Specify Duty Role*") },
                         placeholder = { Text("Duty Role Name") },
+                        leadingIcon = { Icon(Icons.Default.Work, contentDescription = null) },
+                        colors = textFieldColors,
                         modifier = Modifier.fillMaxWidth(),
                         isError = showValidationErrors && manualSubSection.isBlank(),
                         singleLine = true
                     )
                     if (showValidationErrors && manualSubSection.isBlank()) {
-                        Text("Duty role name required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        Text("Duty role name required", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
                     }
                 }
+            }
 
-            Spacer(Modifier.height(fieldSpacing))
-
-            // Blood group (Hide for Officer, Hide if configured hidden)
-            if (!isOfficer && isFieldVisible("bloodGroup")) {
-                ExposedDropdownMenuBox(expanded = bloodGroupExpanded, onExpandedChange = { bloodGroupExpanded = !bloodGroupExpanded }) {
-                    OutlinedTextField(value = bloodGroup.ifEmpty { "Blood Group" }, onValueChange = {}, readOnly = true, label = { Text("Blood Group") }, modifier = Modifier.fillMaxWidth().menuAnchor(), trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bloodGroupExpanded) })
-                    ExposedDropdownMenu(expanded = bloodGroupExpanded, onDismissRequest = { bloodGroupExpanded = false }) {
-                        bloodGroups.forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                bloodGroup = selection
-                                bloodGroupExpanded = false
-                            })
-                        }
+            // 4. Submission Button (Simple for Admin/Self-Edit)
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = {
+                    if (isSubmitting || isLoading) return@Button
+                    isSubmitting = true
+                    showValidationErrors = true
+                    
+                    val isEmailValid = if (!isFieldVisible("email")) true else if (isOfficer && email.isNullOrBlank()) true else isValidEmail(email ?: "")
+                    if (!isEmailValid || !isValidMobile(mobile1) || name.isBlank()) {
+                        Toast.makeText(context, "Please fix validation errors", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false
+                        return@Button
                     }
-                }
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-            // KCSR Fields: Gender
-            if (isFieldVisible("gender")) {
-                ExposedDropdownMenuBox(
-                    expanded = genderExpanded,
-                    onExpandedChange = { genderExpanded = !genderExpanded },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = gender,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Gender*") },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = genderExpanded) }
-                    )
-                    ExposedDropdownMenu(expanded = genderExpanded, onDismissRequest = { genderExpanded = false }) {
-                        listOf("Male", "Female").forEach { selection ->
-                            DropdownMenuItem(text = { Text(selection) }, onClick = {
-                                gender = selection
-                                genderExpanded = false
-                            })
-                        }
+                    if (!isSelfEdit && !isAutoAgid && kgid.isBlank() && isFieldVisible("kgid")) {
+                        Toast.makeText(context, "Please fix validation errors", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false
+                        return@Button
                     }
-                }
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-            // KCSR Fields: Date of Birth and Date of Appointment
-            if (isFieldVisible("dob")) {
-                val dobCalendar = Calendar.getInstance()
-                dateOfBirth?.let { dobCalendar.time = it }
-
-                val dobPickerDialog = DatePickerDialog(
-                    context,
-                    { _, year, month, dayOfMonth ->
-                        val cal = Calendar.getInstance()
-                        cal.set(year, month, dayOfMonth)
-                        dateOfBirth = cal.time
-                    },
-                    dobCalendar.get(Calendar.YEAR),
-                    dobCalendar.get(Calendar.MONTH),
-                    dobCalendar.get(Calendar.DAY_OF_MONTH)
-                )
-
-                OutlinedTextField(
-                    value = dateOfBirth?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "",
-                    onValueChange = {},
-                    label = { Text("Date of Birth") },
-                    modifier = Modifier.fillMaxWidth().clickable { dobPickerDialog.show() },
-                    readOnly = true,
-                    enabled = false,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                        disabledBorderColor = MaterialTheme.colorScheme.outline,
-                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-                Spacer(Modifier.height(fieldSpacing))
-            }
-
-            if (isFieldVisible("doa")) {
-                val apptCalendar = Calendar.getInstance()
-                serviceStartDate?.let { apptCalendar.time = it }
-
-                val apptPickerDialog = DatePickerDialog(
-                    context,
-                    { _, year, month, dayOfMonth ->
-                        val cal = Calendar.getInstance()
-                        cal.set(year, month, dayOfMonth)
-                        serviceStartDate = cal.time
-                    },
-                    apptCalendar.get(Calendar.YEAR),
-                    apptCalendar.get(Calendar.MONTH),
-                    apptCalendar.get(Calendar.DAY_OF_MONTH)
-                )
-
-                OutlinedTextField(
-                    value = serviceStartDate?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "",
-                    onValueChange = {},
-                    label = { Text("Date of Appointment") },
-                    modifier = Modifier.fillMaxWidth().clickable { apptPickerDialog.show() },
-                    readOnly = true,
-                    enabled = false,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                        disabledBorderColor = MaterialTheme.colorScheme.outline,
-                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-                Spacer(Modifier.height(fieldSpacing))
-            }
-        }
-
-        // Submit
-        Button(
-            onClick = {
-                
-                // ✅ Prevent duplicate submissions
-                if (isSubmitting || isLoading) {
-                    android.util.Log.d("CommonEmployeeForm", "⚠️ Already submitting, returning early")
-                    Toast.makeText(context, "Please wait, submission in progress...", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-                
-                android.util.Log.d("CommonEmployeeForm", "✅ Starting validation...")
-                showValidationErrors = true
-                
-                // Basic validation
-                // Officer email is optional, Employee email is required
-                val isEmailValid = if (isOfficer && email.isNullOrBlank()) true else isValidEmail(email ?: "")
-                if (!isEmailValid || !isValidMobile(mobile1) || name.isBlank()) {
-                    Toast.makeText(context, "Please fix validation errors", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-                
-                // KGID validation (required for admin add and registration, optional for self-edit)
-                if (!isSelfEdit && kgid.isBlank()) {
-                    Toast.makeText(context, "Please fix validation errors", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
-                
-                // Registration-specific validation
-                if (isRegistration) {
-                    // Validate rank
                     if (rank.isBlank()) {
                         Toast.makeText(context, "Rank is required", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false
                         return@Button
                     }
-                    // Validate metal number if required for selected rank
-                    if (showMetalNumberField && metalNumber.isBlank()) {
+                    if (showMetalNumberField && metalNumber.isBlank() && !isOfficer && isFieldVisible("metalNumber")) {
                         Toast.makeText(context, "Metal number is required for this rank", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false
                         return@Button
                     }
-                    // Validate district
                     if (district.isBlank() && !isHighRankingOfficer) {
                         Toast.makeText(context, "District is required", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false
                         return@Button
                     }
-                    // Validate station (skip for district-level units like DAR where station field is hidden)
-                    if (station.isBlank() && !isMinisterial && !isHighRankingOfficer && !isDistrictLevelByModel) {
-                        Toast.makeText(context, "Station required", Toast.LENGTH_SHORT).show()
+                    if (station.isBlank() && !isHighRankingOfficer && !isDistrictLevelUnit && !isMinisterial) {
+                        Toast.makeText(context, "${if(unit == "State INT" || unitSections.isNotEmpty()) "Section" else "Station"} is required", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false
                         return@Button
                     }
-                    
-                    // Validate Manual Section
                     if (station == "Others" && manualSection.isBlank()) {
                         Toast.makeText(context, "Please specify your section name", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false
                         return@Button
                     }
-                    // Validate PIN
-                    if (pin.length != 6 || pin != confirmPin) {
-                        Toast.makeText(context, "PIN mismatch or invalid", Toast.LENGTH_SHORT).show()
+                    if (bloodGroup.isBlank() && !isOfficer && isFieldVisible("bloodGroup")) {
+                        Toast.makeText(context, "Blood Group is required", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false
                         return@Button
                     }
-                    // Validate terms acceptance
-                    if (!acceptedTerms) {
-                        Toast.makeText(context, "Accept terms to continue", Toast.LENGTH_SHORT).show()
+                    if (subSection == "Others" && manualSubSection.isBlank()) {
+                        Toast.makeText(context, "Please specify your duty role", Toast.LENGTH_SHORT).show()
+                        isSubmitting = false
                         return@Button
                     }
-                }
 
-                // Validate Manual Duty Role
-                if (subSection == "Others" && manualSubSection.isBlank()) {
-                    Toast.makeText(context, "Please specify your duty role", Toast.LENGTH_SHORT).show()
-                    return@Button
-                }
+                    val finalKgid = if (kgid.isBlank()) "TEMP-${System.currentTimeMillis()}" else kgid
+                    val isManual = station == "Others"
 
-                // ✅ Set submitting state to prevent duplicate clicks
-                android.util.Log.d("CommonEmployeeForm", "✅ Validation passed, setting isSubmitting = true")
-                isSubmitting = true
+                    val emp = Employee(
+                        kgid = finalKgid,
+                        name = name.trim(),
+                        email = email?.trim()?.lowercase() ?: "",
+                        mobile1 = mobile1.trim(),
+                        mobile2 = mobile2.trim().takeIf { it.isNotBlank() },
+                        landline = landline.trim().takeIf { it.isNotBlank() },
+                        landline2 = landline2.trim().takeIf { it.isNotBlank() },
+                        rank = rank.trim(),
+                        district = district.trim(),
+                        station = when {
+                            isManual -> manualSection.trim()
+                            station.isNotBlank() -> station.trim()
+                            isDistrictLevelUnit -> district.trim()
+                            else -> ""
+                        },
+                        unit = unit.trim().takeIf { it.isNotBlank() },
+                        bloodGroup = bloodGroup.ifBlank { null },
+                        metalNumber = metalNumber.trim().takeIf { it.isNotBlank() },
+                        isAdmin = initialEmployee?.isAdmin ?: false,
+                        photoUrl = croppedPhotoUri?.toString() ?: currentPhotoUrl,
+                        isManualStation = isManual,
+                        gender = gender,
+                        serviceStartDate = serviceStartDate,
+                        dateOfBirth = dateOfBirth,
+                        subSection = if (subSection == "Others") manualSubSection.trim() else subSection.trim().takeIf { it.isNotBlank() },
+                        isManualSubSection = subSection == "Others"
+                    )
 
-                val finalKgid = if (kgid.isBlank()) "TEMP-${System.currentTimeMillis()}" else kgid
-                android.util.Log.d("CommonEmployeeForm", "📝 Final KGID: $finalKgid")
-
-                val isManual = station == "Others" // Determine if manual station
-
-                val emp = Employee(
-                    kgid = finalKgid,
-                    name = name.trim(),
-                    email = email.trim().lowercase(),
-                    mobile1 = mobile1.trim(),
-                    mobile2 = mobile2.trim().takeIf { it.isNotBlank() },
-                    landline = landline.trim().takeIf { it.isNotBlank() },
-                    landline2 = landline2.trim().takeIf { it.isNotBlank() },
-                    rank = rank.trim(),
-                    district = district.trim(),
-                    station = when {
-                        isManual -> manualSection.trim()
-                        station.isNotBlank() -> station.trim()
-                        isDistrictLevelByModel -> district.trim() // For DAR etc: use district as station
-                        else -> ""
-                    },
-                    unit = unit.trim().takeIf { it.isNotBlank() },
-                    bloodGroup = bloodGroup.ifBlank { null },
-                    metalNumber = metalNumber.trim().takeIf { it.isNotBlank() },
-                    isAdmin = initialEmployee?.isAdmin ?: false,
-                    photoUrl = croppedPhotoUri?.toString() ?: currentPhotoUrl,
-                    isManualStation = isManual,
-                    gender = gender,
-                    serviceStartDate = serviceStartDate,
-                    dateOfBirth = dateOfBirth,
-                    subSection = if (subSection == "Others") manualSubSection.trim() else subSection.trim().takeIf { it.isNotBlank() },
-                    isManualSubSection = subSection == "Others"
-                )
-
-                // ✅ Submit in coroutine scope
-                android.util.Log.d("CommonEmployeeForm", "🚀 Launching coroutine for submission...")
-                coroutineScope.launch {
-                    try {
-                        android.util.Log.d("CommonEmployeeForm", "📋 Inside coroutine, isRegistration: $isRegistration")
-                        if (isRegistration) {
-                            // Build PendingRegistrationEntity and call callback
-                            val firebaseUid = "" // wrapper will add actual uid
-                            val pending = PendingRegistrationEntity(
-                                name = emp.name,
-                                kgid = emp.kgid,
-                                email = emp.email,
-                                mobile1 = emp.mobile1 ?: "",
-                                mobile2 = emp.mobile2,
-                                pin = pin,
-                                rank = emp.rank ?: "",
-                                metalNumber = emp.metalNumber,
-                                district = emp.district.orEmpty(),
-                                station = if (station == "Others") manualSection.trim() else emp.station.orEmpty(),
-                                unit = emp.unit,
-                                bloodGroup = emp.bloodGroup.orEmpty(),
-                                firebaseUid = firebaseUid,
-                                photoUrl = emp.photoUrl,
-                                isManualStation = emp.isManualStation,
-                                gender = emp.gender,
-                                serviceStartDate = emp.serviceStartDate,
-                                subSection = emp.subSection,
-                                isManualSubSection = emp.isManualSubSection
-                            )
-                            onRegisterSubmit?.invoke(pending, croppedPhotoUri)
-                        } else {
-                            android.util.Log.d("CommonEmployeeForm", "═══════════════════════════════════════")
-                            android.util.Log.d("CommonEmployeeForm", "📤 Calling onSubmit with photo: ${croppedPhotoUri != null}")
-                            android.util.Log.d("CommonEmployeeForm", "📤 Employee KGID: ${emp.kgid}")
+                    android.util.Log.d("CommonEmployeeForm", "🚀 Launching coroutine for submission...")
+                    coroutineScope.launch {
+                        try {
                             onSubmit(emp, croppedPhotoUri)
-                            android.util.Log.d("CommonEmployeeForm", "✅ onSubmit call completed")
+                            delay(3000)
+                            isSubmitting = false
+                        } catch (e: Exception) {
+                            android.util.Log.e("CommonEmployeeForm", "Submission error: ${e.message}", e)
+                            isSubmitting = false
                         }
-                        // Reset after 3 seconds (allowing time for operation)
-                        delay(3000)
-                        isSubmitting = false
-                    } catch (e: Exception) {
-                        android.util.Log.e("CommonEmployeeForm", "❌ Submission error: ${e.message}", e)
-                        e.printStackTrace()
-                        isSubmitting = false
                     }
-                }
-            },
-            enabled = !isSubmitting && !isLoading, // ✅ Disable button during submission
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            if (isSubmitting || isLoading) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Submitting...")
-                }
-            } else {
-                Text(
-                    when {
-                        isRegistration -> "Submit for approval"
-                        initialEmployee != null -> "Submit update for approval"
-                        else -> "Submit for approval"
-                    }
-                )
-            }
-        }
-
-        if (isSubmitting || isLoading) {
-            val statusTitle = when {
-                isLoading -> "Uploading details to server..."
-                else -> "Preparing submission..."
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(16.dp)
+                },
+                enabled = !isSubmitting && !isLoading,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CloudUpload,
-                        contentDescription = "Upload in progress",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                if (isSubmitting || isLoading) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Submitting...")
+                    }
+                } else {
                     Text(
-                        text = statusTitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = if (initialEmployee != null) "Submit update for approval" else "Submit for approval",
+                        fontWeight = FontWeight.Bold
                     )
                 }
-
-                Spacer(Modifier.height(12.dp))
-
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp),
-                    color = MaterialTheme.colorScheme.primary
-                )
             }
         }
 
-        Spacer(Modifier.height(sectionSpacing))
-
-        // Image chooser
-        if (showSourceDialog) {
-            AlertDialog(onDismissRequest = { showSourceDialog = false }, title = { Text("Select Image Source") }, text = {
-                Column {
-                    Row(modifier = Modifier.fillMaxWidth().clickable {
-                        showSourceDialog = false
-                        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                            launchCamera()
-                        } else {
-                            cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
-                        }
-                    }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.PhotoCamera, contentDescription = "Camera")
-                        Spacer(Modifier.width(12.dp))
-                        Text("Camera")
+        // Linear Progress Indicator for submit / load in progress (Shared layout)
+        if (isSubmitting || isLoading) {
+            val statusTitle = if (isLoading) "Uploading details to server..." else "Preparing submission..."
+            Spacer(Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CloudUpload,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = statusTitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                    Row(modifier = Modifier.fillMaxWidth().clickable {
-                        showSourceDialog = false
-                        galleryLauncher.launch("image/*")
-                    }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.PhotoLibrary, contentDescription = "Gallery")
-                        Spacer(Modifier.width(12.dp))
-                        Text("Gallery")
-                    }
+                    Spacer(Modifier.height(12.dp))
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
-            }, confirmButton = {
-                TextButton(onClick = { showSourceDialog = false }) { Text("Close") }
-            })
+            }
         }
+
+        Spacer(Modifier.height(12.dp))
+
+        // Image chooser dialog (Preserving launchCamera() call!)
+        if (showSourceDialog) {
+            AlertDialog(
+                onDismissRequest = { showSourceDialog = false },
+                title = { Text("Select Image Source") },
+                text = {
+                    Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showSourceDialog = false
+                                    if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                        launchCamera()
+                                    } else {
+                                        cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                    }
+                                }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.PhotoCamera, contentDescription = "Camera")
+                            Spacer(Modifier.width(12.dp))
+                            Text("Camera")
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showSourceDialog = false
+                                    galleryLauncher.launch("image/*")
+                                }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.PhotoLibrary, contentDescription = "Gallery")
+                            Spacer(Modifier.width(12.dp))
+                            Text("Gallery")
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showSourceDialog = false }) { Text("Close") }
+                }
+            )
+        }
+
+        Spacer(Modifier.height(120.dp))
     }
 }
 
@@ -1781,7 +2170,6 @@ private fun launchUCrop(context: Context, sourceUri: Uri, launcher: ActivityResu
     }
 }
 
-
 // Helper to create temp URI for camera
 private fun createTempImageUri(context: Context): Uri? {
     return try {
@@ -1794,5 +2182,59 @@ private fun createTempImageUri(context: Context): Uri? {
     } catch (e: Exception) {
         android.util.Log.e("CommonEmployeeForm", "Error creating temp file URI: ${e.message}", e)
         null
+    }
+}
+
+@Composable
+private fun FormSectionCard(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                thickness = 1.dp
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            content()
+        }
     }
 }

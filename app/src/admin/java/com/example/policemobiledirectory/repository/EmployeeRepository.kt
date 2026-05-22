@@ -1475,6 +1475,7 @@ open class EmployeeRepository @Inject constructor(
     suspend fun getEmployeeByEmail(email: String): EmployeeEntity? = withContext(ioDispatcher) {
         val normalizedEmail = email.trim().lowercase()
         val rawEmail = email.trim()
+        val currentUser = auth.currentUser
 
         Log.d(TAG, "🔍 getEmployeeByEmail (Admin): Searching for '$normalizedEmail' (raw: '$rawEmail')")
 
@@ -1496,7 +1497,6 @@ open class EmployeeRepository @Inject constructor(
         }
 
         // 2. Fallback: Firestore
-        val currentUser = auth.currentUser
         Log.d(TAG, "📡 Fetching from Firestore (Admin)... Current Auth UID: ${currentUser?.uid}, Email: ${currentUser?.email}")
 
         var snapshot = try {
@@ -1521,8 +1521,8 @@ open class EmployeeRepository @Inject constructor(
         var finalDoc = snapshot?.documents?.firstOrNull()
 
         // --- 🆕 3. ALWAYS CHECK ADMINS COLLECTION AS FINAL FALLBACK ---
+        // A. Try Query by Email (requires broader read permissions)
         try {
-            // A. Check by email (where email is a FIELD)
             val adminSnapshot = firestore.collection("admins").whereEqualTo(FIELD_EMAIL, normalizedEmail).limit(1).get().await()
             if (!adminSnapshot.isEmpty) {
                 isAdminCollection = true
@@ -1530,29 +1530,37 @@ open class EmployeeRepository @Inject constructor(
                     Log.d(TAG, "✅ Found user in 'admins' collection by email field")
                     finalDoc = adminSnapshot.documents.first()
                 }
-            } else {
-                // B. Check by normalized email (as DOCUMENT ID)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ Admins query failed: ${e.message}")
+        }
+
+        // B. Try Document ID = Email (often works when queries are blocked)
+        if (finalDoc == null) {
+            try {
                 val adminDocByEmail = firestore.collection("admins").document(normalizedEmail).get().await()
                 if (adminDocByEmail.exists()) {
                     Log.d(TAG, "✅ Found user in 'admins' collection by Email ID: $normalizedEmail")
                     isAdminCollection = true
-                    if (finalDoc == null) {
-                        finalDoc = adminDocByEmail
-                    }
-                } else if (currentUser != null) {
-                    // C. Check by UID (as DOCUMENT ID)
-                    val adminDocByUid = firestore.collection("admins").document(currentUser.uid).get().await()
-                    if (adminDocByUid.exists()) {
-                        Log.d(TAG, "✅ Found user in 'admins' collection by UID ID: ${currentUser.uid}")
-                        isAdminCollection = true
-                        if (finalDoc == null) {
-                            finalDoc = adminDocByUid
-                        }
-                    }
+                    finalDoc = adminDocByEmail
                 }
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ Admins email doc lookup failed: ${e.message}")
             }
-        } catch (e: Exception) {
-            Log.w(TAG, "⚠️ Failed to check admins collection: ${e.message}")
+        }
+
+        // C. Try Document ID = UID (Critical for security rules 'exists' check)
+        if (finalDoc == null && currentUser != null) {
+            try {
+                val adminDocByUid = firestore.collection("admins").document(currentUser.uid).get().await()
+                if (adminDocByUid.exists()) {
+                    Log.d(TAG, "✅ Found user in 'admins' collection by UID ID: ${currentUser.uid}")
+                    isAdminCollection = true
+                    finalDoc = adminDocByUid
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ Admins UID doc lookup failed: ${e.message}")
+            }
         }
 
         if (finalDoc != null) {
@@ -1561,6 +1569,7 @@ open class EmployeeRepository @Inject constructor(
             
             var remote = finalDoc.toObject(Employee::class.java)?.copy(kgid = docKgid)
             if (isAdminCollection && remote != null) {
+                Log.d(TAG, "⭐ User identified as ADMIN (Admin flavor)")
                 // Admins are always approved and have admin rights
                 remote = remote.copy(isAdmin = true, isApproved = true)
                 
@@ -1574,28 +1583,33 @@ open class EmployeeRepository @Inject constructor(
             
             // If from admin collection, ensure entity is marked as admin and approved
             if (isAdminCollection) {
-                entity = entity.copy(isAdmin = true, isApproved = true)
+                entity = entity.copy(
+                    isAdmin = true, 
+                    isApproved = true,
+                    // Ensure email is set even if missing in admins doc
+                    email = if (entity.email.isBlank()) normalizedEmail else entity.email
+                )
             }
             
             Log.d(TAG, "🎯 Successfully mapped user: ${entity.kgid} (Admin=${entity.isAdmin})")
             employeeDao.insertEmployee(entity)
             return@withContext entity
-        } else if (isAdminCollection && currentUser != null) {
+        } else if (isAdminCollection) {
              // Create an ad-hoc entity for the admin if they aren't in employees
-             Log.d(TAG, "🛠️ Creating ad-hoc Admin entity for ${currentUser.uid}")
+             Log.d(TAG, "🛠️ Creating ad-hoc Admin entity for ${currentUser?.uid ?: "Unknown UID"}")
              val adminEntity = EmployeeEntity(
-                 kgid = "ADMIN_" + currentUser.uid,
+                 kgid = if (currentUser != null) "ADMIN_" + currentUser.uid else "ADMIN_SUPER",
                  name = "Administrator",
                  email = normalizedEmail,
                  isAdmin = true,
                  isApproved = true,
-                 firebaseUid = currentUser.uid
+                 firebaseUid = currentUser?.uid ?: ""
              )
              employeeDao.insertEmployee(adminEntity)
              return@withContext adminEntity
         }
-        
-        Log.w(TAG, "❌ No record found in Firestore for $email")
+
+        Log.w(TAG, "❌ No record found in Firestore for $email after all checks")
         return@withContext null
     }
 

@@ -17,9 +17,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         NotificationEntity::class,
         LeaveEntryEntity::class,
         LeaveBalanceEntity::class,
-        LeaveCreditLogEntity::class
+        LeaveCreditLogEntity::class,
+        AdminEmployeeEntity::class
     ],
-    version = 20,
+    version = 27,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -31,6 +32,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun appIconDao(): AppIconDao
     abstract fun notificationDao(): NotificationDao
     abstract fun leaveDao(): LeaveDao
+    abstract fun adminEmployeeDao(): AdminEmployeeDao
 
     companion object {
         @Volatile

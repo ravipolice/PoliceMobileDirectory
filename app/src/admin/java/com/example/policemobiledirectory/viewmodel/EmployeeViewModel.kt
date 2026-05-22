@@ -27,6 +27,7 @@ import com.example.policemobiledirectory.model.AppNotification
 import com.example.policemobiledirectory.MainActivity
 import com.example.policemobiledirectory.utils.OperationStatus
 import com.example.policemobiledirectory.utils.Constants
+import com.example.policemobiledirectory.utils.CsvParser
 import com.example.policemobiledirectory.ui.theme.CardStyle
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
@@ -49,6 +50,8 @@ import com.example.policemobiledirectory.repository.ImageRepository
 import com.example.policemobiledirectory.repository.ImageUploadRepository
 import com.example.policemobiledirectory.repository.RepoResult
 import com.example.policemobiledirectory.repository.AppIconRepository
+import com.example.policemobiledirectory.repository.AdminEmployeeRepository
+import com.example.policemobiledirectory.data.local.AdminEmployeeEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Date
@@ -66,7 +69,8 @@ open class EmployeeViewModel @Inject constructor(
     private val officerRepo: OfficerRepository,
     @ApplicationContext private val context: Context,
     private val auth: FirebaseAuth,
-    private val aiSearchParser: com.example.policemobiledirectory.utils.AISearchParser
+    private val aiSearchParser: com.example.policemobiledirectory.utils.AISearchParser,
+    private val adminEmployeeRepo: AdminEmployeeRepository
 ) : ViewModel() {
 
     private val firestore = FirebaseFirestore.getInstance()
@@ -110,6 +114,10 @@ open class EmployeeViewModel @Inject constructor(
     val officers: StateFlow<List<Officer>> = _officers.asStateFlow()
     private val _officerStatus = MutableStateFlow<OperationStatus<List<Officer>>>(OperationStatus.Loading)
     val officerStatus: StateFlow<OperationStatus<List<Officer>>> = _officerStatus.asStateFlow()
+
+    // Admin Employees (HR roster - admin only)
+    private val _adminEmployees = MutableStateFlow<List<AdminEmployeeEntity>>(emptyList())
+    val adminEmployees: StateFlow<List<AdminEmployeeEntity>> = _adminEmployees.asStateFlow()
     
     private val _officerPendingStatus = MutableStateFlow<OperationStatus<String>>(OperationStatus.Idle)
     val officerPendingStatus: StateFlow<OperationStatus<String>> = _officerPendingStatus.asStateFlow()
@@ -294,6 +302,30 @@ open class EmployeeViewModel @Inject constructor(
                 }
             }
         }
+
+        // 4️⃣ Load admin employees into local cache (admin-only HR roster)
+        viewModelScope.launch {
+            adminEmployeeRepo.refreshAdminEmployees()
+            adminEmployeeRepo.getAllAdminEmployees().collect { list ->
+                _adminEmployees.value = list
+            }
+        }
+
+        // 5️⃣ Load officers from Room (background sync from Firestore)
+        viewModelScope.launch {
+            // First serve what's cached in Room immediately
+            officerRepo.getOfficers().collect { result ->
+                if (result is RepoResult.Success) {
+                    val list = result.data?.sortedBy { it.name } ?: emptyList()
+                    _officers.value = list
+                    _officerStatus.value = OperationStatus.Success(list)
+                }
+            }
+        }
+        viewModelScope.launch {
+            // Then sync fresh data from Firestore in background
+            officerRepo.syncAllOfficers()
+        }
     }
 
     // Derived State: Stations for the selected district
@@ -321,11 +353,61 @@ open class EmployeeViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    val allContacts: StateFlow<List<Contact>> = combine(_employees, _officers, _isAdmin) { employees, officers, isAdmin ->
+    // Helper: Convert AdminEmployeeEntity to a lightweight Employee for display
+    private fun AdminEmployeeEntity.toDisplayEmployee() = Employee(
+        kgid = kgid,
+        name = name,
+        email = email,
+        mobile1 = mobile1 ?: "",
+        mobile2 = mobile2,
+        rank = rank ?: "",
+        metalNumber = metalNumber,
+        district = district,
+        station = station,
+        unit = unit,
+        bloodGroup = bloodGroup,
+        photoUrl = photoUrl,
+        photoUrlFromGoogle = photoUrlFromGoogle,
+        subSection = subSection,
+        dutyRole = dutyRole,
+        landline = landline,
+        landline2 = landline2,
+        gender = gender,
+        isApproved = true,
+        isAdmin = false,
+        isHidden = false
+    )
+
+    val allContacts: StateFlow<List<Contact>> = combine(_employees, _officers, _adminEmployees, _isAdmin) { employees, officers, adminEmps, isAdmin ->
         val filteredEmployees = if (isAdmin) employees else employees.filter { it.isApproved }
+        // Build lookup sets from registered employees to avoid duplicates
+        val registeredKgids = filteredEmployees.map { it.kgid.trim().lowercase() }.toHashSet()
+        val registeredEmails = filteredEmployees.mapNotNull { it.email?.trim()?.lowercase() }.filter { it.isNotBlank() }.toHashSet()
+        // Name+Station composite key for fuzzy dedup fallback
+        val registeredNameStation = filteredEmployees.map {
+            "${it.name.trim().lowercase()}_${it.station?.trim()?.lowercase() ?: ""}"
+        }.toHashSet()
+
         val employeeContacts = filteredEmployees.map { Contact(employee = it) }
         val officerContacts = officers.map { Contact(officer = it) }
-        employeeContacts + officerContacts
+
+        // Convert admin employees to Employee display objects — avoids blank cards
+        val adminEmployeeContacts = if (isAdmin) {
+            adminEmps.filter { ae ->
+                if (ae.name.isBlank()) return@filter false
+                val aeKgid = ae.kgid.trim().lowercase()
+                val aeEmail = ae.email.trim().lowercase()
+                val aeStation = ae.station?.trim()?.lowercase() ?: ""
+                val aeNameStation = "${ae.name.trim().lowercase()}_$aeStation"
+                val kgidMatch = aeKgid.isNotBlank() && registeredKgids.contains(aeKgid)
+                val emailMatch = aeEmail.isNotBlank() && registeredEmails.contains(aeEmail)
+                val nameStationMatch = ae.name.isNotBlank() && aeStation.isNotBlank() &&
+                        registeredNameStation.contains(aeNameStation)
+                !kgidMatch && !emailMatch && !nameStationMatch
+            }.map { Contact(employee = it.toDisplayEmployee()) }
+        } else emptyList()
+
+        employeeContacts + officerContacts + adminEmployeeContacts
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
     private val _debouncedSearchQuery = _searchParams.map { it.query }
@@ -520,7 +602,10 @@ open class EmployeeViewModel @Inject constructor(
     ) { trigger, fromPending, fromEmployees ->
         // Combine and deduplicate case-insensitively by KGID/Email
         val combined = (fromPending + fromEmployees)
-            .distinctBy { it.kgid.trim().lowercase().ifBlank { it.email.trim().lowercase() } }
+            .distinctBy { 
+                val key = it.kgid.trim().lowercase().ifBlank { it.email.trim().lowercase() }
+                if (key.isBlank()) it.firestoreId ?: java.util.UUID.randomUUID().toString() else key
+            }
             .sortedByDescending { it.submittedAt?.time ?: it.createdAt?.time ?: 0L }
         Log.d("EmployeeViewModel", "📊 PendingRegistrations Combined: total=${combined.size}, fromPending=${fromPending.size}, fromEmployees=${fromEmployees.size}, trigger=$trigger")
         combined
@@ -1363,28 +1448,18 @@ open class EmployeeViewModel @Inject constructor(
     }
     
     fun refreshOfficers() = viewModelScope.launch {
-        if (_officers.value.isEmpty()) {
-            _officerStatus.value = OperationStatus.Loading
-        }
+        _officerStatus.value = OperationStatus.Loading
         try {
-            // First sync from Firebase to Room
+            // Sync Firestore → Room (blocks until complete)
             officerRepo.syncAllOfficers()
-            
-            // Then observe Room via Repo
-            officerRepo.getOfficers().collect { result ->
-                when (result) {
-                    is RepoResult.Success -> {
-                        val list = result.data?.sortedBy { it.name } ?: emptyList()
-                        _officers.value = list
-                        _officerStatus.value = OperationStatus.Success(list)
-                    }
-                    is RepoResult.Error -> {
-                        _officerStatus.value = OperationStatus.Error(result.message ?: "Failed to load officers")
-                    }
-                    is RepoResult.Loading -> {
-                        _officerStatus.value = OperationStatus.Loading
-                    }
-                }
+            // Read fresh data from Room
+            val result = officerRepo.getOfficers().firstOrNull()
+            if (result is RepoResult.Success) {
+                val list = result.data?.sortedBy { it.name } ?: emptyList()
+                _officers.value = list
+                _officerStatus.value = OperationStatus.Success(list)
+            } else {
+                _officerStatus.value = OperationStatus.Error("Failed to load officers")
             }
         } catch (e: Exception) {
             _officerStatus.value = OperationStatus.Error("Refresh failed: ${e.message}")
@@ -1967,6 +2042,141 @@ open class EmployeeViewModel @Inject constructor(
 
     fun resetSheetToFirestoreStatus() {
         _sheetToFirestoreStatus.value = OperationStatus.Idle
+    }
+
+    fun uploadCsv(uri: Uri, onProgress: (Float, String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                withContext(Dispatchers.Main) {
+                    onProgress(0.0f, "Reading and parsing file...")
+                }
+                
+                val inputStream = context.contentResolver.openInputStream(uri) ?: throw Exception("Could not open file stream")
+                val records = CsvParser.parseCsvOrTsv(inputStream)
+                
+                if (records.isEmpty()) {
+                    throw Exception("No records found in file")
+                }
+                
+                withContext(Dispatchers.Main) {
+                    onProgress(0.1f, "Parsed ${records.size} records. Wiping existing collection...")
+                }
+                
+                val db = FirebaseFirestore.getInstance()
+                val adminCollection = db.collection("admin_employees")
+                
+                // 1. Wipe the collection first (in batches of 500)
+                val snapshot = adminCollection.get().await()
+                val docsToDelete = snapshot.documents
+                var deleteCount = 0
+                if (docsToDelete.isNotEmpty()) {
+                    var deleteBatch = db.batch()
+                    for (doc in docsToDelete) {
+                        deleteBatch.delete(doc.reference)
+                        deleteCount++
+                        if (deleteCount % 500 == 0) {
+                            deleteBatch.commit().await()
+                            deleteBatch = db.batch()
+                            val progress = 0.1f + (deleteCount.toFloat() / docsToDelete.size.toFloat()) * 0.3f
+                            withContext(Dispatchers.Main) {
+                                onProgress(progress, "Wiped $deleteCount / ${docsToDelete.size} old records...")
+                            }
+                        }
+                    }
+                    if (deleteCount % 500 !== 0) {
+                        deleteBatch.commit().await()
+                    }
+                }
+                
+                withContext(Dispatchers.Main) {
+                    onProgress(0.4f, "Wiping completed. Uploading new records...")
+                }
+                
+                // 2. Upload new records (in batches of 500)
+                var uploadCount = 0
+                var batch = db.batch()
+                
+                for (record in records) {
+                    val name = record["name"] ?: record["Name"] ?: ""
+                    val email = record["email"] ?: record["Email"] ?: ""
+                    
+                    val kgidKey = record.keys.firstOrNull { it.contains("kgid", ignoreCase = true) }
+                    val kgid = if (kgidKey != null) record[kgidKey] ?: "" else ""
+                    
+                    if (kgid.isEmpty() && email.isEmpty() && name.isEmpty()) {
+                        continue
+                    }
+                    
+                    val docId = kgid.ifEmpty { email.ifEmpty { adminCollection.document().id } }
+                    val docRef = adminCollection.document(docId)
+                    
+                    val data = mutableMapOf<String, Any>()
+                    
+                    val allowedFields = listOf(
+                        "name", "email", "pin", "mobile1", "mobile2", "rank", "metalNumber",
+                        "district", "station", "bloodGroup", "photoUrl", "fcmToken",
+                        "firebaseUid", "photoUrlFromGoogle", "unit", "landline", "landline2",
+                        "gender", "subSection", "dutyRole"
+                    )
+                    
+                    for (field in allowedFields) {
+                        val key = record.keys.firstOrNull { it.trim().equals(field, ignoreCase = true) }
+                        val value = if (key != null) record[key] ?: "" else ""
+                        if (value.trim().isNotEmpty()) {
+                            data[field] = value.trim()
+                        }
+                    }
+                    
+                    if (kgid.trim().isNotEmpty()) {
+                        data["kgid"] = kgid.trim()
+                    }
+                    
+                    data["isAdmin"] = true
+                    data["isApproved"] = true
+                    
+                    val manualStationKey = record.keys.firstOrNull { it.contains("isManualStation", ignoreCase = true) }
+                    val manualStationVal = if (manualStationKey != null) record[manualStationKey] ?: "" else ""
+                    data["isManualStation"] = manualStationVal.lowercase() == "true"
+                    
+                    val manualSubSectionKey = record.keys.firstOrNull { it.contains("isManualSubSection", ignoreCase = true) }
+                    val manualSubSectionVal = if (manualSubSectionKey != null) record[manualSubSectionKey] ?: "" else ""
+                    data["isManualSubSection"] = manualSubSectionVal.lowercase() == "true"
+                    
+                    data["updatedAt"] = com.google.firebase.firestore.FieldValue.serverTimestamp()
+                    
+                    if (!data.containsKey("kgid") && !data.containsKey("name") && !data.containsKey("email")) {
+                        continue
+                    }
+                    
+                    batch.set(docRef, data, com.google.firebase.firestore.SetOptions.merge())
+                    uploadCount++
+                    
+                    if (uploadCount % 500 == 0) {
+                        batch.commit().await()
+                        batch = db.batch()
+                        val progress = 0.4f + (uploadCount.toFloat() / records.size.toFloat()) * 0.5f
+                        withContext(Dispatchers.Main) {
+                            onProgress(progress, "Uploaded $uploadCount / ${records.size} records...")
+                        }
+                    }
+                }
+                
+                if (uploadCount % 500 != 0) {
+                    batch.commit().await()
+                }
+                
+                adminEmployeeRepo.refreshAdminEmployees()
+                
+                withContext(Dispatchers.Main) {
+                    onProgress(1.0f, "Successfully uploaded $uploadCount admin employees!")
+                }
+            } catch (e: Exception) {
+                Log.e("EmployeeViewModel", "CSV upload failed", e)
+                withContext(Dispatchers.Main) {
+                    onProgress(-1.0f, e.localizedMessage ?: "Unknown error")
+                }
+            }
+        }
     }
 
     fun sendNotification(
