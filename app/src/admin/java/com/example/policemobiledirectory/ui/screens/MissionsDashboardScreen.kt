@@ -29,6 +29,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.policemobiledirectory.data.remote.Mission
@@ -59,6 +62,21 @@ fun MissionsDashboardScreen(
                     }
                 },
                 actions = {
+                    val context = LocalContext.current
+                    IconButton(onClick = {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://nandija.vercel.app/missions"))
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            // ignore or log
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Public,
+                            contentDescription = "Open Web Dashboard",
+                            tint = Color.White
+                        )
+                    }
                     IconButton(onClick = { viewModel.fetchMissions(forceRefresh = true) }) {
                         Icon(
                             imageVector = Icons.Default.Refresh,

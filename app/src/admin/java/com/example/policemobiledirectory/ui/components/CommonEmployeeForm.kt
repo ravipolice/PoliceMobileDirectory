@@ -2158,7 +2158,6 @@ private fun launchUCrop(context: Context, sourceUri: Uri, launcher: ActivityResu
             
             // Fix Color Overlap - Match App Theme
             setToolbarColor(androidx.core.content.ContextCompat.getColor(context, com.example.policemobiledirectory.R.color.md_theme_light_primary))
-            setStatusBarColor(androidx.core.content.ContextCompat.getColor(context, com.example.policemobiledirectory.R.color.md_theme_light_onPrimaryContainer))
             setActiveControlsWidgetColor(androidx.core.content.ContextCompat.getColor(context, com.example.policemobiledirectory.R.color.md_theme_light_primary))
         }
 
