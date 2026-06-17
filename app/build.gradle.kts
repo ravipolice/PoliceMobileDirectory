@@ -37,8 +37,8 @@ android {
     defaultConfig {
         minSdk = 26
         targetSdk = 35
-        versionCode = 37
-        versionName = "1.37"
+        versionCode = 40
+        versionName = "1.40"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         multiDexEnabled = true
@@ -177,10 +177,10 @@ dependencies {
     implementation("androidx.compose.material3:material3-window-size-class")
     implementation(libs.compose.material.icons)
     implementation("com.google.android.material:material:1.12.0")
-    implementation("com.google.accompanist:accompanist-systemuicontroller:0.34.0")
     implementation("com.google.accompanist:accompanist-swiperefresh:0.34.0")
 
     implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("androidx.biometric:biometric:1.2.0-alpha05")
     implementation("androidx.documentfile:documentfile:1.0.1")
 
     // DataStore
@@ -228,7 +228,7 @@ dependencies {
     implementation("commons-io:commons-io:2.15.1")
 
     // uCrop
-    implementation("com.github.yalantis:ucrop:2.2.8")
+    implementation("com.github.yalantis:ucrop:2.2.11")
 
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:33.4.0"))

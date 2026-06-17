@@ -146,7 +146,13 @@ fun CommonEmployeeForm(
     var landline2 by remember(initialEmployee) { mutableStateOf(initialEmployee?.landline2 ?: "") }
     var rank by remember(initialEmployee) { mutableStateOf(initialEmployee?.rank ?: "") }
     var metalNumber by remember(initialEmployee) { mutableStateOf(initialEmployee?.metalNumber ?: "") }
-    var district by remember(initialEmployee) { mutableStateOf(initialEmployee?.district ?: "") }
+    var district by remember(initialEmployee) { 
+        val rawDistrict = initialEmployee?.district ?: ""
+        val matched = com.example.policemobiledirectory.utils.Constants.districtsList.find { 
+            it.trim().equals(rawDistrict.trim(), ignoreCase = true) 
+        }
+        mutableStateOf(matched ?: rawDistrict)
+    }
     var station by remember(initialEmployee) { mutableStateOf(if (initialEmployee?.isManualStation == true) "Others" else initialEmployee?.station ?: "") }
     var subSection by remember(initialEmployee) { mutableStateOf(if (initialEmployee?.isManualSubSection == true) "Others" else initialEmployee?.subSection ?: "") }
     var manualSubSection by remember(initialEmployee) { mutableStateOf(if (initialEmployee?.isManualSubSection == true) initialEmployee.subSection.orEmpty() else "") }
@@ -160,6 +166,13 @@ fun CommonEmployeeForm(
     var serviceStartDate by remember(initialEmployee) { mutableStateOf<Date?>(initialEmployee?.serviceStartDate) }
     var dateOfBirth by remember(initialEmployee) { mutableStateOf<Date?>(initialEmployee?.dateOfBirth) } // âœ… New DOB field
     var genderExpanded by remember { mutableStateOf(false) }
+
+    var height by remember(initialEmployee) { mutableStateOf(initialEmployee?.height ?: "") }
+    var weight by remember(initialEmployee) { mutableStateOf(initialEmployee?.weight ?: "") }
+    var caste by remember(initialEmployee) { mutableStateOf(initialEmployee?.caste ?: "") }
+    var subCaste by remember(initialEmployee) { mutableStateOf(initialEmployee?.subCaste ?: "") }
+    var familyDetails by remember(initialEmployee) { mutableStateOf(initialEmployee?.familyDetails ?: "") }
+    var educationDetails by remember(initialEmployee) { mutableStateOf(initialEmployee?.educationDetails ?: "") }
 
     // registration extras
     var pin by remember { mutableStateOf("") }
@@ -238,12 +251,25 @@ fun CommonEmployeeForm(
         value = constantsViewModel.isDistrictLevelUnit(unit)
     }
 
+    val hasStations = remember(unit, isDistrictLevelUnit, selectedUnitModel) {
+        unit.equals("L&O", ignoreCase = true) ||
+        unit.equals("Law & Order", ignoreCase = true) ||
+        unit.contains("Traffic", ignoreCase = true) ||
+        unit.contains("Railway", ignoreCase = true) ||
+        unit.contains("KSRP", ignoreCase = true) ||
+        unit.contains("IRB", ignoreCase = true) ||
+        unit.contains("DAR", ignoreCase = true) ||
+        unit.contains("CAR", ignoreCase = true) ||
+        selectedUnitModel?.scopes?.contains("district_stations") == true ||
+        !isDistrictLevelUnit
+    }
+
     // Dynamic Label Logic (Depends on Unit Configuration)
     val stationLabel = remember(unit, isDistrictLevelUnit, selectedUnitModel) {
         val keyword = selectedUnitModel?.stationKeyword
         if (!keyword.isNullOrBlank()) {
             keyword
-        } else if (unit == "Law & Order" || !isDistrictLevelUnit) {
+        } else if (unit.equals("L&O", ignoreCase = true) || unit.equals("Law & Order", ignoreCase = true) || selectedUnitModel?.scopes?.contains("district_stations") == true || !isDistrictLevelUnit) {
             "Station"
         } else {
             "Section / Branch"
@@ -353,14 +379,19 @@ fun CommonEmployeeForm(
 
     // Identify if label should be "Station" or "Section"
     // DEPRECATED in favor of dynamic stationLabel above
-    val useStationLabel = remember(unit, isDistrictLevelUnit) {
-        unit == "Law & Order" || !isDistrictLevelUnit
+    val useStationLabel = remember(unit, isDistrictLevelUnit, selectedUnitModel) {
+        unit.equals("Law & Order", ignoreCase = true) || selectedUnitModel?.scopes?.contains("district_stations") == true || !isDistrictLevelUnit
     }
 
     // Validate Station Selection when options change (e.g. Unit change filters stations)
     LaunchedEffect(stationsForSelectedDistrict) {
-        if (stationsForSelectedDistrict.isNotEmpty() && station.isNotBlank() && station != "Others" && !stationsForSelectedDistrict.contains(station)) {
-             station = ""
+        if (stationsForSelectedDistrict.isNotEmpty() && station.isNotBlank() && station != "Others") {
+             val matchedStation = stationsForSelectedDistrict.find { it.trim().equals(station.trim(), ignoreCase = true) }
+             if (matchedStation != null) {
+                 station = matchedStation
+             } else {
+                 station = ""
+             }
         }
     }
 
@@ -448,19 +479,6 @@ fun CommonEmployeeForm(
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.3f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Change Photo",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
                         }
 
                         !currentPhotoUrl.isNullOrBlank() -> {
@@ -470,19 +488,6 @@ fun CommonEmployeeForm(
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.3f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Change Photo",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(28.dp)
-                                )
-                            }
                         }
 
                         else -> {
@@ -755,7 +760,7 @@ fun CommonEmployeeForm(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 OutlinedTextField(
-                                    value = district.ifEmpty { if (isSelfEdit) district else "Select District" },
+                                    value = district.ifEmpty { if (isSelfEdit) district else "District" },
                                     onValueChange = {},
                                     readOnly = true,
                                     label = { Text("District*") },
@@ -896,7 +901,7 @@ fun CommonEmployeeForm(
                 }
 
                 // Row 3: Station / Section
-                if (!isHighRankingOfficer && !isDistrictLevelUnit && !isSpecialUnit && !isMinisterial) {
+                if (!isHighRankingOfficer && hasStations && !isSpecialUnit && !isMinisterial) {
                     val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks) {
                         val isPoliceStationRank = policeStationRanks.any { it.equals(rank, ignoreCase = true) }
                         if (isPoliceStationRank) {
@@ -1074,7 +1079,7 @@ fun CommonEmployeeForm(
                     icon = Icons.Default.Lock
                 ) {
                     Text(
-                        text = "Create a 6-digit PIN to secure your profile and login access.",
+                        text = "Create a 6-digit PIN to secure your profile and offline login access.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -1203,7 +1208,7 @@ fun CommonEmployeeForm(
                                 isSubmitting = false
                                 return@Button
                             }
-                            if (station.isBlank() && !isHighRankingOfficer && !isDistrictLevelUnit && !isMinisterial) {
+                            if (station.isBlank() && !isHighRankingOfficer && hasStations && !isMinisterial) {
                                 Toast.makeText(context, "${if(unit == "State INT" || unitSections.isNotEmpty()) "Section" else "Station"} is required", Toast.LENGTH_SHORT).show()
                                 isSubmitting = false
                                 return@Button
@@ -1250,7 +1255,7 @@ fun CommonEmployeeForm(
                                 station = when {
                                     isManual -> manualSection.trim()
                                     station.isNotBlank() -> station.trim()
-                                    isDistrictLevelUnit -> district.trim()
+                                    !hasStations -> district.trim()
                                     else -> ""
                                 },
                                 unit = unit.trim().takeIf { it.isNotBlank() },
@@ -1264,7 +1269,13 @@ fun CommonEmployeeForm(
                                 dateOfBirth = dateOfBirth,
                                 subSection = if (subSection == "Others") manualSubSection.trim() else subSection.trim().takeIf { it.isNotBlank() },
                                 isManualSubSection = subSection == "Others",
-                                isHidden = false
+                                isHidden = false,
+                                height = null,
+                                weight = null,
+                                caste = null,
+                                subCaste = null,
+                                familyDetails = null,
+                                educationDetails = null
                             )
 
                             android.util.Log.d("CommonEmployeeForm", "🚀 Launching coroutine for submission...")
@@ -1322,7 +1333,7 @@ fun CommonEmployeeForm(
                                 Text("Submitting...")
                             }
                         } else {
-                            Text("Submit for approval", fontWeight = FontWeight.Bold)
+                            Text("Submit", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -1604,7 +1615,7 @@ fun CommonEmployeeForm(
                                 if (!isSelfEdit && !isDistrictLocked) districtExpanded = !districtExpanded
                             }) {
                                 OutlinedTextField(
-                                    value = district.ifEmpty { if (isSelfEdit) district else "Select District" },
+                                    value = district.ifEmpty { if (isSelfEdit) district else "District" },
                                     onValueChange = {},
                                     readOnly = true,
                                     label = { Text("District*") },
@@ -1708,14 +1719,14 @@ fun CommonEmployeeForm(
                     unitSections.isNotEmpty() || unit == "State INT" || district == "HQ"
                 }
 
-                if (!isHighRankingOfficer && (!isDistrictLevelUnit || hasSectionsEdit) && !isSpecialUnit) {
+                if (!isHighRankingOfficer && (hasStations || hasSectionsEdit) && !isSpecialUnit && !isMinisterial) {
                     val filteredStations = remember(stationsForSelectedDistrict, rank, policeStationRanks, unit, unitSections) {
                         if (unitSections.isNotEmpty()) {
                             unitSections + listOf("Others")
                         } else if (unit == "State INT") {
                              Constants.stateIntSections + listOf("Others")
                         } else {
-                            val isPoliceStationRank = policeStationRanks.contains(rank)
+                            val isPoliceStationRank = policeStationRanks.any { it.equals(rank, ignoreCase = true) }
                             val baseStations = if (isPoliceStationRank) {
                                 stationsForSelectedDistrict
                             } else {
@@ -1902,6 +1913,10 @@ fun CommonEmployeeForm(
                 }
             }
 
+
+
+
+
             // 4. Submission Button (Simple for Admin/Self-Edit)
             Spacer(Modifier.height(16.dp))
             Button(
@@ -1936,7 +1951,7 @@ fun CommonEmployeeForm(
                         isSubmitting = false
                         return@Button
                     }
-                    if (station.isBlank() && !isHighRankingOfficer && !isDistrictLevelUnit && !isMinisterial) {
+                    if (station.isBlank() && !isHighRankingOfficer && (hasStations || hasSections) && !isMinisterial) {
                         Toast.makeText(context, "${if(unit == "State INT" || unitSections.isNotEmpty()) "Section" else "Station"} is required", Toast.LENGTH_SHORT).show()
                         isSubmitting = false
                         return@Button
@@ -1973,7 +1988,7 @@ fun CommonEmployeeForm(
                         station = when {
                             isManual -> manualSection.trim()
                             station.isNotBlank() -> station.trim()
-                            isDistrictLevelUnit -> district.trim()
+                            !hasStations -> district.trim()
                             else -> ""
                         },
                         unit = unit.trim().takeIf { it.isNotBlank() },
@@ -1987,7 +2002,13 @@ fun CommonEmployeeForm(
                         dateOfBirth = dateOfBirth,
                         subSection = if (subSection == "Others") manualSubSection.trim() else subSection.trim().takeIf { it.isNotBlank() },
                         isManualSubSection = subSection == "Others",
-                        isHidden = false
+                        isHidden = false,
+                        height = height.trim().takeIf { it.isNotBlank() },
+                        weight = weight.trim().takeIf { it.isNotBlank() },
+                        caste = caste.trim().takeIf { it.isNotBlank() },
+                        subCaste = subCaste.trim().takeIf { it.isNotBlank() },
+                        familyDetails = familyDetails.trim().takeIf { it.isNotBlank() },
+                        educationDetails = educationDetails.trim().takeIf { it.isNotBlank() }
                     )
 
                     android.util.Log.d("CommonEmployeeForm", "🚀 Launching coroutine for submission...")
@@ -2006,28 +2027,10 @@ fun CommonEmployeeForm(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                if (isSubmitting || isLoading) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("Submitting...")
-                    }
-                } else {
-                    Text(
-                        text = if (initialEmployee != null) "Submit update for approval" else "Submit for approval",
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                Text("Submit")
             }
         }
+
 
         // Linear Progress Indicator for submit / load in progress
         if (isSubmitting || isLoading) {
@@ -2142,7 +2145,6 @@ private fun launchUCrop(context: Context, sourceUri: Uri, launcher: ActivityResu
             
             // Fix Color Overlap
             setToolbarColor(androidx.core.content.ContextCompat.getColor(context, com.example.policemobiledirectory.R.color.md_theme_light_primary))
-            setStatusBarColor(androidx.core.content.ContextCompat.getColor(context, com.example.policemobiledirectory.R.color.md_theme_light_onPrimaryContainer))
             setActiveControlsWidgetColor(androidx.core.content.ContextCompat.getColor(context, com.example.policemobiledirectory.R.color.md_theme_light_primary))
         }
 

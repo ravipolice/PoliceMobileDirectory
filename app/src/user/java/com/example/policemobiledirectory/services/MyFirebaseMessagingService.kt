@@ -136,16 +136,34 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val kgid = remoteMessage.data["kgid"]
 
         Log.d(TAG, "Notification Title: $title, Body: $body, KGID: $kgid")
+
+        val titleLower = title.lowercase()
+        val bodyLower = body.lowercase()
+        val action = remoteMessage.data["notification_action"] ?: remoteMessage.data["action"] ?: ""
+
+        val isPendingApprovalNotification = action.contains("pending_approval") || 
+                action.contains("view_pending_approvals") ||
+                titleLower.contains("pending approval") ||
+                titleLower.contains("registration request") ||
+                bodyLower.contains("awaiting registration approval") ||
+                bodyLower.contains("awaiting approval") ||
+                bodyLower.contains("pending approval")
+
+        if (isPendingApprovalNotification) {
+            Log.d(TAG, "Ignoring pending approval notification in User App: title=$title, body=$body")
+            return
+        }
+
         sendNotificationDisplay(title, body, kgid)
     }
 
     private fun sendNotificationDisplay(title: String?, messageBody: String?, kgid: String?) {
-        val channelId = "pending_approval_channel_id"
-        val channelName = "Pending Approvals"
+        val channelId = "general_notification_channel_id"
+        val channelName = "General Notifications"
 
         val mainIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("notification_action", "view_pending_approvals")
+            putExtra("notification_action", "view_notifications")
             kgid?.let { putExtra("target_kgid", it) }
         }
 
@@ -172,7 +190,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 channelName,
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Notifications for items pending approval"
+                description = "General app notifications and announcements"
             }
             notificationManager.createNotificationChannel(channel)
         }

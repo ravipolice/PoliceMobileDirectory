@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -37,9 +38,10 @@ import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.model.Officer
 import com.example.policemobiledirectory.utils.Constants
 import com.example.policemobiledirectory.utils.IntentUtils
+import com.example.policemobiledirectory.utils.OperationStatus
+import com.example.policemobiledirectory.utils.getContactDisplayName
 import com.example.policemobiledirectory.viewmodel.EmployeeListViewModel
 import com.example.policemobiledirectory.viewmodel.SettingsViewModel
-import com.example.policemobiledirectory.utils.OperationStatus
 
 @Composable
 fun EmployeeDetailScreen(
@@ -50,7 +52,6 @@ fun EmployeeDetailScreen(
     settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val allContacts by viewModel.allContacts.collectAsStateWithLifecycle()
     val fontScale by settingsViewModel.fontScale.collectAsStateWithLifecycle()
     val employeeStatus by viewModel.employeeStatus.collectAsStateWithLifecycle()
     val officerStatus by viewModel.officerStatus.collectAsStateWithLifecycle()
@@ -63,19 +64,24 @@ fun EmployeeDetailScreen(
         }
     }
 
-    val contact = remember(id, isOfficer, allContacts) {
-        if (isOfficer) {
-            allContacts.find { it.officer?.agid == id }?.officer
-        } else {
-            allContacts.find { it.employee?.kgid == id }?.employee
-        }
+    // Instant O(1) lookup from already-loaded in-memory lists — no spinner delay
+    val contact = remember(id, isOfficer, employeeStatus, officerStatus) {
+        viewModel.findContactById(id, isOfficer)
     }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
-                title = { Text("Contact Details", fontWeight = FontWeight.SemiBold, fontSize = 20.sp) },
+                title = { 
+                    Text(
+                        text = "Contact Details", 
+                        fontWeight = FontWeight.SemiBold, 
+                        fontSize = (18 * fontScale).sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    ) 
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -116,19 +122,19 @@ fun EmployeeDetailScreen(
                 )
             )
         },
-        containerColor = Color(0xFFFBFBFB)
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         if (contact == null) {
             Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 if (isLoading) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 } else {
-                    Text("Contact not found")
+                    Text("Contact not found", color = MaterialTheme.colorScheme.onBackground)
                 }
             }
         } else {
-            val name = if (contact is Employee) contact.name else (contact as? Officer)?.name ?: ""
-            val rank = if (contact is Employee) contact.displayRank else (contact as? Officer)?.rank ?: ""
+            val name = getContactDisplayName(contact as? Employee, contact as? Officer)
+            val rank = if (contact is Employee) contact.displayRank else (contact as? Officer)?.rank?.replace(".", "")?.replace("(?i)\\bDy SP\\b".toRegex(), "DySP")?.trim() ?: ""
             val photoUrlVal = if (contact is Employee) (contact.photoUrl ?: contact.photoUrlFromGoogle) else (contact as? Officer)?.photoUrl
             val placeholderRes = if (contact is Employee) R.drawable.officer else R.drawable.ic_officer_building
             
@@ -139,8 +145,7 @@ fun EmployeeDetailScreen(
             val station = if (contact is Employee) contact.station else (contact as? Officer)?.station
             val district = if (contact is Employee) contact.district else (contact as? Officer)?.district
 
-            var visible by remember { mutableStateOf(false) }
-            LaunchedEffect(Unit) { visible = true }
+            val visible = true // Show content immediately — no artificial delay
 
             Box(modifier = Modifier.fillMaxSize()) {
                 Box(
@@ -149,7 +154,7 @@ fun EmployeeDetailScreen(
                         .height(200.dp)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(MaterialTheme.colorScheme.primary, Color(0xFFFBFBFB))
+                                colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.background)
                             )
                         )
                 )
@@ -165,7 +170,7 @@ fun EmployeeDetailScreen(
                     item {
                         AnimatedVisibility(
                             visible = visible,
-                            enter = fadeIn() + slideInVertically(initialOffsetY = { 40 })
+                            enter = fadeIn(animationSpec = tween(200)) + slideInVertically(initialOffsetY = { 20 })
                         ) {
                             ProfileHeader(
                                 name = name,
@@ -184,71 +189,169 @@ fun EmployeeDetailScreen(
                     item {
                         AnimatedVisibility(
                             visible = visible,
-                            enter = fadeIn(animationSpec = tween(600)) + slideInVertically(initialOffsetY = { 60 })
+                            enter = fadeIn(animationSpec = tween(250)) + slideInVertically(initialOffsetY = { 20 })
                         ) {
                             val metalNumber = if (contact is Employee) contact.metalNumber else null
                             val gender = if (contact is Employee) contact.gender else "N/A"
 
-                            DetailSection(title = "Contact info", fontScale = fontScale) {
-                                if (!metalNumber.isNullOrBlank()) {
-                                    InfoRow(
-                                        label = "Metal Number",
-                                        value = metalNumber,
-                                        icon = Icons.Default.Badge,
-                                        fontScale = fontScale,
-                                        onAction = { IntentUtils.copyToClipboard(context, "Metal Number", metalNumber) }
-                                    )
-                                    CustomDivider()
-                                }
+                            // Filter valid details to only render rows containing actual data
+                            val hasMetal = !metalNumber.isNullOrBlank()
+                            val hasGender = gender != "N/A"
+                            val hasMobile = isValidContactInfo(mobile)
+                            val hasLandline = isValidContactInfo(landline)
+                            val hasEmail = isValidContactInfo(email)
 
-                                if (gender != "N/A") {
-                                    val genderIcon = if (gender.contains("Female", ignoreCase = true)) Icons.Default.Woman else Icons.Default.Man
-                                    InfoRow(
-                                        label = "Gender",
-                                        value = gender,
-                                        icon = genderIcon,
-                                        fontScale = fontScale
-                                    )
-                                    CustomDivider()
-                                }
+                            if (hasMetal || hasGender || hasMobile || hasLandline || hasEmail) {
+                                DetailSection(title = "Contact info", fontScale = fontScale) {
+                                    if (hasMetal) {
+                                        InfoRow(
+                                            label = "Metal Number",
+                                            value = metalNumber!!,
+                                            icon = Icons.Default.Badge,
+                                            fontScale = fontScale,
+                                            onAction = { IntentUtils.copyToClipboard(context, "Metal Number", metalNumber) }
+                                        )
+                                        if (hasGender || hasMobile || hasLandline || hasEmail) CustomDivider()
+                                    }
 
-                                if (!mobile.isNullOrBlank()) {
-                                    InfoRow(
-                                        label = "Mobile",
-                                        value = mobile,
-                                        icon = Icons.Default.Call,
-                                        fontScale = fontScale,
-                                        onAction = { IntentUtils.dial(context, mobile) },
-                                        secondaryActionIcon = painterResource(R.drawable.ic_whatsapp),
-                                        onSecondaryAction = { IntentUtils.openWhatsApp(context, mobile) },
-                                        onSmsAction = { IntentUtils.sendSms(context, mobile) }
-                                    )
-                                    if (!landline.isNullOrBlank() || !email.isNullOrBlank()) {
-                                        CustomDivider()
+                                    if (hasGender) {
+                                        val genderIcon = if (gender.contains("Female", ignoreCase = true)) Icons.Default.Woman else Icons.Default.Man
+                                        InfoRow(
+                                            label = "Gender",
+                                            value = gender,
+                                            icon = genderIcon,
+                                            fontScale = fontScale
+                                        )
+                                        if (hasMobile || hasLandline || hasEmail) CustomDivider()
+                                    }
+
+                                    if (hasMobile) {
+                                        InfoRow(
+                                            label = "Mobile",
+                                            value = mobile!!,
+                                            icon = Icons.Default.Call,
+                                            fontScale = fontScale,
+                                            onAction = { IntentUtils.dial(context, mobile) },
+                                            secondaryActionIcon = painterResource(R.drawable.ic_whatsapp),
+                                            onSecondaryAction = { IntentUtils.openWhatsApp(context, mobile) },
+                                            onSmsAction = { IntentUtils.sendSms(context, mobile) }
+                                        )
+                                        if (hasLandline || hasEmail) CustomDivider()
+                                    }
+
+                                    if (hasLandline) {
+                                        InfoRow(
+                                            label = "Landline",
+                                            value = landline!!,
+                                            icon = Icons.Default.Phone,
+                                            fontScale = fontScale,
+                                            onAction = { IntentUtils.dial(context, landline) }
+                                        )
+                                        if (hasEmail) CustomDivider()
+                                    }
+
+                                    if (hasEmail) {
+                                        InfoRow(
+                                            label = "Email",
+                                            value = email!!,
+                                            icon = Icons.Default.Email,
+                                            fontScale = fontScale,
+                                            onAction = { IntentUtils.sendEmail(context, email) }
+                                        )
                                     }
                                 }
+                            }
+                        }
+                    }
 
-                                if (!landline.isNullOrBlank()) {
-                                    InfoRow(
-                                        label = "Landline",
-                                        value = landline,
-                                        icon = Icons.Default.Phone,
-                                        fontScale = fontScale,
-                                        onAction = { IntentUtils.dial(context, landline) }
-                                    )
-                                    if (!email.isNullOrBlank()) {
-                                        CustomDivider()
+                    if (contact is Employee) {
+                        val hasPhysicalOrSocial = !contact.height.isNullOrBlank() || 
+                                                 !contact.weight.isNullOrBlank() || 
+                                                 !contact.caste.isNullOrBlank() || 
+                                                 !contact.subCaste.isNullOrBlank()
+                        if (hasPhysicalOrSocial) {
+                            item {
+                                AnimatedVisibility(
+                                    visible = visible,
+                                    enter = fadeIn(animationSpec = tween(270)) + slideInVertically(initialOffsetY = { 20 })
+                                ) {
+                                    DetailSection(title = "Physical & Social Info", fontScale = fontScale) {
+                                        var needsDivider = false
+                                        if (!contact.height.isNullOrBlank()) {
+                                            InfoRow(
+                                                label = "Height",
+                                                value = contact.height,
+                                                icon = Icons.Default.Person,
+                                                fontScale = fontScale
+                                            )
+                                            needsDivider = true
+                                        }
+                                        if (!contact.weight.isNullOrBlank()) {
+                                            if (needsDivider) CustomDivider()
+                                            InfoRow(
+                                                label = "Weight",
+                                                value = contact.weight,
+                                                icon = Icons.Default.Person,
+                                                fontScale = fontScale
+                                            )
+                                            needsDivider = true
+                                        }
+                                        if (!contact.caste.isNullOrBlank()) {
+                                            if (needsDivider) CustomDivider()
+                                            InfoRow(
+                                                label = "Caste",
+                                                value = contact.caste,
+                                                icon = Icons.Default.Info,
+                                                fontScale = fontScale
+                                            )
+                                            needsDivider = true
+                                        }
+                                        if (!contact.subCaste.isNullOrBlank()) {
+                                            if (needsDivider) CustomDivider()
+                                            InfoRow(
+                                                label = "Sub-Caste",
+                                                value = contact.subCaste,
+                                                icon = Icons.Default.Info,
+                                                fontScale = fontScale
+                                            )
+                                        }
                                     }
                                 }
+                            }
+                        }
 
-                                if (!email.isNullOrBlank()) {
-                                    InfoRow(
-                                        label = "Email",
-                                        value = email,
-                                        icon = Icons.Default.Email,
-                                        fontScale = fontScale,
-                                        onAction = { IntentUtils.sendEmail(context, email) }
-                                    )
+                        if (!contact.familyDetails.isNullOrBlank()) {
+                            item {
+                                AnimatedVisibility(
+                                    visible = visible,
+                                    enter = fadeIn(animationSpec = tween(290)) + slideInVertically(initialOffsetY = { 20 })
+                                ) {
+                                    DetailSection(title = "Family Details", fontScale = fontScale) {
+                                        InfoRow(
+                                            label = "Family Info",
+                                            value = contact.familyDetails,
+                                            icon = Icons.Default.Home,
+                                            fontScale = fontScale
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!contact.educationDetails.isNullOrBlank()) {
+                            item {
+                                AnimatedVisibility(
+                                    visible = visible,
+                                    enter = fadeIn(animationSpec = tween(310)) + slideInVertically(initialOffsetY = { 20 })
+                                ) {
+                                    DetailSection(title = "Education Details", fontScale = fontScale) {
+                                        InfoRow(
+                                            label = "Education Info",
+                                            value = contact.educationDetails,
+                                            icon = Icons.Default.Info,
+                                            fontScale = fontScale
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -257,6 +360,15 @@ fun EmployeeDetailScreen(
             }
         }
     }
+}
+
+/**
+ * Validates raw contact details to filter out empty/placeholder fields
+ */
+private fun isValidContactInfo(value: String?): Boolean {
+    if (value.isNullOrBlank()) return false
+    val trimmed = value.trim()
+    return trimmed != "-" && trimmed != "—" && trimmed != "— / —" && trimmed != "N/A" && trimmed != "null"
 }
 
 @Composable
@@ -292,18 +404,60 @@ private fun ProfileHeader(
                 modifier = Modifier
                     .size(150.dp)
                     .shadow(12.dp, CircleShape)
-                    .border(4.dp, Color.White, CircleShape)
+                    .border(4.dp, MaterialTheme.colorScheme.surface, CircleShape)
                     .clip(CircleShape)
-                    .background(Color.White)
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = photoUrl,
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                    placeholder = painterResource(placeholderRes),
-                    error = painterResource(placeholderRes)
-                )
+                if (!photoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = photoUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        placeholder = painterResource(placeholderRes),
+                        error = painterResource(placeholderRes)
+                    )
+                } else {
+                    // Premium custom placeholder with dynamic gradients
+                    val avatarColors = listOf(
+                        listOf(Color(0xFF1E3C72), Color(0xFF2A5298)), // Navy Gradient
+                        listOf(Color(0xFF0F9D58), Color(0xFF11998E)), // Green Gradient
+                        listOf(Color(0xFF8E2DE2), Color(0xFF4A00E0)), // Purple Gradient
+                        listOf(Color(0xFFD32F2F), Color(0xFF9A0007)), // Red Gradient
+                        listOf(Color(0xFF00838F), Color(0xFF006064)), // Cyan Gradient
+                        listOf(Color(0xFFE65100), Color(0xFFF57C00)), // Orange Gradient
+                        listOf(Color(0xFF00796B), Color(0xFF004D40))  // Teal Gradient
+                    )
+                    val gradient = remember(name) {
+                        val index = Math.abs(name.hashCode() % avatarColors.size)
+                        avatarColors[index]
+                    }
+                    
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Brush.linearGradient(gradient)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (placeholderRes == R.drawable.ic_officer_building) {
+                            Icon(
+                                imageVector = Icons.Default.Business,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(72.dp)
+                            )
+                        } else {
+                            val initial = name.takeIf { it.isNotBlank() }?.first()?.uppercase() ?: "?"
+                            Text(
+                                text = initial.toString(),
+                                fontSize = 64.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
             }
 
             if (!bloodGroup.isNullOrBlank() && bloodGroup != "??") {
@@ -333,17 +487,18 @@ private fun ProfileHeader(
 
         Text(
             text = name,
-            fontSize = (28 * fontScale).sp,
+            fontSize = (26 * fontScale).sp,
             fontWeight = FontWeight.ExtraBold,
-            color = Color(0xFF8B1A1A),
+            color = MaterialTheme.colorScheme.primary,
             textAlign = TextAlign.Center,
-            lineHeight = (34 * fontScale).sp
+            lineHeight = (32 * fontScale).sp,
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
         Text(
             text = rank,
-            fontSize = (20 * fontScale).sp,
+            fontSize = (18 * fontScale).sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF455A64),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
 
@@ -361,8 +516,8 @@ private fun ProfileHeader(
         if (line1.isNotBlank()) {
             Text(
                 text = line1,
-                fontSize = (17 * fontScale).sp,
-                color = Color(0xFF607D8B),
+                fontSize = (16 * fontScale).sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Medium
             )
@@ -373,7 +528,6 @@ private fun ProfileHeader(
             val d = district?.trim() ?: ""
             val u = unit?.trim() ?: ""
             
-            // For state units, we usually don't need to show "Bengaluru City" if they are HQ
             val showDistrict = if (isStateHq && d.contains("Bengaluru", ignoreCase = true)) {
                 false
             } else if (d.isNotBlank() && !u.contains(d, ignoreCase = true) && !d.contains(u, ignoreCase = true)) {
@@ -395,8 +549,8 @@ private fun ProfileHeader(
         if (line2.isNotBlank()) {
             Text(
                 text = line2,
-                fontSize = (16 * fontScale).sp,
-                color = Color(0xFF78909C),
+                fontSize = (14 * fontScale).sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
             )
         }
@@ -409,19 +563,22 @@ private fun DetailSection(
     fontScale: Float,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(2.dp, RoundedCornerShape(24.dp)),
-        color = Color.White,
-        shape = RoundedCornerShape(24.dp)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 text = title,
                 fontSize = (18 * fontScale).sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.Black,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
             content()
@@ -453,14 +610,14 @@ private fun InfoRow(
     ) {
         Surface(
             modifier = Modifier.size(40.dp),
-            color = Color(0xFFF5F7F8),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
             shape = CircleShape
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color(0xFF37474F),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -469,12 +626,16 @@ private fun InfoRow(
         Spacer(Modifier.width(16.dp))
 
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = label, fontSize = (12 * fontScale).sp, color = Color.Gray)
+            Text(
+                text = label, 
+                fontSize = (12 * fontScale).sp, 
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
             Text(
                 text = value,
-                fontSize = (16 * fontScale).sp,
+                fontSize = if (label.equals("Email", ignoreCase = true)) (14 * fontScale).sp else (16 * fontScale).sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF263238)
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
         
@@ -495,28 +656,28 @@ private fun InfoRow(
                     Icon(
                         imageVector = Icons.Default.Sms,
                         contentDescription = "SMS",
-                        tint = Color(0xFF546E7A),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(22.dp)
                     )
                 }
             }
             
-            if (onAction != null && icon != Icons.Default.Call) {
-                 IconButton(onClick = onAction) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = "Action",
-                        tint = Color(0xFF546E7A),
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            } else if (onAction != null && icon == Icons.Default.Call) {
+            if (onAction != null && (icon == Icons.Default.Call || icon == Icons.Default.Phone)) {
                 IconButton(onClick = onAction) {
                     Icon(
                         imageVector = Icons.Default.Call,
                         contentDescription = "Call",
                         tint = Color(0xFF2E7D32),
                         modifier = Modifier.size(24.dp)
+                    )
+                }
+            } else if (onAction != null && !label.equals("Email", ignoreCase = true)) {
+                 IconButton(onClick = onAction) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = "Action",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -529,6 +690,6 @@ private fun CustomDivider() {
     HorizontalDivider(
         modifier = Modifier.padding(start = 56.dp, top = 12.dp, bottom = 12.dp),
         thickness = 0.5.dp,
-        color = Color.LightGray.copy(alpha = 0.3f)
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
     )
 }

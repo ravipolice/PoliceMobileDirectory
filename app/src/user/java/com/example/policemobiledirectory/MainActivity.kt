@@ -7,8 +7,7 @@ import android.util.Log
 import android.widget.Toast
 
 import com.example.policemobiledirectory.utils.ToastUtil
-import androidx.activity.ComponentActivity
-
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -55,7 +54,7 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private val authViewModel: AuthViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
@@ -89,9 +88,10 @@ class MainActivity : ComponentActivity() {
         try {
             val account = task.getResult(ApiException::class.java)
             if (account != null) {
-                Log.d("Auth", "✅ Drive Permissions granted for: ${account.email}")
-                account.email?.let { email: String ->
-                    authViewModel.saveDriveAccountEmail(email)
+                val email = account.email ?: authViewModel.currentUser.value?.email
+                Log.d("Auth", "✅ Drive Permissions granted for: $email")
+                email?.let { emailStr: String ->
+                    authViewModel.saveDriveAccountEmail(emailStr)
                 }
                 ToastUtil.showToast(this, "Drive Permission Granted")
                 authViewModel.checkGoogleDriveAccess(this)
@@ -332,12 +332,17 @@ class MainActivity : ComponentActivity() {
                         // We only auto-navigate if:
                         // - We are on LOGIN screen (meaning a successful login just happened or was restored)
                         // - AND we haven't JUST clicked logout (wasLoggedOut check)
-                        // - AND the user is APPROVED
-                        if (currentRoute == Routes.LOGIN && !wasLoggedOut && isApproved) {
-                            Log.d("MainActivity", "🏠 Session detected and approved, auto-navigating to home")
-                            
-                            navController.navigate(Routes.EMPLOYEE_LIST) {
-                                popUpTo(Routes.LOGIN) { inclusive = true }
+                        if (currentRoute == Routes.LOGIN && !wasLoggedOut) {
+                            if (isApproved) {
+                                Log.d("MainActivity", "🏠 Session detected and approved, auto-navigating to home")
+                                navController.navigate(Routes.EMPLOYEE_LIST) {
+                                    popUpTo(Routes.LOGIN) { inclusive = true }
+                                }
+                            } else {
+                                Log.d("MainActivity", "⏳ Session detected but not approved, auto-navigating to pending approval")
+                                navController.navigate(Routes.PENDING_APPROVAL) {
+                                    popUpTo(Routes.LOGIN) { inclusive = true }
+                                }
                             }
                         }
                     } 
@@ -345,6 +350,26 @@ class MainActivity : ComponentActivity() {
                     // 3. Reset wasLoggedOut flag if we see a valid session start
                     if (isLoggedIn && currentUser != null) {
                         wasLoggedOut = false
+                    }
+                }
+
+                val switchGoogleAccountAction: () -> Unit = {
+                    scope.launch {
+                        googleSignInClient.signOut().addOnCompleteListener {
+                            googleSignInClient.revokeAccess().addOnCompleteListener {
+                                Log.d("Auth", "Google Sign-In revoked/signed out")
+                            }
+                        }
+                        val credentialManager = CredentialManager.create(this@MainActivity)
+                        scope.launch {
+                            try {
+                                credentialManager.clearCredentialState(androidx.credentials.ClearCredentialStateRequest())
+                                Log.d("Auth", "Credential Manager state cleared")
+                            } catch (e: Exception) {
+                                Log.e("Auth", "Error clearing credential state", e)
+                            }
+                        }
+                        ToastUtil.showToast(this@MainActivity, "Google account cleared. Please sign in again to select a different account.")
                     }
                 }
 
@@ -356,6 +381,7 @@ class MainActivity : ComponentActivity() {
                     settingsViewModel = settingsViewModel,
                     isDarkTheme = isDarkTheme,
                     onGoogleSignInClicked = { lifecycleScope.launch { launchGoogleSignIn() } },
+                    onSwitchGoogleAccountClicked = switchGoogleAccountAction,
                     onThemeToggle = { settingsViewModel.toggleTheme() },
                     onLogout = logoutAction,
                     onDrivePermissionRequest = { requestDrivePermission() }

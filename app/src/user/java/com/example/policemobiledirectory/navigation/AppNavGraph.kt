@@ -30,6 +30,7 @@ fun AppNavGraph(
     isDarkTheme: Boolean,
     onThemeToggle: () -> Unit,
     onGoogleSignInClicked: () -> Unit,
+    onSwitchGoogleAccountClicked: () -> Unit = {},
     onLogout: () -> Unit,
     onDrivePermissionRequest: () -> Unit
 ) {
@@ -78,6 +79,7 @@ fun AppNavGraph(
                     settingsViewModel = settingsViewModel,
                     onThemeToggle = onThemeToggle,
                     onGoogleSignInClicked = onGoogleSignInClicked,
+                    onSwitchGoogleAccountClicked = onSwitchGoogleAccountClicked,
                     startDestination = startDestination,
                     onLogout = onLogout,
                     onDrivePermissionRequest = onDrivePermissionRequest,
@@ -92,6 +94,7 @@ fun AppNavGraph(
             settingsViewModel = settingsViewModel,
             onThemeToggle = onThemeToggle,
             onGoogleSignInClicked = onGoogleSignInClicked,
+            onSwitchGoogleAccountClicked = onSwitchGoogleAccountClicked,
             startDestination = startDestination,
             onLogout = onLogout,
             onDrivePermissionRequest = onDrivePermissionRequest
@@ -106,6 +109,7 @@ private fun AppNavHostContent(
     settingsViewModel: SettingsViewModel,
     onThemeToggle: () -> Unit,
     onGoogleSignInClicked: () -> Unit,
+    onSwitchGoogleAccountClicked: () -> Unit,
     startDestination: String,
     onLogout: () -> Unit,
     onDrivePermissionRequest: () -> Unit,
@@ -152,6 +156,7 @@ private fun AppNavHostContent(
                     navController.navigate(Routes.FORGOT_PIN)
                 },
                 onGoogleSignInClicked = onGoogleSignInClicked,
+                onSwitchGoogleAccountClicked = onSwitchGoogleAccountClicked,
                 onThemeToggle = onThemeToggle,
                 onLogout = onLogout
             )
@@ -220,6 +225,17 @@ private fun AppNavHostContent(
         composable(Routes.EMPLOYEE_LIST) {
             val employeeListViewModel: EmployeeListViewModel = hiltViewModel()
             EmployeeListScreen(
+                navController = navController,
+                viewModel = employeeListViewModel,
+                authViewModel = authViewModel,
+                settingsViewModel = settingsViewModel
+            )
+        }
+
+        // --- DIRECTORY SEARCH ---
+        composable(Routes.DIRECTORY_SEARCH) {
+            val employeeListViewModel: EmployeeListViewModel = hiltViewModel()
+            DirectorySearchScreen(
                 navController = navController,
                 viewModel = employeeListViewModel,
                 authViewModel = authViewModel,

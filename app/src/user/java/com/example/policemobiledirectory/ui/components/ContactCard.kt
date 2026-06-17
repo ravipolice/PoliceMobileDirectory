@@ -37,6 +37,8 @@ import com.example.policemobiledirectory.utils.IntentUtils
 import com.example.policemobiledirectory.utils.getBloodGroupColor
 import com.example.policemobiledirectory.utils.getFormattedBloodGroup
 import com.example.policemobiledirectory.utils.getRankColor
+import com.example.policemobiledirectory.utils.getContactDisplayName
+import com.example.policemobiledirectory.utils.getShortRangeName
 
 /**
  * Unified contact card that works for both Employee and Officer
@@ -53,23 +55,10 @@ fun ContactCard(
     val context = LocalContext.current
     
     val rawName = employee?.name ?: officer?.name ?: ""
-    val rank = employee?.displayRank ?: officer?.rank
+    val rank = employee?.displayRank ?: officer?.rank?.replace(".", "")?.replace("(?i)\\bDy SP\\b".toRegex(), "DySP")?.trim()
     val station = employee?.station ?: officer?.station ?: officer?.unit // station/section for subtitle
     val district = employee?.district ?: officer?.district
-    
-    val displayName = if (rawName.isNotBlank() && rawName.equals(rank, ignoreCase = true)) {
-        val parts = mutableListOf(rawName)
-        if (!station.isNullOrBlank()) {
-            val cleanStation = station.replace("(?i)\\bPS\\b".toRegex(), "").replace("(?i)\\bPolice Station\\b".toRegex(), "").trim()
-            if (cleanStation.isNotBlank()) parts.add(cleanStation)
-        }
-        if (!district.isNullOrBlank() && !district.equals(station, ignoreCase = true)) {
-            parts.add(district)
-        }
-        parts.joinToString(" ")
-    } else {
-        rawName
-    }
+    val displayName = getContactDisplayName(employee, officer)
 
     val photoUrl = employee?.photoUrl ?: employee?.photoUrlFromGoogle ?: officer?.photoUrl
     val placeholderRes = if (employee != null) R.drawable.officer else R.drawable.ic_officer_building
@@ -187,7 +176,7 @@ fun ContactCard(
                     subtitleParts.add(district)
                 }
                 
-                val finalSubtitleParts = subtitleParts.distinct()
+                val finalSubtitleParts = subtitleParts.distinct().map { getShortRangeName(it) }
 
                 if (finalSubtitleParts.isNotEmpty()) {
                     Text(

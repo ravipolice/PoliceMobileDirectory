@@ -57,6 +57,12 @@ data class Employee(
     val dutyRole: String? = null,
     val gender: String = "Male",
     val serviceStartDate: Date? = null,
+    val height: String? = null,
+    val weight: String? = null,
+    val caste: String? = null,
+    val subCaste: String? = null,
+    val familyDetails: String? = null,
+    val educationDetails: String? = null,
     @get:Exclude
     val searchBlob: String = ""
 ) {

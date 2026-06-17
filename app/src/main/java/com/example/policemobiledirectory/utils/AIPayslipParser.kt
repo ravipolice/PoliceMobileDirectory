@@ -34,6 +34,7 @@ class AIPayslipParser @Inject constructor(
             3. If a field is not found, use an empty string as the value.
             4. Do not include any thinking process or preamble in the final JSON output.
             5. Ensure the JSON is properly escaped.
+            6. "EGIS" might be labeled as "KGEGIS", "KG-EGIS", "GIS", "E.G.I.S", "K.G.E.G.I.S", "Employee Group Insurance Scheme", "Employee Group Insurance", or "Group Insurance" on the payslip. Map its value under the "EGIS" key in the JSON.
 
             OCR Text:
             ${ocrText}

@@ -481,8 +481,8 @@ abstract class BaseConstantsRepository(
         val json = prefs.getString(UNIT_MAPPINGS_CACHE_KEY, null) ?: return false
         val mappings: Map<String, UnitMapping> = gson.fromJson(json, object : TypeToken<Map<String, UnitMapping>>() {}.type)
         val mapping = mappings[unitName] ?: return false
-        // Check isDistrictLevel boolean OR scopes containing "district" (the Firestore scope key)
-        return mapping.isDistrictLevel == true || mapping.scopes.contains("district")
+        // Check isDistrictLevel boolean OR scopes containing "district" or "district_stations" (the Firestore scope keys)
+        return mapping.isDistrictLevel == true || mapping.scopes.contains("district") || mapping.scopes.contains("district_stations")
     }
 
     suspend fun getSectionsForUnit(unitName: String): List<String> = withContext(Dispatchers.IO) {
@@ -521,7 +521,11 @@ abstract class BaseConstantsRepository(
      * Used by CommonEmployeeForm to build the dropdown
      */
     suspend fun getStationsAndSectionsForUnit(unitName: String, district: String): List<String> = withContext(Dispatchers.IO) {
-        val districtStations = getStationsByDistrict()[district] ?: emptyList()
+        val stationsMap = getStationsByDistrict()
+        val trimmedDistrict = district.trim()
+        val districtStations = stationsMap[trimmedDistrict]
+            ?: stationsMap.entries.find { it.key.trim().equals(trimmedDistrict, ignoreCase = true) }?.value
+            ?: emptyList()
         val filtered = getStationsForUnit(unitName, districtStations)
         val sections = getSectionsForUnit(unitName)
         (filtered + sections).distinct()

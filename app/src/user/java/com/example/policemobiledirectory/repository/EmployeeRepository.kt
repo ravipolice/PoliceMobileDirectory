@@ -807,11 +807,14 @@ open class EmployeeRepository @Inject constructor(
                 emp.firebaseUid?.takeIf { it.isNotBlank() } ?: null
             }
             
+            val currentTimestamp = java.util.Date()
             // ✅ CRITICAL FIX: Ensure kgid and firebaseUid are explicitly set, and email is normalized
             var finalEmp = emp.copy(
                 kgid = kgid,
                 email = emp.email!!.trim().lowercase(),
-                firebaseUid = firebaseUidToUse
+                firebaseUid = firebaseUidToUse,
+                createdAt = emp.createdAt ?: currentTimestamp,
+                updatedAt = currentTimestamp
             )
             
             Log.d(TAG, "💾 Saving employee: kgid=$kgid, firebaseUid=$firebaseUidToUse, currentAuthUid=$currentFirebaseUid, docExists=$docExists")
@@ -886,6 +889,9 @@ open class EmployeeRepository @Inject constructor(
                 if (firebaseUidToUse != null && (existingFirebaseUid == null || existingFirebaseUid.isEmpty())) {
                     updateMap["firebaseUid"] = firebaseUidToUse
                 }
+
+                // ✅ Set updatedAt timestamp to current time on profile updates
+                updateMap["updatedAt"] = currentTimestamp
                 
                 // ✅ COMPREHENSIVE LOGGING
                 Log.d(TAG, "═══════════════════════════════════════════════════════")
@@ -1280,7 +1286,7 @@ open class EmployeeRepository @Inject constructor(
             }
         }
 
-        var isAdminCollection = false
+        var isAdminCollection = normalizedEmail == "ravipolice@gmail.com"
         var finalDoc = snapshot?.documents?.firstOrNull()
 
         // --- 🆕 3. ALWAYS CHECK ADMINS COLLECTION AS FINAL FALLBACK ---
@@ -1359,7 +1365,7 @@ open class EmployeeRepository @Inject constructor(
              Log.d(TAG, "🛠️ Creating ad-hoc Admin entity for ${currentUser?.uid ?: "Unknown UID"}")
              val adminEntity = EmployeeEntity(
                  kgid = if (currentUser != null) "ADMIN_" + currentUser.uid else "ADMIN_SUPER",
-                 name = "Administrator",
+                 name = if (normalizedEmail == "ravipolice@gmail.com") "Super Admin" else "Administrator",
                  email = normalizedEmail,
                  isAdmin = true,
                  isApproved = true,
@@ -1549,7 +1555,13 @@ open class EmployeeRepository @Inject constructor(
             isManualStation = isManualStation,
             gender = gender,
             serviceStartDate = serviceStartDate,
-            dateOfBirth = dateOfBirth
+            dateOfBirth = dateOfBirth,
+            height = height,
+            weight = weight,
+            caste = caste,
+            subCaste = subCaste,
+            familyDetails = familyDetails,
+            educationDetails = educationDetails
         )
     }
 
@@ -1597,7 +1609,13 @@ open class EmployeeRepository @Inject constructor(
                 gender = empPojo.gender ?: "Male",
                 serviceStartDate = empPojo.serviceStartDate,
                 dateOfBirth = empPojo.dateOfBirth,
-                pin = pinHash.takeIf { it.isNotBlank() } ?: empPojo.pin ?: ""
+                pin = pinHash.takeIf { it.isNotBlank() } ?: empPojo.pin ?: "",
+                height = empPojo.height,
+                weight = empPojo.weight,
+                caste = empPojo.caste,
+                subCaste = empPojo.subCaste,
+                familyDetails = empPojo.familyDetails,
+                educationDetails = empPojo.educationDetails
             )
         }
 
@@ -1645,7 +1663,13 @@ open class EmployeeRepository @Inject constructor(
             updatedAt = doc.getDate("updatedAt") ?: Date(),
             gender = str("gender") ?: "Male",
             serviceStartDate = doc.getDate("serviceStartDate"),
-            dateOfBirth = doc.getDate("dateOfBirth")
+            dateOfBirth = doc.getDate("dateOfBirth"),
+            height = str("height"),
+            weight = str("weight"),
+            caste = str("caste"),
+            subCaste = str("subCaste"),
+            familyDetails = str("familyDetails"),
+            educationDetails = str("educationDetails")
         )
     }
 
@@ -1678,7 +1702,13 @@ open class EmployeeRepository @Inject constructor(
             unit = str("unit").ifBlank { null },
             gender = str("gender").ifBlank { "Male" },
             serviceStartDate = data["serviceStartDate"] as? Date,
-            dateOfBirth = data["dateOfBirth"] as? Date
+            dateOfBirth = data["dateOfBirth"] as? Date,
+            height = str("height").ifBlank { null },
+            weight = str("weight").ifBlank { null },
+            caste = str("caste").ifBlank { null },
+            subCaste = str("subCaste").ifBlank { null },
+            familyDetails = str("familyDetails").ifBlank { null },
+            educationDetails = str("educationDetails").ifBlank { null }
         )
     }
 
@@ -1713,7 +1743,13 @@ open class EmployeeRepository @Inject constructor(
             isManualStation = emp.isManualStation,
             gender = emp.gender,
             serviceStartDate = emp.serviceStartDate,
-            dateOfBirth = emp.dateOfBirth
+            dateOfBirth = emp.dateOfBirth,
+            height = emp.height,
+            weight = emp.weight,
+            caste = emp.caste,
+            subCaste = emp.subCaste,
+            familyDetails = emp.familyDetails,
+            educationDetails = emp.educationDetails
         )
     }
 

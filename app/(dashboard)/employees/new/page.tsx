@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createEmployee, getDistricts, getStations, getRanks, District, Station, Rank } from "@/lib/firebase/firestore";
 import { BLOOD_GROUPS } from "@/lib/constants";
+import { formatName } from "@/lib/utils";
 
 export default function NewEmployeePage() {
   const router = useRouter();
@@ -27,6 +28,12 @@ export default function NewEmployeePage() {
     photoUrl: "",
     isAdmin: false,
     isApproved: true,
+    height: "",
+    weight: "",
+    caste: "",
+    subCaste: "",
+    familyDetails: "",
+    educationDetails: "",
   });
 
   useEffect(() => {
@@ -120,7 +127,11 @@ export default function NewEmployeePage() {
     setLoading(true);
 
     try {
-      await createEmployee(formData);
+      const formattedName = formatName(formData.name.trim(), formData.rank.trim());
+      await createEmployee({
+        ...formData,
+        name: formattedName,
+      });
       router.push("/employees");
     } catch (error) {
       console.error("Error creating employee:", error);
@@ -349,6 +360,87 @@ export default function NewEmployeePage() {
               onChange={(e) => setFormData({ ...formData, photoUrl: e.target.value })}
               className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
               placeholder="https://..."
+            />
+          </div>
+
+          {/* Row 11.5: Height & Weight */}
+          <div>
+            <label className="block text-sm font-medium text-slate-400">
+              Height
+            </label>
+            <input
+              type="text"
+              value={formData.height}
+              onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+              placeholder="e.g. 178 cm"
+              className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-400">
+              Weight
+            </label>
+            <input
+              type="text"
+              value={formData.weight}
+              onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+              placeholder="e.g. 75 kg"
+              className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
+            />
+          </div>
+
+          {/* Row 11.6: Caste & Sub-Caste */}
+          <div>
+            <label className="block text-sm font-medium text-slate-400">
+              Caste
+            </label>
+            <input
+              type="text"
+              value={formData.caste}
+              onChange={(e) => setFormData({ ...formData, caste: e.target.value })}
+              placeholder="e.g. General"
+              className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-400">
+              Sub-Caste
+            </label>
+            <input
+              type="text"
+              value={formData.subCaste}
+              onChange={(e) => setFormData({ ...formData, subCaste: e.target.value })}
+              placeholder="e.g. Sub-group"
+              className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
+            />
+          </div>
+
+          {/* Row 11.7: Family Details & Education Details */}
+          <div className="md:col-span-2 lg:col-span-3">
+            <label className="block text-sm font-medium text-slate-400">
+              Family Details
+            </label>
+            <textarea
+              value={formData.familyDetails}
+              onChange={(e) => setFormData({ ...formData, familyDetails: e.target.value })}
+              placeholder="Spouse name, dependents, etc."
+              rows={3}
+              className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
+            />
+          </div>
+
+          <div className="md:col-span-2 lg:col-span-3">
+            <label className="block text-sm font-medium text-slate-400">
+              Education Details
+            </label>
+            <textarea
+              value={formData.educationDetails}
+              onChange={(e) => setFormData({ ...formData, educationDetails: e.target.value })}
+              placeholder="Graduation details, specialization, etc."
+              rows={3}
+              className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
             />
           </div>
 

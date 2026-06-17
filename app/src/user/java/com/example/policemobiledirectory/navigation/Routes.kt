@@ -39,6 +39,7 @@ object Routes {
     const val NUDI_CONVERTER = "nudi_converter"
     const val DUTY_REGISTER = "duty_register"
     const val MANAGE_CONSTANTS = "manage_constants" // ✅ New Route
+    const val DIRECTORY_SEARCH = "directory_search"
 
     // --- Leave Manager ---
     // --- Leave Manager ---

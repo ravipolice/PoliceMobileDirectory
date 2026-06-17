@@ -68,6 +68,7 @@ fun PayslipUploadScreen(
 
     var showAddFieldDialog by remember { mutableStateOf(false) }
     var newFieldName by remember { mutableStateOf("") }
+    var showSuccessDialog by remember { mutableStateOf(false) }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -78,21 +79,24 @@ fun PayslipUploadScreen(
         }
     }
 
-    // Auto-trigger permission request if an auth error occurs during upload
+    // Display Toast notifications for upload status results
     LaunchedEffect(uploadStatus) {
         when (uploadStatus) {
             is OperationStatus.Success -> {
                 Toast.makeText(context, "Data saved successfully!", Toast.LENGTH_SHORT).show()
+                showSuccessDialog = true
             }
             is OperationStatus.Error -> {
-                val msg = (uploadStatus as OperationStatus.Error).message.lowercase()
-                if (msg.contains("permission") || msg.contains("auth") || msg.contains("credential") || msg.contains("403")) {
-                    onDrivePermissionRequest()
-                } else {
-                    Toast.makeText(context, (uploadStatus as OperationStatus.Error).message, Toast.LENGTH_LONG).show()
-                }
+                val errorMsg = (uploadStatus as OperationStatus.Error).message
+                Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
             }
             else -> Unit
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.resetUploadStatus()
         }
     }
 
@@ -103,11 +107,17 @@ fun PayslipUploadScreen(
             if (account != null) {
                 val scopes = listOf(DriveScopes.DRIVE_FILE, DriveScopes.DRIVE_APPDATA, SheetsScopes.SPREADSHEETS)
                 if (GoogleSignIn.hasPermissions(account, *scopes.map { com.google.android.gms.common.api.Scope(it) }.toTypedArray())) {
-                    val email = account.email ?: ""
-                    val credential = GoogleAccountCredential.usingOAuth2(context, scopes).apply {
-                        selectedAccountName = email
+                    val accEmail = account.email
+                    val driveEmail = driveAccountEmail
+                    val userEmail = currentUser?.email
+                    val email = accEmail ?: driveEmail ?: userEmail ?: ""
+                    android.util.Log.e("DRIVE_DEBUG", "Startup: account.email='$accEmail', driveAccountEmail='$driveEmail', currentUser.email='$userEmail', resolvedEmail='$email'")
+                    if (email.isNotBlank()) {
+                        val credential = GoogleAccountCredential.usingOAuth2(context, scopes)
+                        credential.selectedAccount = android.accounts.Account(email, "com.google")
+                        android.util.Log.e("DRIVE_DEBUG", "Startup Credential: selectedAccountName='${credential.selectedAccountName}', selectedAccount='${credential.selectedAccount}'")
+                        viewModel.fetchDriveIdentifiers(credential, kgid)
                     }
-                    viewModel.fetchDriveIdentifiers(credential, kgid)
                 }
             }
         }
@@ -150,6 +160,9 @@ fun PayslipUploadScreen(
             if (parsedData.isNotEmpty()) {
                 FloatingActionButton(
                     onClick = { showAddFieldDialog = true },
+                    modifier = Modifier.padding(
+                        bottom = if (uploadStatus is OperationStatus.Success) 160.dp else 0.dp
+                    ),
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = Color.White
                 ) {
@@ -306,11 +319,20 @@ fun PayslipUploadScreen(
                                         val hasPermission = GoogleSignIn.hasPermissions(account, *scopes.map { com.google.android.gms.common.api.Scope(it) }.toTypedArray())
                                         
                                         if (hasPermission) {
-                                            val email = account.email ?: ""
-                                            val credential = GoogleAccountCredential.usingOAuth2(context, scopes).apply {
-                                                selectedAccountName = email
+                                            val accEmail = account.email
+                                            val driveEmail = driveAccountEmail
+                                            val userEmail = currentUser?.email
+                                            val email = accEmail ?: driveEmail ?: userEmail ?: ""
+                                            android.util.Log.e("DRIVE_DEBUG", "Button Click: account.email='$accEmail', driveAccountEmail='$driveEmail', currentUser.email='$userEmail', resolvedEmail='$email'")
+                                            
+                                            if (email.isNotBlank()) {
+                                                val credential = GoogleAccountCredential.usingOAuth2(context, scopes)
+                                                credential.selectedAccount = android.accounts.Account(email, "com.google")
+                                                android.util.Log.e("DRIVE_DEBUG", "Credential created: selectedAccountName='${credential.selectedAccountName}', selectedAccount='${credential.selectedAccount}'")
+                                                viewModel.uploadToDriveAndSheets(context, credential, selectedUri!!)
+                                            } else {
+                                                Toast.makeText(context, "Could not determine Google account. Please sign in again.", Toast.LENGTH_SHORT).show()
                                             }
-                                            viewModel.uploadToDriveAndSheets(context, credential, selectedUri!!)
                                         } else {
                                             onDrivePermissionRequest()
                                         }
@@ -362,11 +384,11 @@ fun PayslipUploadScreen(
             }
 
             // Success Message
-            if (uploadStatus is OperationStatus.Success) {
+            if (showSuccessDialog && uploadStatus is OperationStatus.Success) {
                 AlertDialog(
-                    onDismissRequest = { viewModel.resetUploadStatus() },
+                    onDismissRequest = { showSuccessDialog = false },
                     confirmButton = {
-                        TextButton(onClick = { viewModel.resetUploadStatus(); onNavigateBack() }) {
+                        TextButton(onClick = { showSuccessDialog = false }) {
                             Text("Done")
                         }
                     },

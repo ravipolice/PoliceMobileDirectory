@@ -2,11 +2,13 @@ package com.example.policemobiledirectory.viewmodel
 
 import android.net.Uri
 import android.util.Log
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.policemobiledirectory.data.local.PendingRegistrationEntity
 import com.example.policemobiledirectory.data.local.SessionManager
 import com.example.policemobiledirectory.data.mapper.toEmployee
+import com.example.policemobiledirectory.data.mapper.toEntity
 import com.example.policemobiledirectory.model.Employee
 import com.example.policemobiledirectory.repository.EmployeeRepository
 import com.example.policemobiledirectory.repository.ImageRepository
@@ -80,6 +82,83 @@ class AuthViewModel @Inject constructor(
 
     val driveAccountEmail: StateFlow<String?> = sessionManager.driveAccountEmail
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    // Biometric Login State and Actions
+    val isBiometricEnabled: StateFlow<Boolean> = sessionManager.isBiometricEnabled
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val encryptedPin: StateFlow<String?> = sessionManager.encryptedPin
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val biometricIv: StateFlow<String?> = sessionManager.biometricIv
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val failedPinAttempts: StateFlow<Int> = sessionManager.failedPinAttempts
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    val pinLockoutTimestamp: StateFlow<Long> = sessionManager.pinLockoutTimestamp
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
+
+    val lastActiveTime: StateFlow<Long> = sessionManager.lastActiveTime
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0L)
+
+    fun enableBiometric(pin: String): Boolean {
+        val encryptedData = com.example.policemobiledirectory.utils.BiometricHelper.encryptPin(pin)
+        return if (encryptedData != null) {
+            viewModelScope.launch {
+                sessionManager.saveBiometricCredentials(
+                    encryptedPin = encryptedData.first,
+                    iv = encryptedData.second
+                )
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    fun disableBiometrics() {
+        viewModelScope.launch {
+            sessionManager.disableBiometrics()
+        }
+    }
+
+    fun verifyAndEnableBiometric(
+        email: String,
+        pin: String,
+        activity: FragmentActivity,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            employeeRepo.loginUser(email, pin).collect { result ->
+                when (result) {
+                    is RepoResult.Success -> {
+                        com.example.policemobiledirectory.utils.BiometricHelper.showBiometricPrompt(
+                            activity = activity,
+                            title = "Verify Biometric",
+                            subtitle = "Verify to enable biometric login",
+                            onSuccess = {
+                                val success = enableBiometric(pin)
+                                if (success) {
+                                    onSuccess()
+                                } else {
+                                    onError("Failed to enable biometric login")
+                                }
+                            },
+                            onError = { _, err ->
+                                onError("Biometric verification failed: $err")
+                            }
+                        )
+                    }
+                    is RepoResult.Error -> {
+                        onError(result.message ?: "Invalid PIN")
+                    }
+                    is RepoResult.Loading -> {}
+                }
+            }
+        }
+    }
 
     // Combined status for Navigation Drawer display
     val hasFullDriveAccess = combine(
@@ -222,11 +301,20 @@ class AuthViewModel @Inject constructor(
 
     fun loginWithPin(email: String, pin: String) {
         viewModelScope.launch {
+            val attempts = failedPinAttempts.value
+            val lockoutTime = pinLockoutTimestamp.value
+            val currentTime = System.currentTimeMillis()
+            if (attempts >= 5 && currentTime - lockoutTime < 600000L) {
+                _authStatus.value = OperationStatus.Error("Too many failed attempts. Locked out.")
+                return@launch
+            }
+
             employeeRepo.loginUser(email, pin).collect { result ->
                 when (result) {
                     is RepoResult.Success -> {
                         val user = result.data
                         if (user != null) {
+                            sessionManager.resetFailedPinAttempts()
                             // Instantly update UI before waiting for DataStore
                             _currentUser.value = user
                             _isAdmin.value = user.isAdmin
@@ -234,6 +322,7 @@ class AuthViewModel @Inject constructor(
 
                             // Save to DataStore for persistence
                             sessionManager.saveLogin(email, user.isAdmin)
+                            sessionManager.updateLastActiveTime()
 
                             // Fetch a fresh version from local DB
                             val refreshed = employeeRepo.getEmployeeDirect(email)
@@ -245,10 +334,12 @@ class AuthViewModel @Inject constructor(
                             _authStatus.value = OperationStatus.Success(user)
                             Log.d("Login", "✅ Logged in as ${user.name}, Admin=${user.isAdmin}")
                         } else {
+                            sessionManager.incrementFailedPinAttempts()
                             _authStatus.value = OperationStatus.Error("User not found")
                         }
                     }
                     is RepoResult.Error -> {
+                        sessionManager.incrementFailedPinAttempts()
                         _authStatus.value = OperationStatus.Error(result.message ?: "Login failed")
                     }
                     is RepoResult.Loading -> {
@@ -287,6 +378,7 @@ class AuthViewModel @Inject constructor(
                                 }
                                 Log.d("LoginFlow", "🎯 Login Successful!")
                                 sessionManager.saveLogin(user.email, user.isAdmin)
+                                sessionManager.updateLastActiveTime()
                                 _currentUser.value = user
                                 _isLoggedIn.value = true
                                 _googleSignInUiEvent.value = GoogleSignInUiEvent.SignInSuccess(user)
@@ -623,6 +715,19 @@ class AuthViewModel @Inject constructor(
     fun loadSession() {
         viewModelScope.launch {
             val isLoggedIn = sessionManager.isLoggedIn.first()
+
+            if (isLoggedIn) {
+                val lastActive = sessionManager.lastActiveTime.first()
+                val currentTime = System.currentTimeMillis()
+                // 30 days = 30L * 24 * 60 * 60 * 1000L = 2592000000L
+                if (lastActive > 0L && currentTime - lastActive > 2592000000L) {
+                    Log.w("Session", "🕒 Inactivity timeout (30 days) exceeded. Logging out.")
+                    logout()
+                    return@launch
+                }
+                sessionManager.updateLastActiveTime()
+            }
+
             _isLoggedIn.value = isLoggedIn
 
             if (isLoggedIn) {
@@ -636,33 +741,69 @@ class AuthViewModel @Inject constructor(
                         val user = userEntity?.toEmployee()
 
                         if (user != null) {
-                            if (!user.isApproved) {
-                                Log.w("Session", "⚠️ User access disabled during load. Forcing logout.")
-                                logout()
-                                return@launch
-                            }
                             _currentUser.value = user
                             Log.d("Session", "✅ Session restored for user: ${user.name}, admin=$isAdmin")
 
-                            // 🔴 Background live Firestore check on startup
+                            // 🔴 Background live Firestore check on startup to sync approval status
                             viewModelScope.launch {
                                 val liveApproved = employeeRepo.checkIsApprovedFromFirestore(email)
-                                if (liveApproved == false) {
-                                    Log.w("Session", "🔴 Firestore says user is DISABLED. Forcing logout.")
-                                    logout()
+                                if (liveApproved != null) {
+                                    val localUser = employeeRepo.getEmployeeDirect(email)
+                                    if (localUser != null) {
+                                        val updated = localUser.copy(isApproved = liveApproved)
+                                        employeeRepo.insertEmployeeDirect(updated.toEntity())
+                                        if (_currentUser.value?.email == email) {
+                                            _currentUser.value = updated
+                                        }
+                                        Log.d("Session", "🔄 Live approval check complete: approved=$liveApproved")
+                                    }
                                 }
                             }
                         } else {
-                            Log.e("Session", "❌ Session exists for $email but user not found in DB. Forcing logout.")
-                            logout()
+                            // User not found in local DB. Try Firestore.
+                            Log.d("Session", "User not found in local DB during restore. Checking Firestore...")
+                            when (val remoteResult = employeeRepo.getUserByEmail(email)) {
+                                is RepoResult.Success -> {
+                                    val remoteUser = remoteResult.data
+                                    if (remoteUser != null) {
+                                        _currentUser.value = remoteUser
+                                        _isLoggedIn.value = true
+                                        employeeRepo.insertEmployeeDirect(remoteUser.toEntity())
+                                        Log.d("Session", "✅ Restored session from Firestore: ${remoteUser.name}")
+                                    } else {
+                                        // Not found in employees collection. Check if pending.
+                                        Log.d("Session", "User not found in Firestore. Checking pending...")
+                                        val pendingUser = pendingRepo.getPendingByEmail(email)
+                                        if (pendingUser != null) {
+                                            Log.d("Session", "⏳ Restoring pending registration session.")
+                                            _currentUser.value = Employee(
+                                                email = email,
+                                                name = pendingUser.name,
+                                                kgid = pendingUser.kgid,
+                                                isApproved = false,
+                                                isAdmin = false
+                                            )
+                                            _isLoggedIn.value = true
+                                        } else {
+                                            Log.w("Session", "⚠️ Session email not found anywhere. Setting isLoggedIn=false in memory.")
+                                            _isLoggedIn.value = false
+                                            _currentUser.value = null
+                                        }
+                                    }
+                                }
+                                is RepoResult.Error -> {
+                                    Log.e("Session", "❌ Firestore error during restore: ${remoteResult.message}")
+                                }
+                                else -> Unit
+                            }
                         }
                     } catch (e: Exception) {
-                        Log.e("Session", "❌ DB error during session restore: ${e.message}. Forcing logout.")
-                        logout()
+                        Log.e("Session", "❌ DB error during session restore: ${e.message}")
                     }
                 } else {
-                    Log.e("Session", "❌ Invalid session state. Forcing logout.")
-                    logout()
+                    Log.w("Session", "❌ Invalid session state: email is blank. Setting isLoggedIn=false in memory.")
+                    _isLoggedIn.value = false
+                    _currentUser.value = null
                 }
             } else {
                 _isAdmin.value = false

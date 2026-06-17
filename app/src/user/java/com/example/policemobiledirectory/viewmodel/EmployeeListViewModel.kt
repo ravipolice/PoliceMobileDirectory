@@ -140,8 +140,36 @@ class EmployeeListViewModel @Inject constructor(
     // Combined contacts with admin-aware filtering
     val allContacts: StateFlow<List<Contact>> = combine(_employees, _officers, _isAdmin) { employees, officers, isAdmin ->
         val filteredEmployees = if (isAdmin) employees else employees.filter { it.isApproved }
+        
+        val registeredKgids = filteredEmployees.map { it.kgid.trim().lowercase() }.toHashSet()
+        val registeredEmails = filteredEmployees.mapNotNull { it.email?.trim()?.lowercase() }.filter { it.isNotBlank() }.toHashSet()
+        
+        val normalizeMobile = { m: String? ->
+            if (m.isNullOrBlank()) null
+            else {
+                val digits = m.replace(Regex("\\D"), "")
+                if (digits.length >= 10) digits.takeLast(10) else digits
+            }
+        }
+        val registeredPhones = filteredEmployees.flatMap { 
+            listOfNotNull(normalizeMobile(it.mobile1), normalizeMobile(it.mobile2))
+        }.filter { it.isNotBlank() }.toHashSet()
+
         val employeeContacts = filteredEmployees.map { Contact(employee = it) }
-        val officerContacts = officers.map { Contact(officer = it) }
+        val officerContacts = officers.filter { off ->
+            val offAgid = off.agid.trim().lowercase()
+            val offEmail = off.email?.trim()?.lowercase() ?: ""
+            val offMobile1 = normalizeMobile(off.mobile)
+            val offMobile2 = normalizeMobile(off.mobile2)
+            
+            val agidMatch = offAgid.isNotBlank() && registeredKgids.contains(offAgid)
+            val emailMatch = offEmail.isNotBlank() && registeredEmails.contains(offEmail)
+            val phoneMatch = (offMobile1 != null && registeredPhones.contains(offMobile1)) || 
+                             (offMobile2 != null && registeredPhones.contains(offMobile2))
+                             
+            !agidMatch && !emailMatch && !phoneMatch
+        }.map { Contact(officer = it) }
+        
         employeeContacts + officerContacts
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -231,8 +259,34 @@ class EmployeeListViewModel @Inject constructor(
                     val isAdmin = _isAdmin.value
                     val filteredEmps = if (isAdmin) emps else emps.filter { it.isApproved }
                     
+                    val registeredKgids = filteredEmps.map { it.kgid.trim().lowercase() }.toHashSet()
+                    val registeredEmails = filteredEmps.mapNotNull { it.email?.trim()?.lowercase() }.filter { it.isNotBlank() }.toHashSet()
+                    
+                    val normalizeMobile = { m: String? ->
+                        if (m.isNullOrBlank()) null
+                        else {
+                            val digits = m.replace(Regex("\\D"), "")
+                            if (digits.length >= 10) digits.takeLast(10) else digits
+                        }
+                    }
+                    val registeredPhones = filteredEmps.flatMap { 
+                        listOfNotNull(normalizeMobile(it.mobile1), normalizeMobile(it.mobile2))
+                    }.filter { it.isNotBlank() }.toHashSet()
+
                     val employeeContacts = filteredEmps.map { Contact(employee = it) }
-                    val officerContacts = offs.map { Contact(officer = it) }
+                    val officerContacts = offs.filter { off ->
+                        val offAgid = off.agid.trim().lowercase()
+                        val offEmail = off.email?.trim()?.lowercase() ?: ""
+                        val offMobile1 = normalizeMobile(off.mobile)
+                        val offMobile2 = normalizeMobile(off.mobile2)
+                        
+                        val agidMatch = offAgid.isNotBlank() && registeredKgids.contains(offAgid)
+                        val emailMatch = offEmail.isNotBlank() && registeredEmails.contains(offEmail)
+                        val phoneMatch = (offMobile1 != null && registeredPhones.contains(offMobile1)) || 
+                                         (offMobile2 != null && registeredPhones.contains(offMobile2))
+                                         
+                        !agidMatch && !emailMatch && !phoneMatch
+                    }.map { Contact(officer = it) }
                     
                     employeeContacts + officerContacts
                 }.collect { combined ->
@@ -448,6 +502,17 @@ class EmployeeListViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Instant lookup by ID directly from already-loaded in-memory lists.
+     * Avoids waiting for allContacts StateFlow (which starts as emptyList) to emit.
+     */
+    fun findContactById(id: String, isOfficer: Boolean): Any? {
+        return if (isOfficer) {
+            _officers.value.firstOrNull { it.agid == id }
+        } else {
+            _employees.value.firstOrNull { it.kgid == id }
+        }
+    }
 }
 
 

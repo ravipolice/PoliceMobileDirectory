@@ -119,8 +119,8 @@ fun ChangePinScreen(
                 Button(
                     onClick = {
                         when {
-                            newPin.length < 4 -> {
-                                Toast.makeText(context, "PIN must be at least 4 digits", Toast.LENGTH_SHORT).show()
+                            newPin.length != 6 -> {
+                                Toast.makeText(context, "PIN must be exactly 6 digits", Toast.LENGTH_SHORT).show()
                             }
                             newPin != confirmNewPin -> {
                                 Toast.makeText(context, "PINs do not match", Toast.LENGTH_SHORT).show()
@@ -177,7 +177,7 @@ fun PinTextField(
 ) {
     OutlinedTextField(
         value = pin,
-        onValueChange = onPinChange,
+        onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) onPinChange(it) },
         label = { Text(label) },
         singleLine = true,
         visualTransformation = if (visible) VisualTransformation.None else PinVisualTransformation(),

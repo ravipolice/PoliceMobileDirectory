@@ -34,23 +34,8 @@ val bottomNavItems = listOf(
         label = "Menu"
     ),
     BottomNavItem(
-        route = Routes.GALLERY_SCREEN, // 🖼️ New Gallery Screen
-        icon = Icons.Default.PhotoLibrary, // You can replace with your custom drawable later
-        label = "Gallery"
-    ),
-    BottomNavItem(
         route = Routes.EMPLOYEE_LIST,
         icon = Icons.Default.Home,
         label = "Home"
-    ),
-    BottomNavItem(
-        route = Routes.LEAVE_DASHBOARD,
-        icon = Icons.Default.EventNote,
-        label = "Leaves"
-    ),
-    BottomNavItem(
-        route = Routes.USEFUL_LINKS,
-        icon = Icons.Default.Link,
-        label = "Links"
     )
 )

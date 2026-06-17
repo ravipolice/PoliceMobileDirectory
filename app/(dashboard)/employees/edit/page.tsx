@@ -13,6 +13,7 @@ import {
   Rank,
 } from "@/lib/firebase/firestore";
 import { BLOOD_GROUPS } from "@/lib/constants";
+import { formatName } from "@/lib/utils";
 
 export default function EditEmployeePage() {
   const router = useRouter();
@@ -40,6 +41,12 @@ export default function EditEmployeePage() {
     photoUrl: "",
     isAdmin: false,
     isApproved: true,
+    height: "",
+    weight: "",
+    caste: "",
+    subCaste: "",
+    familyDetails: "",
+    educationDetails: "",
   });
 
   useEffect(() => {
@@ -105,6 +112,10 @@ export default function EditEmployeePage() {
   const loadEmployee = async () => {
     if (!employeeId) return;
     try {
+      // Load districts first for normalization
+      const fetchedDistricts = await getDistricts();
+      setDistricts(fetchedDistricts);
+
       const employee = await getEmployee(employeeId);
       if (!employee) {
         alert("Employee not found");
@@ -117,34 +128,47 @@ export default function EditEmployeePage() {
       const employeeDistrict = employee.district ?? "";
       const employeeBloodGroup = employee.bloodGroup ?? "";
 
+      let normalizedEmployeeDistrict = employeeDistrict.trim();
+      let normalizedEmployeeStation = employeeStation.trim();
+
+      // Normalize district name case-insensitively
+      if (normalizedEmployeeDistrict) {
+        const matchingDistrict = fetchedDistricts.find(
+          (d) => d.name.trim().toLowerCase() === normalizedEmployeeDistrict.toLowerCase()
+        );
+        if (matchingDistrict) {
+          normalizedEmployeeDistrict = matchingDistrict.name;
+        }
+      }
+
       // Load stations first if district exists, then set form data
-      if (employeeDistrict) {
+      if (normalizedEmployeeDistrict) {
         // Load stations for the district before setting form data
-        const districtStations = await getStations(employeeDistrict);
+        const districtStations = await getStations(normalizedEmployeeDistrict);
         
         // Normalize station names for comparison (trim and case-insensitive)
-        const normalizedEmployeeStation = employeeStation.trim();
-        const stationExists = districtStations.some(s => 
-          s.name.trim().toLowerCase() === normalizedEmployeeStation.toLowerCase()
+        const matchingStation = districtStations.find(
+          (s) => s.name.trim().toLowerCase() === normalizedEmployeeStation.toLowerCase()
         );
         
-        // If the employee's station doesn't exist in the stations list, add it
-        // This ensures the station value is always displayed, even if it was removed from the list
-        if (normalizedEmployeeStation && !stationExists) {
+        if (matchingStation) {
+          normalizedEmployeeStation = matchingStation.name;
+        } else if (normalizedEmployeeStation) {
+          // If the employee's station doesn't exist in the stations list, add it
+          // This ensures the station value is always displayed, even if it was removed from the list
           districtStations.push({ 
             id: "current", 
             name: normalizedEmployeeStation,
-            district: employeeDistrict 
+            district: normalizedEmployeeDistrict 
           });
         }
         
         // Set stations first, then set selectedDistrict
         setStations(districtStations);
-        setSelectedDistrict(employeeDistrict);
+        setSelectedDistrict(normalizedEmployeeDistrict);
       }
 
-      // Now set form data with all values exactly as stored
-      // Preserve exact values - don't convert undefined/null to empty string for optional fields
+      // Now set form data with normalized values
       setFormData({
         kgid: employee.kgid ?? "",
         name: employee.name ?? "",
@@ -153,12 +177,18 @@ export default function EditEmployeePage() {
         mobile2: employee.mobile2 ?? "",
         rank: employee.rank ?? "",
         metalNumber: employee.metalNumber ?? "",
-        district: employeeDistrict,
-        station: employeeStation,
+        district: normalizedEmployeeDistrict,
+        station: normalizedEmployeeStation,
         bloodGroup: employeeBloodGroup, // Preserve "??" exactly as stored
         photoUrl: employee.photoUrl ?? "",
         isAdmin: employee.isAdmin ?? false,
         isApproved: employee.isApproved !== undefined ? employee.isApproved : true,
+        height: employee.height ?? "",
+        weight: employee.weight ?? "",
+        caste: employee.caste ?? "",
+        subCaste: employee.subCaste ?? "",
+        familyDetails: employee.familyDetails ?? "",
+        educationDetails: employee.educationDetails ?? "",
       });
     } catch (error) {
       console.error("Error loading employee:", error);
@@ -236,7 +266,11 @@ export default function EditEmployeePage() {
     setSaving(true);
 
     try {
-      await updateEmployee(employeeId, formData);
+      const formattedName = formatName(formData.name.trim(), formData.rank.trim());
+      await updateEmployee(employeeId, {
+        ...formData,
+        name: formattedName,
+      });
       router.push("/employees");
     } catch (error) {
       console.error("Error updating employee:", error);
@@ -483,6 +517,87 @@ export default function EditEmployeePage() {
               type="url"
               value={formData.photoUrl}
               onChange={(e) => setFormData({ ...formData, photoUrl: e.target.value })}
+              className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
+            />
+          </div>
+
+          {/* Row 9: Height & Weight */}
+          <div>
+            <label className="block text-sm font-medium text-slate-400">
+              Height
+            </label>
+            <input
+              type="text"
+              value={formData.height}
+              onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+              placeholder="e.g. 178 cm"
+              className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-400">
+              Weight
+            </label>
+            <input
+              type="text"
+              value={formData.weight}
+              onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+              placeholder="e.g. 75 kg"
+              className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
+            />
+          </div>
+
+          {/* Row 10: Caste & Sub-Caste */}
+          <div>
+            <label className="block text-sm font-medium text-slate-400">
+              Caste
+            </label>
+            <input
+              type="text"
+              value={formData.caste}
+              onChange={(e) => setFormData({ ...formData, caste: e.target.value })}
+              placeholder="e.g. General"
+              className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-400">
+              Sub-Caste
+            </label>
+            <input
+              type="text"
+              value={formData.subCaste}
+              onChange={(e) => setFormData({ ...formData, subCaste: e.target.value })}
+              placeholder="e.g. Sub-group"
+              className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
+            />
+          </div>
+
+          {/* Row 11: Family Details & Education Details */}
+          <div className="md:col-span-2 lg:col-span-3">
+            <label className="block text-sm font-medium text-slate-400">
+              Family Details
+            </label>
+            <textarea
+              value={formData.familyDetails}
+              onChange={(e) => setFormData({ ...formData, familyDetails: e.target.value })}
+              placeholder="Spouse name, dependents, etc."
+              rows={3}
+              className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
+            />
+          </div>
+
+          <div className="md:col-span-2 lg:col-span-3">
+            <label className="block text-sm font-medium text-slate-400">
+              Education Details
+            </label>
+            <textarea
+              value={formData.educationDetails}
+              onChange={(e) => setFormData({ ...formData, educationDetails: e.target.value })}
+              placeholder="Graduation details, specialization, etc."
+              rows={3}
               className="mt-1 block w-full rounded-md bg-dark-sidebar border border-dark-border px-3 py-2 text-slate-100 placeholder-slate-400 focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50"
             />
           </div>

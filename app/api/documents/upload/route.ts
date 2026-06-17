@@ -2,16 +2,11 @@ import { NextResponse } from "next/server";
 
 const DOCUMENTS_API_URL = "https://script.google.com/macros/s/AKfycby-7jOc_naI1_XDVzG1qAGvNc9w3tIU4ZwmCFGUUCLdg0_DEJh7oouF8a9iy5E93-p9zg/exec";
 
-// Get token from environment variable (same as mobile app uses)
+// Get token from environment variable
 const getSecretToken = (): string => {
-  // Try environment variable first
-  const envToken = process.env.APPS_SCRIPT_SECRET_TOKEN || process.env.NEXT_PUBLIC_APPS_SCRIPT_SECRET_TOKEN;
-  if (envToken && envToken !== "CHANGE_THIS_IN_PRODUCTION") {
-    return envToken;
-  }
-  // Fallback to the token from helpers.gs (should match Apps Script)
-  // This is a temporary fallback - should be set in environment variables
-  return "Ravi@PMD_2025_Secure_Token";
+  return process.env.APPS_SCRIPT_SECRET_TOKEN ||
+    process.env.NEXT_PUBLIC_APPS_SCRIPT_SECRET_TOKEN ||
+    "Ravi@PMD_2025_Secure_Token"; // Keep fallback for local dev only
 };
 
 export async function POST(request: Request) {

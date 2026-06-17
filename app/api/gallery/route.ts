@@ -11,11 +11,11 @@ export async function GET(req: NextRequest) {
   // The Gallery script returns data directly when called without action
   // But include action for compatibility if needed
   
-  // Get token from env or use fallback (must match helpers.gs: "Ravi@PMD_2025_Secure_Token")
+  // Get token: env var first, fallback for local dev only
   const token =
     process.env.APPS_SCRIPT_SECRET_TOKEN ||
     process.env.NEXT_PUBLIC_APPS_SCRIPT_SECRET_TOKEN ||
-    "Ravi@PMD_2025_Secure_Token"; // Fallback to match Apps Script
+    "Ravi@PMD_2025_Secure_Token";
 
   // Build URL - Gallery script works without action, but add token if needed
   // Test shows it works with just the base URL

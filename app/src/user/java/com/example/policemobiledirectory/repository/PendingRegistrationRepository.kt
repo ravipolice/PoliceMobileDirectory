@@ -29,13 +29,53 @@ class PendingRegistrationRepository @Inject constructor(
     /* ----------------------------------------------------------
         FETCH PENDING (Firestore → Room)
     ----------------------------------------------------------- */
+    private fun mapDocumentToEntity(doc: com.google.firebase.firestore.DocumentSnapshot): PendingRegistrationEntity? {
+        return try {
+            val entity = doc.toObject(PendingRegistrationEntity::class.java) ?: return null
+            
+            // Support both Firestore Timestamp/Date and Long types safely
+            val submittedLong = try { doc.getLong("submittedAt") } catch (e: Exception) { null }
+            val submittedAt = if (submittedLong != null) java.util.Date(submittedLong)
+                              else doc.getDate("submittedAt") ?: doc.getTimestamp("submittedAt")?.toDate() ?: entity.submittedAt
+
+            val createdLong = try { doc.getLong("createdAt") } catch (e: Exception) { null }
+            val createdAt = if (createdLong != null) java.util.Date(createdLong)
+                            else doc.getDate("createdAt") ?: doc.getTimestamp("createdAt")?.toDate() ?: entity.createdAt
+
+            val dobLong = try { doc.getLong("dateOfBirth") } catch (e: Exception) { null }
+            val dateOfBirth = if (dobLong != null) java.util.Date(dobLong)
+                              else doc.getDate("dateOfBirth") ?: doc.getTimestamp("dateOfBirth")?.toDate() ?: entity.dateOfBirth
+
+            val serviceStartLong = try { doc.getLong("serviceStartDate") } catch (e: Exception) { null }
+            val serviceStartDate = if (serviceStartLong != null) java.util.Date(serviceStartLong)
+                                   else doc.getDate("serviceStartDate") ?: doc.getTimestamp("serviceStartDate")?.toDate() ?: entity.serviceStartDate
+
+            val status = doc.getString("status")?.lowercase() ?: "pending"
+
+            entity.copy(
+                firestoreId = doc.id,
+                status = status,
+                submittedAt = submittedAt,
+                createdAt = createdAt,
+                dateOfBirth = dateOfBirth,
+                serviceStartDate = serviceStartDate
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("PendingRegRepo", "❌ Error mapping document ${doc.id}: ${e.message}")
+            null
+        }
+    }
+
+    /* ----------------------------------------------------------
+        FETCH PENDING (Firestore → Room)
+    ----------------------------------------------------------- */
     suspend fun fetchPendingFromFirestore(): RepoResult<List<PendingRegistrationEntity>> {
         return try {
             val snapshot = firestore.collection("pending_registrations")
                 .whereEqualTo("status", "pending")
                 .get().await()
 
-            val list = snapshot.toObjects(PendingRegistrationEntity::class.java)
+            val list = snapshot.documents.mapNotNull { mapDocumentToEntity(it) }
             RepoResult.Success(list)
         } catch (e: Exception) {
             RepoResult.Error(e, "Failed to load pending registrations: ${e.message}")
@@ -53,11 +93,7 @@ class PendingRegistrationRepository @Inject constructor(
             val normalizedEmail = email.trim().lowercase()
             val rawEmail = email.trim()
 
-            // First check local DB
-            val local = dao.getByEmail(normalizedEmail) ?: if (normalizedEmail != rawEmail) dao.getByEmail(rawEmail) else null
-            if (local != null) return@withContext local
-
-            // Then check Firestore as fallback
+            // 1️⃣ ALWAYS check Firestore first for the live status (source of truth)
             try {
                 // Try normalized first
                 var snapshot = firestore.collection("pending_registrations")
@@ -71,10 +107,20 @@ class PendingRegistrationRepository @Inject constructor(
                         .get().await()
                 }
                 
-                snapshot.toObjects(PendingRegistrationEntity::class.java).firstOrNull()
+                val remoteList = snapshot.documents.mapNotNull { mapDocumentToEntity(it) }
+                val remoteLatest = remoteList.maxByOrNull { it.submittedAt?.time ?: it.createdAt?.time ?: 0L }
+                if (remoteLatest != null) {
+                    // Sync the fresh status to local Room DB
+                    dao.insert(remoteLatest)
+                    return@withContext remoteLatest
+                }
             } catch (e: Exception) {
-                null
+                android.util.Log.w("PendingRegRepo", "Failed to check Firestore for pending registration: ${e.message}")
             }
+
+            // 2️⃣ Fallback to local Room cache if offline/network fails
+            val local = dao.getByEmail(normalizedEmail) ?: if (normalizedEmail != rawEmail) dao.getByEmail(rawEmail) else null
+            local
         }
 
 

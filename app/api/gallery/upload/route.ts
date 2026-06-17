@@ -2,15 +2,11 @@ import { NextResponse } from "next/server";
 
 const GALLERY_API_URL = "https://script.google.com/macros/s/AKfycbwXIhqfYWER3Z2KBlcrqZjyWCBfacHOeKCo_buWaZ6nG7qQpWaN91V7Y-IclzmOvG73/exec";
 
-// Get token from environment variable (same as mobile app uses)
+// Get token from environment variable
 const getSecretToken = (): string => {
-  // Try environment variable first
-  const envToken = process.env.APPS_SCRIPT_SECRET_TOKEN || process.env.NEXT_PUBLIC_APPS_SCRIPT_SECRET_TOKEN;
-  if (envToken && envToken !== "CHANGE_THIS_IN_PRODUCTION") {
-    return envToken;
-  }
-  // Fallback to the token from helpers.gs (should match Apps Script)
-  return "Ravi@PMD_2025_Secure_Token";
+  return process.env.APPS_SCRIPT_SECRET_TOKEN ||
+    process.env.NEXT_PUBLIC_APPS_SCRIPT_SECRET_TOKEN ||
+    "Ravi@PMD_2025_Secure_Token"; // Keep fallback for local dev only
 };
 
 export async function POST(request: Request) {

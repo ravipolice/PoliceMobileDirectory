@@ -22,6 +22,7 @@ import com.example.policemobiledirectory.data.local.SearchFilter
 import com.example.policemobiledirectory.ui.theme.ChipSelectedStart
 import com.example.policemobiledirectory.ui.theme.PrimaryTeal
 import com.example.policemobiledirectory.utils.OperationStatus
+import com.example.policemobiledirectory.utils.getShortRangeName
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -264,7 +265,7 @@ fun SearchFilterBar(
                     onExpandedChange = { districtExpanded = !districtExpanded },
                 ) {
                     OutlinedTextField(
-                        value = selectedDistrict,
+                        value = getShortRangeName(selectedDistrict),
                         onValueChange = {},
                         readOnly = true,
                         label = { Text(districtLabel, fontSize = 12.sp) },
@@ -289,7 +290,7 @@ fun SearchFilterBar(
                     ) {
                         districts.forEach { district ->
                             DropdownMenuItem(
-                                text = { Text(district) },
+                                text = { Text(getShortRangeName(district)) },
                                 onClick = {
                                     onDistrictChange(district)
                                     districtExpanded = false

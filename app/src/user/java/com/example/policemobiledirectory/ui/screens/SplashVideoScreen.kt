@@ -28,12 +28,16 @@ fun SplashVideoScreen(
     LaunchedEffect(Unit) {
         // Wait for 2 seconds then navigate
         delay(2000)
-        // Determine target destination
         val isLoggedIn = viewModel.isLoggedIn.value
-        val isApproved = viewModel.currentUser.value?.isApproved == true || viewModel.currentUser.value?.isAdmin == true
+        val currentUser = viewModel.currentUser.value
+        val isApproved = currentUser?.isApproved == true || currentUser?.isAdmin == true
         
-        val target = if (isLoggedIn && isApproved) {
-            Routes.EMPLOYEE_LIST
+        val target = if (isLoggedIn) {
+            if (isApproved) {
+                Routes.EMPLOYEE_LIST
+            } else {
+                Routes.PENDING_APPROVAL
+            }
         } else {
             Routes.LOGIN
         }

@@ -192,6 +192,20 @@ class OfficerRepository @Inject constructor(
     }
 
     fun searchByBlob(query: String): Flow<RepoResult<List<Officer>>> {
+        val trimmedQuery = query.trim().lowercase()
+        if (trimmedQuery.contains(" ")) {
+            val keywords = trimmedQuery.split(Regex("\\s+")).filter { it.isNotBlank() }
+            if (keywords.isNotEmpty()) {
+                return officerDao.getAllOfficers().map { entities ->
+                    val filtered = entities.filter { entity ->
+                        val searchBlob = entity.searchBlob.lowercase()
+                        keywords.all { keyword -> searchBlob.contains(keyword) }
+                    }.map { it.toOfficer() }
+                    RepoResult.Success(filtered)
+                }.flowOn(ioDispatcher)
+            }
+        }
+
         val normalizedQuery = query.trim().lowercase()
         return officerDao.smartSearch(normalizedQuery)
             .map { entities -> RepoResult.Success(entities.map { it.toOfficer() }) }

@@ -50,9 +50,14 @@ import com.example.policemobiledirectory.utils.OperationStatus
 import com.example.policemobiledirectory.viewmodel.AuthViewModel
 import com.example.policemobiledirectory.viewmodel.SettingsViewModel
 import com.example.policemobiledirectory.ui.screens.*
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Visibility
@@ -69,24 +74,23 @@ fun LoginScreen(
     onRegisterNewUser: (String?, String?) -> Unit,
     onForgotPinClicked: () -> Unit,
     onGoogleSignInClicked: () -> Unit,
+    onSwitchGoogleAccountClicked: () -> Unit = {},
     onThemeToggle: () -> Unit = {},
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val haptics = LocalHapticFeedback.current
-    val systemUiController = rememberSystemUiController()
-
-    // Force light icons on this dark screen regardless of system theme
-    SideEffect {
-        systemUiController.setStatusBarColor(
-            color = Color.Transparent,
-            darkIcons = false
-        )
-        systemUiController.setNavigationBarColor(
-            color = Color.Transparent,
-            darkIcons = false
-        )
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context.findActivity())?.window
+            if (window != null) {
+                val insetsController = WindowCompat.getInsetsController(window, view)
+                insetsController.isAppearanceLightStatusBars = false
+                insetsController.isAppearanceLightNavigationBars = false
+            }
+        }
     }
 
     var email by remember { mutableStateOf("") }
@@ -103,6 +107,76 @@ fun LoginScreen(
     val isAccountPickerLoading by viewModel.isGoogleAccountPickerLoading.collectAsState()
     var isEmailPinExpanded by remember { mutableStateOf(false) }
 
+    val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
+    val encryptedPin by viewModel.encryptedPin.collectAsState()
+    val biometricIv by viewModel.biometricIv.collectAsState()
+    val storedEmail by viewModel.sessionManager.userEmail.collectAsState(initial = "")
+
+    var loggedInWithPin by remember { mutableStateOf(false) }
+    var showBiometricEnrollDialog by remember { mutableStateOf(false) }
+    var pendingNavigationAdminState by remember { mutableStateOf(false) }
+    var hasAutoTriggeredBiometric by remember { mutableStateOf(false) }
+
+    LaunchedEffect(storedEmail) {
+        if (storedEmail.isNotBlank() && email.isBlank()) {
+            email = storedEmail
+        }
+    }
+
+    LaunchedEffect(isBiometricEnabled) {
+        if (isBiometricEnabled) {
+            isEmailPinExpanded = true
+        }
+    }
+
+    val failedAttempts by viewModel.failedPinAttempts.collectAsState()
+    val lockoutTimestamp by viewModel.pinLockoutTimestamp.collectAsState()
+    var lockoutTimeRemaining by remember { mutableStateOf(0L) }
+    val isLockedOut = failedAttempts >= 5 && lockoutTimeRemaining > 0
+
+    LaunchedEffect(failedAttempts, lockoutTimestamp) {
+        if (failedAttempts >= 5 && lockoutTimestamp > 0L) {
+            while (true) {
+                val elapsed = System.currentTimeMillis() - lockoutTimestamp
+                val remaining = 600000L - elapsed
+                if (remaining > 0) {
+                    lockoutTimeRemaining = remaining
+                    kotlinx.coroutines.delay(1000L)
+                } else {
+                    lockoutTimeRemaining = 0L
+                    break
+                }
+            }
+        } else {
+            lockoutTimeRemaining = 0L
+        }
+    }
+
+    LaunchedEffect(isBiometricEnabled, encryptedPin, biometricIv, storedEmail, isLockedOut) {
+        if (isBiometricEnabled && encryptedPin != null && biometricIv != null && !hasAutoTriggeredBiometric && !isLockedOut) {
+            val emailToUse = email.ifBlank { storedEmail }
+            if (emailToUse.isNotBlank()) {
+                hasAutoTriggeredBiometric = true
+                val activity = com.example.policemobiledirectory.utils.BiometricHelper.findActivity(context)
+                if (activity != null) {
+                    com.example.policemobiledirectory.utils.BiometricHelper.showBiometricPrompt(
+                        activity = activity,
+                        onSuccess = {
+                            val decrypted = com.example.policemobiledirectory.utils.BiometricHelper.decryptPin(
+                                encryptedPin!!,
+                                biometricIv!!
+                            )
+                            if (decrypted != null) {
+                                viewModel.loginWithPin(emailToUse, decrypted)
+                            }
+                        },
+                        onError = { _, _ -> }
+                    )
+                }
+            }
+        }
+    }
+
     // --- STATE OBSERVERS ---
 
     // Observer for standard PIN-based login
@@ -114,7 +188,15 @@ fun LoginScreen(
                 val user = status.data as? Employee
                 if (user != null) {
                     ToastUtil.showToast(context, "Welcome ${user.name}")
-                    onLoginSuccess(viewModel.isAdmin.value)
+                    val isAdmin = viewModel.isAdmin.value
+                    val isBioAvailable = com.example.policemobiledirectory.utils.BiometricHelper.isBiometricAvailable(context)
+                    
+                    if (loggedInWithPin && isBioAvailable && !isBiometricEnabled) {
+                        pendingNavigationAdminState = isAdmin
+                        showBiometricEnrollDialog = true
+                    } else {
+                        onLoginSuccess(isAdmin)
+                    }
                 }
             }
             is OperationStatus.Error -> {
@@ -265,6 +347,57 @@ fun LoginScreen(
         )
     }
 
+    if (showBiometricEnrollDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showBiometricEnrollDialog = false
+                onLoginSuccess(pendingNavigationAdminState)
+            },
+            title = { Text("Enable Biometric Login") },
+            text = {
+                Text("Would you like to enable fingerprint or face recognition for faster, secure logins in the future?")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showBiometricEnrollDialog = false
+                    val activity = com.example.policemobiledirectory.utils.BiometricHelper.findActivity(context)
+                    if (activity != null) {
+                        com.example.policemobiledirectory.utils.BiometricHelper.showBiometricPrompt(
+                            activity = activity,
+                            title = "Verify Biometric",
+                            subtitle = "Verify to enable biometric login",
+                            onSuccess = {
+                                val success = viewModel.enableBiometric(pin)
+                                if (success) {
+                                    ToastUtil.showToast(context, "Biometric login enabled successfully!")
+                                } else {
+                                    ToastUtil.showToast(context, "Failed to enable biometric login.")
+                                }
+                                onLoginSuccess(pendingNavigationAdminState)
+                            },
+                            onError = { _, err ->
+                                ToastUtil.showToast(context, "Verification failed: $err")
+                                onLoginSuccess(pendingNavigationAdminState)
+                            }
+                        )
+                    } else {
+                        onLoginSuccess(pendingNavigationAdminState)
+                    }
+                }) {
+                    Text("Enable")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showBiometricEnrollDialog = false
+                    onLoginSuccess(pendingNavigationAdminState)
+                }) {
+                    Text("Skip")
+                }
+            }
+        )
+    }
+
     // --- UI ---
 
     Box(
@@ -382,7 +515,21 @@ fun LoginScreen(
                             )
                         }
                     }
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onSwitchGoogleAccountClicked()
+                        }
+                    ) {
+                        Text(
+                            text = "Switch Google Account",
+                            color = Color(0xFF00796B),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
+                    }
+                    Spacer(Modifier.height(16.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Divider(Modifier.weight(1f), color = Color.LightGray.copy(alpha = 0.5f))
@@ -435,10 +582,22 @@ fun LoginScreen(
                                 Column(
                                     modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp)
                                 ) {
+                                    if (isLockedOut) {
+                                        val minutes = (lockoutTimeRemaining / 1000) / 60
+                                        val seconds = (lockoutTimeRemaining / 1000) % 60
+                                        Text(
+                                            text = "Too many failed attempts. Try again in ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}",
+                                            color = MaterialTheme.colorScheme.error,
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            modifier = Modifier.padding(bottom = 12.dp)
+                                        )
+                                    }
+
                                     OutlinedTextField(
                                         value = email,
                                         onValueChange = { email = it },
                                         label = { Text("Email Address") },
+                                        enabled = !isLockedOut,
                                         modifier = Modifier.fillMaxWidth(),
                                         singleLine = true,
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next)
@@ -446,8 +605,9 @@ fun LoginScreen(
                                     Spacer(Modifier.height(12.dp))
                                     OutlinedTextField(
                                         value = pin,
-                                        onValueChange = { if (it.length <= 4) pin = it },
-                                        label = { Text("4-Digit PIN") },
+                                        onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) pin = it },
+                                        label = { Text("6-Digit PIN") },
+                                        enabled = !isLockedOut,
                                         modifier = Modifier.fillMaxWidth(),
                                         singleLine = true,
                                         visualTransformation = if (pinVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -462,21 +622,69 @@ fun LoginScreen(
                                         }
                                     )
                                     Spacer(Modifier.height(24.dp))
-                                    Button(
-                                        onClick = {
-                                            focusManager.clearFocus()
-                                            viewModel.loginWithPin(email, pin)
-                                        },
-                                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                                        shape = RoundedCornerShape(12.dp),
-                                        enabled = email.isNotBlank() && pin.length == 4,
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFF00796B),
-                                            contentColor = Color.White
-                                        ),
-                                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text("Login", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                        Button(
+                                            onClick = {
+                                                focusManager.clearFocus()
+                                                loggedInWithPin = true
+                                                viewModel.loginWithPin(email, pin)
+                                            },
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(50.dp),
+                                            shape = RoundedCornerShape(12.dp),
+                                            enabled = !isLockedOut && email.isNotBlank() && pin.length == 6,
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = Color(0xFF00796B),
+                                                contentColor = Color.White
+                                            ),
+                                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                                        ) {
+                                            Text("Login", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                        }
+
+                                        if (isBiometricEnabled && encryptedPin != null && biometricIv != null) {
+                                            Spacer(Modifier.width(12.dp))
+                                            IconButton(
+                                                onClick = {
+                                                    focusManager.clearFocus()
+                                                    val activity = com.example.policemobiledirectory.utils.BiometricHelper.findActivity(context)
+                                                    if (activity != null) {
+                                                        com.example.policemobiledirectory.utils.BiometricHelper.showBiometricPrompt(
+                                                            activity = activity,
+                                                            onSuccess = {
+                                                                val decrypted = com.example.policemobiledirectory.utils.BiometricHelper.decryptPin(
+                                                                    encryptedPin!!,
+                                                                    biometricIv!!
+                                                                )
+                                                                if (decrypted != null) {
+                                                                    viewModel.loginWithPin(email.ifBlank { storedEmail }, decrypted)
+                                                                } else {
+                                                                    ToastUtil.showToast(context, "Decryption failed. Please enter PIN.")
+                                                                }
+                                                            },
+                                                            onError = { _, _ -> }
+                                                        )
+                                                    } else {
+                                                        ToastUtil.showToast(context, "Activity context invalid.")
+                                                    }
+                                                },
+                                                enabled = !isLockedOut,
+                                                modifier = Modifier
+                                                    .size(50.dp)
+                                                    .background(Color(0xFF00796B).copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                                                    .border(1.dp, Color(0xFF00796B).copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Fingerprint,
+                                                    contentDescription = "Biometric Login",
+                                                    tint = Color(0xFF00796B)
+                                                )
+                                            }
+                                        }
                                     }
                                     TextButton(
                                         onClick = onForgotPinClicked,
@@ -530,4 +738,13 @@ fun LoginScreen(
             }
         }
     }
+}
+
+private fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
 }

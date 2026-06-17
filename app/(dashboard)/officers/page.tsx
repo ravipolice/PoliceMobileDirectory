@@ -5,6 +5,7 @@ import { getOfficers, createOfficer, deleteOfficer, Officer, getRanks, Rank } fr
 import { Plus, Trash2, Edit, ChevronUp, ChevronDown } from "lucide-react";
 import { getDistricts, getStations, District, Station } from "@/lib/firebase/firestore";
 import Link from "next/link";
+import { formatName } from "@/lib/utils";
 
 type SortField = "rank" | "agid" | "name" | "mobile" | "email" | "landline" | "district" | "office";
 type SortDirection = "asc" | "desc";
@@ -205,11 +206,12 @@ export default function OfficersPage() {
     setSubmitting(true);
 
     try {
+      const formattedName = formatName(formData.name.trim(), formData.rank.trim());
       await createOfficer({
         agid: formData.agid.trim() || undefined,
         rank: formData.rank.trim(),
-        name: formData.name.trim(),
-        mobile: mobileUpper || undefined,
+        name: formattedName,
+        mobile: mobileUpper,
         email: formData.email.trim() || undefined,
         landline: formData.landline.trim() || undefined,
         district: formData.district,

@@ -26,6 +26,12 @@ interface EmployeeDao {
     @Query("DELETE FROM employees")
     suspend fun clearEmployees()
 
+    @Transaction
+    suspend fun clearAndInsert(employees: List<EmployeeEntity>) {
+        clearEmployees()
+        insertEmployees(employees)
+    }
+
     /**
      * Delete all employees NOT in the provided list of KGIDs.
      * Used for full sync cleanup.

@@ -12,6 +12,7 @@ import {
   Station,
   Rank,
 } from "@/lib/firebase/firestore";
+import { formatName } from "@/lib/utils";
 
 export default function EditOfficerPage() {
   const router = useRouter();
@@ -150,10 +151,11 @@ export default function EditOfficerPage() {
     setSaving(true);
 
     try {
+      const formattedName = formatName(formData.name.trim(), formData.rank.trim());
       await updateOfficer(officerId, {
         agid: formData.agid.trim() || undefined,
         rank: formData.rank.trim(),
-        name: formData.name.trim(),
+        name: formattedName,
         mobile: mobileUpper || undefined,
         email: formData.email.trim() || undefined,
         landline: formData.landline.trim() || undefined,

@@ -1,18 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { signInWithGoogle } from "@/lib/firebase/auth";
+import { useState, useEffect } from "react";
+import { signInWithGoogle, signOut } from "@/lib/firebase/auth";
 import { useRouter } from "next/navigation";
 import { Logo } from "@/components/common/Logo";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unauthorizedError, setUnauthorizedError] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("error") === "unauthorized") {
+        setUnauthorizedError(true);
+        signOut().catch((err) => console.error("Error signing out unauthorized user:", err));
+      }
+    }
+  }, []);
 
   const handleSignIn = async () => {
     setLoading(true);
     setError(null);
+    setUnauthorizedError(false);
     try {
       await signInWithGoogle();
       router.push("/");
@@ -37,6 +49,13 @@ export default function LoginPage() {
             Sign in to access the admin dashboard
           </p>
         </div>
+
+        {unauthorizedError && (
+          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
+            <p className="font-semibold mb-1">Access Denied</p>
+            <p>Your account is not authorized to access this administration panel. Please log in with an administrator account.</p>
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">

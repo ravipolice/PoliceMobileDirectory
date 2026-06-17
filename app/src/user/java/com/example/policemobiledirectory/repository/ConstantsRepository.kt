@@ -31,20 +31,33 @@ class ConstantsRepository @Inject constructor(
     override fun getStationsForUnit(unitName: String, districtStations: List<String>): List<String> {
         // Hide Section/Branch for district-level units (e.g. DAR with "district" scope)
         // Check isDistrictLevel boolean OR scopes containing "district" as fallback
-        val json = prefs.getString(UNIT_MAPPINGS_CACHE_KEY, null)
-        if (json != null) {
-            try {
-                val mappings: Map<String, UnitMapping> = gson.fromJson(
-                    json, object : TypeToken<Map<String, UnitMapping>>() {}.type
-                )
-                val mapping = mappings[unitName]
-                val isDistrictLevel = mapping?.isDistrictLevel == true ||
-                    mapping?.scopes?.contains("district") == true
-                if (isDistrictLevel) {
-                    return emptyList()
+        // But do NOT hide stations/sections for units that explicitly have stations/sections.
+        val shouldHaveStations = unitName.equals("L&O", ignoreCase = true) ||
+            unitName.equals("Law & Order", ignoreCase = true) ||
+            unitName.contains("Traffic", ignoreCase = true) ||
+            unitName.contains("Railway", ignoreCase = true) ||
+            unitName.contains("KSRP", ignoreCase = true) ||
+            unitName.contains("IRB", ignoreCase = true) ||
+            unitName.contains("DAR", ignoreCase = true) ||
+            unitName.contains("CAR", ignoreCase = true)
+
+        if (!shouldHaveStations) {
+            val json = prefs.getString(UNIT_MAPPINGS_CACHE_KEY, null)
+            if (json != null) {
+                try {
+                    val mappings: Map<String, UnitMapping> = gson.fromJson(
+                        json, object : TypeToken<Map<String, UnitMapping>>() {}.type
+                    )
+                    val mapping = mappings[unitName]
+                    val isDistrictLevel = mapping?.isDistrictLevel == true ||
+                        mapping?.scopes?.contains("district") == true
+                    val hasDistrictStations = mapping?.scopes?.contains("district_stations") == true
+                    if (isDistrictLevel && !hasDistrictStations) {
+                        return emptyList()
+                    }
+                } catch (e: Exception) {
+                    // Fall through to default behavior
                 }
-            } catch (e: Exception) {
-                // Fall through to default behavior
             }
         }
         return com.example.policemobiledirectory.utils.Constants.getStationsForUnit(unitName, districtStations)

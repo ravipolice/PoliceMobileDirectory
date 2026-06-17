@@ -68,7 +68,10 @@ object PayslipParser {
             Regex("Rs\\.(\\d{5,})\\s*Sum", RegexOption.IGNORE_CASE)
         ),
         "PT" to listOf(Regex("\\bPT\\s*[:\\s]\\s*(\\d[\\d,]*)", RegexOption.IGNORE_CASE)),
-        "EGIS" to listOf(Regex("\\bEGIS\\s*[:\\s]\\s*(\\d[\\d,]*)", RegexOption.IGNORE_CASE)),
+        "EGIS" to listOf(
+            Regex("(?:KGEGIS|KG-EGIS|EGIS|GIS|E\\.G\\.I\\.S|K\\.G\\.E\\.G\\.I\\.S|Employee Group Insurance Scheme|Employee Group Insurance|Group Insurance)\\s*[:\\s]\\s*(\\d[\\d,]*)", RegexOption.IGNORE_CASE),
+            Regex("(?:KGEGIS|KG-EGIS|EGIS|GIS|E\\.G\\.I\\.S|K\\.G\\.E\\.G\\.I\\.S|Employee Group Insurance Scheme|Employee Group Insurance|Group Insurance)\\b[^\\d]*(\\d[\\d,]*)", RegexOption.IGNORE_CASE)
+        ),
         "LIC" to listOf(Regex("\\bLIC\\s*[:\\s]\\s*(\\d[\\d,]*)", RegexOption.IGNORE_CASE)),
         "GPF" to listOf(
             Regex("GPF\\s*[:\\s]\\s*(\\d+)", RegexOption.IGNORE_CASE),

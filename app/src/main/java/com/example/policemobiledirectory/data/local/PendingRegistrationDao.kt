@@ -29,6 +29,12 @@ interface PendingRegistrationDao {
     @Query("DELETE FROM pending_registrations WHERE LOWER(status) = 'pending'")
     suspend fun deletePending()
 
+    @Transaction
+    suspend fun deletePendingAndInsertAll(entities: List<PendingRegistrationEntity>) {
+        deletePending()
+        insertAll(entities)
+    }
+
     @Query("DELETE FROM pending_registrations WHERE roomId = :roomId")
     suspend fun deleteById(roomId: Long)
 

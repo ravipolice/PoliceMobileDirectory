@@ -162,7 +162,7 @@ fun ForgotPinScreen(
 
             OutlinedTextField(
                 value = newPin,
-                onValueChange = { newPin = it },
+                onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) newPin = it },
                 label = { Text("New PIN") },
                 visualTransformation = if (showNewPin) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
@@ -180,7 +180,7 @@ fun ForgotPinScreen(
 
             OutlinedTextField(
                 value = confirmPin,
-                onValueChange = { confirmPin = it },
+                onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) confirmPin = it },
                 label = { Text("Confirm PIN") },
                 visualTransformation = if (showConfirmPin) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
@@ -201,6 +201,8 @@ fun ForgotPinScreen(
                     pinError = null // clear old error
                     if (newPin.isBlank() || confirmPin.isBlank()) {
                         pinError = "Please enter and confirm your new PIN"
+                    } else if (newPin.length != 6) {
+                        pinError = "PIN must be exactly 6 digits"
                     } else if (newPin != confirmPin) {
                         pinError = "PINs do not match"
                     } else {

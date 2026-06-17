@@ -50,8 +50,9 @@ class GoogleDriveSyncManager @Inject constructor(
         val account = GoogleSignIn.getLastSignedInAccount(context) ?: return null
         
         // Identity Management
+        val resolvedEmail = syncEmail ?: account.email ?: ""
         if (syncEmail != null) {
-            val accountEmail = account.email ?: ""
+            val accountEmail = account.email ?: syncEmail
             if (!accountEmail.equals(syncEmail, ignoreCase = true)) {
                 Log.w(TAG, "Identity mismatch: Sync requested for $syncEmail but signed-in Google account is $accountEmail")
                 return null
@@ -70,8 +71,11 @@ class GoogleDriveSyncManager @Inject constructor(
 
         val credential = GoogleAccountCredential.usingOAuth2(
             context, Collections.singleton(DriveScopes.DRIVE_APPDATA)
-        ).apply {
-            selectedAccount = account.account
+        )
+        if (resolvedEmail.isNotBlank()) {
+            credential.selectedAccount = android.accounts.Account(resolvedEmail, "com.google")
+        } else {
+            credential.selectedAccount = account.account
         }
 
         return Drive.Builder(
@@ -89,7 +93,7 @@ class GoogleDriveSyncManager @Inject constructor(
     private fun getSyncStatus(syncEmail: String?): SyncResult? {
         val account = GoogleSignIn.getLastSignedInAccount(context) ?: return SyncResult.NoGoogleAccount
         if (syncEmail != null) {
-            val accountEmail = account.email ?: ""
+            val accountEmail = account.email ?: syncEmail
             if (!accountEmail.equals(syncEmail, ignoreCase = true)) {
                 return SyncResult.AccountMismatch(syncEmail, accountEmail)
             }

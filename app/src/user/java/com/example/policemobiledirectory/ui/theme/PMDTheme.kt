@@ -5,7 +5,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 
 // Light color scheme - Social Network Theme (Teal & Yellow)
 private val LightColors = lightColorScheme(
@@ -81,21 +85,16 @@ fun PMDTheme(
     content: @Composable () -> Unit
 ) {
     val colors = if (darkTheme) DarkColors else LightColors
-    val systemUiController = rememberSystemUiController()
-    val useDarkIcons = !darkTheme
-
-    // ✅ Apply matching system bar colors for all screens
-    SideEffect {
-        // Transparent status bar for seamless integration with TopAppBar
-        systemUiController.setStatusBarColor(
-            color = Color.Transparent,
-            darkIcons = !darkTheme // Use dark icons in light theme for better contrast on PrimaryTeal
-        )
-        // Match navigation bar with background
-        systemUiController.setNavigationBarColor(
-            color = colors.background,
-            darkIcons = !darkTheme
-        )
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context.findActivity())?.window
+            if (window != null) {
+                val insetsController = WindowCompat.getInsetsController(window, view)
+                insetsController.isAppearanceLightStatusBars = !darkTheme
+                insetsController.isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
     }
 
     MaterialTheme(
@@ -104,4 +103,13 @@ fun PMDTheme(
         shapes = AppShapes,
         content = content
     )
+}
+
+private fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
 }

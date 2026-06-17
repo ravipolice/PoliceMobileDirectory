@@ -50,5 +50,11 @@ data class EmployeeEntity(
     val serviceStartDate: Date? = null,
     val dateOfBirth: Date? = null,
     val subSection: String? = null,
-    val dutyRole: String? = null
+    val dutyRole: String? = null,
+    val height: String? = null,
+    val weight: String? = null,
+    val caste: String? = null,
+    val subCaste: String? = null,
+    val familyDetails: String? = null,
+    val educationDetails: String? = null
 )

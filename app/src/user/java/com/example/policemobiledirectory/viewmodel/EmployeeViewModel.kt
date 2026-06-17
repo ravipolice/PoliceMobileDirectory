@@ -184,8 +184,34 @@ open class EmployeeViewModel @Inject constructor(
             employees.filter { it.isApproved } // Regular users see only approved employees
         }
         
+        val registeredKgids = filteredEmployees.map { it.kgid.trim().lowercase() }.toHashSet()
+        val registeredEmails = filteredEmployees.mapNotNull { it.email?.trim()?.lowercase() }.filter { it.isNotBlank() }.toHashSet()
+        
+        val normalizeMobile = { m: String? ->
+            if (m.isNullOrBlank()) null
+            else {
+                val digits = m.replace(Regex("\\D"), "")
+                if (digits.length >= 10) digits.takeLast(10) else digits
+            }
+        }
+        val registeredPhones = filteredEmployees.flatMap { 
+            listOfNotNull(normalizeMobile(it.mobile1), normalizeMobile(it.mobile2))
+        }.filter { it.isNotBlank() }.toHashSet()
+
         val employeeContacts = filteredEmployees.map { Contact(employee = it) }
-        val officerContacts = officers.map { Contact(officer = it) }
+        val officerContacts = officers.filter { off ->
+            val offAgid = off.agid.trim().lowercase()
+            val offEmail = off.email?.trim()?.lowercase() ?: ""
+            val offMobile1 = normalizeMobile(off.mobile)
+            val offMobile2 = normalizeMobile(off.mobile2)
+            
+            val agidMatch = offAgid.isNotBlank() && registeredKgids.contains(offAgid)
+            val emailMatch = offEmail.isNotBlank() && registeredEmails.contains(offEmail)
+            val phoneMatch = (offMobile1 != null && registeredPhones.contains(offMobile1)) || 
+                             (offMobile2 != null && registeredPhones.contains(offMobile2))
+                             
+            !agidMatch && !emailMatch && !phoneMatch
+        }.map { Contact(officer = it) }
         val allContactsList = employeeContacts + officerContacts
         
         // Debug logging

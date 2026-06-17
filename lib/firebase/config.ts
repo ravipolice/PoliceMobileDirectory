@@ -4,12 +4,12 @@ import { getFirestore, Firestore } from "firebase/firestore";
 import { getStorage, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyB_d5ueTul9vKeNw3pmEtCmbF9w1BVkrAQ",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyB_d5ueTul9vKeNw3pmEtCmbF9w1BVkrAQ",
   authDomain: "pmd-police-mobile-directory.firebaseapp.com",
   projectId: "pmd-police-mobile-directory",
-  storageBucket: "pmd-police-mobile-directory.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  storageBucket: "pmd-police-mobile-directory.firebasestorage.app",
+  messagingSenderId: "603972083927",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "YOUR_APP_ID",
 };
 
 let app: FirebaseApp;

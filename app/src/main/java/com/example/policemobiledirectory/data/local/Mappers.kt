@@ -35,7 +35,13 @@ fun PendingRegistrationEntity.toEmployee(overridePhotoUrl: String? = null): Empl
         serviceStartDate = this.serviceStartDate,
         dateOfBirth = this.dateOfBirth,
         subSection = this.subSection,
-        dutyRole = this.dutyRole
+        dutyRole = this.dutyRole,
+        height = null,
+        weight = null,
+        caste = null,
+        subCaste = null,
+        familyDetails = null,
+        educationDetails = null
     )
 }
 
@@ -69,7 +75,13 @@ fun EmployeeEntity.toEmployee(): Employee {
         subSection = this.subSection,
         dutyRole = this.dutyRole,
         landline = this.landline,
-        landline2 = this.landline2
+        landline2 = this.landline2,
+        height = this.height,
+        weight = this.weight,
+        caste = this.caste,
+        subCaste = this.subCaste,
+        familyDetails = this.familyDetails,
+        educationDetails = this.educationDetails
     )
 }
 
@@ -104,6 +116,12 @@ fun Employee.toEntity(): EmployeeEntity {
         serviceStartDate = this.serviceStartDate,
         dateOfBirth = this.dateOfBirth,
         subSection = this.subSection,
-        dutyRole = this.dutyRole
+        dutyRole = this.dutyRole,
+        height = this.height,
+        weight = this.weight,
+        caste = this.caste,
+        subCaste = this.subCaste,
+        familyDetails = this.familyDetails,
+        educationDetails = this.educationDetails
     )
 }

@@ -97,8 +97,40 @@ All ranks must be shortened to their official abbreviations to keep the director
 - **Administrative Officer** → **AO**
 - **Assistant Administrative Officer** → **AAO**
 
+### AAO and AO Formatting Rules
+For ministerial positions like AAO (Assistant Administrative Officer) and AO (Administrative Officer), the display name is conditionally formatted based on the unit type:
+1. **Special/Functional Units**: Format as `AAO <Special Unit>` (e.g., `"AAO KPA"`, `"AAO CLM"`).
+2. **Range Units**: Format as `AAO <District>` (e.g., `"AAO Ramanagara"`, `"AAO Mandya"`).
+This prevents redundant rank duplication (like `"AAO AAO"`) and provides clear context on which specific office the contact represents.
+
+### Range Abbreviations
+All range names must be shortened to their official abbreviations to keep unit labels and search queries concise:
+- **Central Range** → **CR**
+- **Western Range** → **WR**
+- **Northern Range** → **NR**
+- **Southern Range** → **SR**
+- **Eastern Range** → **ER**
+- **Ballari Range** → **BR**
+- **North-Eastern Range** → **NER**
+
+### Unit Short Codes
+To keep search results, cards, and display names concise, large functional unit names must be shortened to their official abbreviations:
+- **Communication, Logistics & Modernisation** → **CLM**
+- **Karnataka Police Academy (KPA)** → **KPA**
+- **Police Training Wing** → **Training**
+- **Police Recruitment Wing** → **Recruitment**
+- **Karnataka Railways Police** → **Railways**
+- **Police Computer Wing (PCW) / SCRB** → **PCW / SCRB**
+- **State Intelligence** → **Intelligence**
+- **Directorate of Civil Rights Enforcement (DCRE)** → **DCRE**
+- **Criminal Investigation Department (CID)** → **CID**
+- **Internal Security Division (ISD)** → **ISD**
+- **Karnataka State Reserve Police (KSRP)** → **KSRP**
+
+*Formatting Rule*: Range names in the directory (e.g., in the `UNIT` or `Range` column) must be formatted as `<ShortenedRange>, <Location>` (e.g., `"Northern Range – Belagavi"` becomes `"NR, Belagavi"`; `"North-Eastern Range – Kalaburagi"` becomes `"NER, Kalaburagi"`). The separator must strictly be a comma followed by a space (`, `).
+
 *Other Rules:*
-- **Name Column**: Rank abbreviations must also be strictly applied when the rank appears embedded within the text of the `Name` column itself (e.g., "Additional Director General of Police, Admin" becomes "ADGP, Admin").
+- **Name Column & Designation Rank Normalization**: Rank abbreviations must be strictly applied when the rank appears embedded within the text of the `Name`, `office`, or `station` column itself (e.g., `"Additional Director General of Police, Admin"` becomes `"ADGP, Admin"`; `"DSP ACB"` becomes `"DySP ACB"`; `"DSP Airport PS"` becomes `"DySP Airport PS"`).
 - **Retired Officers**: The prefix **RETD.** must be preserved when cleaning the `Rank` column (e.g., "RETD. DG & IGP").
 - Use **Training** instead of **PTS** or **Police Training School**.
 - Use **CSP** instead of **Coastal Security Police**.

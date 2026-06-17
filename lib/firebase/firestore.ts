@@ -17,6 +17,7 @@ import {
   getDocsFromServer,
 } from "firebase/firestore";
 import { db } from "./config";
+import { formatName, normalizeRank } from "../utils";
 
 // Types
 export interface Employee {
@@ -41,6 +42,12 @@ export interface Employee {
   pin?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
+  height?: string;
+  weight?: string;
+  caste?: string;
+  subCaste?: string;
+  familyDetails?: string;
+  educationDetails?: string;
 }
 
 export interface Officer {
@@ -313,13 +320,18 @@ export const getEmployee = async (id: string): Promise<Employee | null> => {
 };
 
 export const createEmployee = async (data: Omit<Employee, "id">): Promise<string> => {
+  // Normalize name and rank before storing
+  const normalizedName = data.name ? formatName(data.name.trim(), data.rank?.trim() || "") : data.name;
+  const normalizedRank = data.rank ? normalizeRank(data.rank.trim()) : data.rank;
   // Compute displayRank: rank + " " + metalNumber (if both exist)
-  const displayRank = data.rank && data.metalNumber
-    ? `${data.rank} ${data.metalNumber}`
-    : data.rank || undefined;
+  const displayRank = normalizedRank && data.metalNumber
+    ? `${normalizedRank} ${data.metalNumber}`
+    : normalizedRank || undefined;
 
   return createDoc<Employee>("employees", {
     ...data,
+    name: normalizedName,
+    rank: normalizedRank,
     displayRank,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
@@ -330,19 +342,28 @@ export const updateEmployee = async (
   id: string,
   data: Partial<Employee>
 ): Promise<void> => {
-  // Recompute displayRank if rank or metalNumber is being updated
   let updateData = { ...data };
+
+  // Normalize name if being updated
+  if (data.name !== undefined) {
+    updateData.name = formatName(data.name.trim(), data.rank?.trim() || "");
+  }
+
+  // Normalize rank if being updated
+  if (data.rank !== undefined) {
+    updateData.rank = normalizeRank(data.rank.trim());
+  }
+
+  // Recompute displayRank if rank or metalNumber is being updated
   if (data.rank !== undefined || data.metalNumber !== undefined) {
-    // Get current employee data to compute displayRank correctly
     const current = await getEmployee(id);
-    const rank = data.rank ?? current?.rank;
+    const rank = updateData.rank ?? current?.rank;
     const metalNumber = data.metalNumber ?? current?.metalNumber;
-    
     updateData.displayRank = rank && metalNumber
       ? `${rank} ${metalNumber}`
       : rank || undefined;
   }
-  
+
   return updateDocument<Employee>("employees", id, updateData);
 };
 
@@ -365,8 +386,13 @@ export const getOfficer = async (id: string): Promise<Officer | null> => {
 };
 
 export const createOfficer = async (data: Omit<Officer, "id">): Promise<string> => {
+  // Normalize name and rank before storing (defence-in-depth — UI also formats, but we guard here too)
+  const normalizedName = data.name ? formatName(data.name.trim(), data.rank?.trim() || "") : data.name;
+  const normalizedRank = data.rank ? normalizeRank(data.rank.trim()) : data.rank;
   return createDoc<Officer>("officers", {
     ...data,
+    name: normalizedName,
+    rank: normalizedRank,
     createdAt: Timestamp.now(),
   });
 };
@@ -375,7 +401,14 @@ export const updateOfficer = async (
   id: string,
   data: Partial<Officer>
 ): Promise<void> => {
-  return updateDocument<Officer>("officers", id, data);
+  let updateData = { ...data };
+  if (data.name !== undefined) {
+    updateData.name = formatName(data.name.trim(), data.rank?.trim() || "");
+  }
+  if (data.rank !== undefined) {
+    updateData.rank = normalizeRank(data.rank.trim());
+  }
+  return updateDocument<Officer>("officers", id, updateData);
 };
 
 export const deleteOfficer = async (id: string): Promise<void> => {
@@ -419,32 +452,45 @@ export const deleteDistrict = async (id: string): Promise<void> => {
 // Station functions
 export const getStations = async (district?: string): Promise<Station[]> => {
   try {
+    let result: Station[] = [];
     if (district) {
       // Try to get stations filtered by district with ordering
       try {
-        const filteredStations = await getDocuments<Station>("stations", [
+        result = await getDocuments<Station>("stations", [
           where("district", "==", district),
           orderBy("name"),
         ]);
-        return filteredStations;
       } catch (error) {
         // If composite index is missing, get all and filter client-side
         console.warn("Error with filtered query, trying client-side filter:", error);
         const allStations = await getDocuments<Station>("stations", []);
-        return allStations
-          .filter((s) => s.district === district)
-          .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        result = allStations
+          .filter((s) => s.district === district);
       }
     } else {
       // Get all stations
       try {
-        return await getDocuments<Station>("stations", [orderBy("name")]);
+        result = await getDocuments<Station>("stations", [orderBy("name")]);
       } catch (error) {
         console.warn("Error with ordered query, trying without order:", error);
-        const allStations = await getDocuments<Station>("stations", []);
-        return allStations.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        result = await getDocuments<Station>("stations", []);
       }
     }
+
+    // Map SITA to standard name and sort
+    const mapped = result.map(s => {
+      if (s.name && (s.name === "SITA" || s.name.toUpperCase().includes("SITA"))) {
+        return { ...s, name: "SITA (State Intelligence Training Academy)" };
+      }
+      return s;
+    });
+
+    // Deduplicate and sort
+    const uniqueMap = new Map<string, Station>();
+    mapped.forEach(s => {
+      uniqueMap.set(s.name, s);
+    });
+    return Array.from(uniqueMap.values()).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   } catch (error) {
     console.error("Error fetching stations:", error);
     return [];
@@ -560,16 +606,24 @@ export const getRankByName = async (rankName: string): Promise<Rank | null> => {
 // Pending Registrations
 export const getPendingRegistrations = async (): Promise<PendingRegistration[]> => {
   try {
-    return await getDocuments<PendingRegistration>("pending_registrations", [
-      orderBy("createdAt", "desc"),
-    ]);
+    // Filter by status == "pending" to exclude already approved/rejected registrations
+    // (Android app sets status field; web admin deletes on approve/reject)
+    const results = await getDocuments<PendingRegistration & { status?: string }>(
+      "pending_registrations",
+      [where("status", "==", "pending"), orderBy("createdAt", "desc")]
+    );
+    return results;
   } catch (error: any) {
-    // Handle common Firestore errors gracefully
-    if (error?.code === "failed-precondition") {
-      // Missing index - try without orderBy
-      console.warn("Firestore index missing for pending_registrations, fetching without orderBy");
+    // Handle missing index or missing "status" field gracefully
+    if (error?.code === "failed-precondition" || error?.code === "invalid-argument") {
+      console.warn("Firestore index or query issue for pending_registrations, fetching all and filtering client-side");
       try {
-        return await getDocuments<PendingRegistration>("pending_registrations", []);
+        const all = await getDocuments<PendingRegistration & { status?: string }>("pending_registrations", []);
+        // Client-side safety net: exclude any doc whose status is approved/rejected
+        return all.filter(r => {
+          const s = (r as any).status;
+          return !s || s === "pending";
+        });
       } catch (fallbackError) {
         console.error("Error fetching pending registrations (fallback):", fallbackError);
         return [];
@@ -584,14 +638,20 @@ export const approveRegistration = async (
   registrationId: string,
   registration: PendingRegistration
 ): Promise<void> => {
-  // Create employee from registration
+  const normalizedRank = registration.rank ? normalizeRank(registration.rank.trim()) : registration.rank;
+  const formattedName = formatName(registration.name.trim(), normalizedRank || "");
+  // Compute displayRank (no metalNumber at registration time — just the rank)
+  const displayRank = normalizedRank || undefined;
+
+  // Create employee from registration with normalized name and rank
   await createDoc<Employee>("employees", {
     kgid: registration.kgid,
-    name: registration.name,
+    name: formattedName,
     email: registration.email,
     mobile1: registration.mobile1,
     mobile2: registration.mobile2,
-    rank: registration.rank,
+    rank: normalizedRank,
+    displayRank,
     district: registration.district,
     station: registration.station,
     pin: registration.pin,
@@ -1071,30 +1131,39 @@ export const createUsefulLink = async (
 
 // Statistics
 export const getEmployeeStats = async () => {
-  const employees = await getEmployees();
-  const districts = await getDistricts();
-  const stations = await getStations();
+  const [employees, officers, districts, stations, pendingRegistrations] = await Promise.all([
+    getEmployees(),
+    getOfficers(),
+    getDistricts(),
+    getStations(),
+    getPendingRegistrations(),
+  ]);
+
+  // Filter out any dummy/unapproved employees to keep stats clean and accurate
+  const approvedEmployees = employees.filter((e) => e.isApproved !== false);
 
   const byDistrict: Record<string, number> = {};
   const byStation: Record<string, number> = {};
+  // Use displayRank for employees (includes metal number), fall back to rank
   const byRank: Record<string, number> = {};
 
-  employees.forEach((emp) => {
+  approvedEmployees.forEach((emp) => {
     if (emp.district) {
       byDistrict[emp.district] = (byDistrict[emp.district] || 0) + 1;
     }
     if (emp.station) {
       byStation[emp.station] = (byStation[emp.station] || 0) + 1;
     }
-    if (emp.rank) {
-      byRank[emp.rank] = (byRank[emp.rank] || 0) + 1;
-    }
+    // Group by base rank (not displayRank) for cleaner stats
+    const rankKey = emp.rank || "Unknown";
+    byRank[rankKey] = (byRank[rankKey] || 0) + 1;
   });
 
   return {
-    total: employees.length,
-    approved: employees.filter((e) => e.isApproved).length,
-    pending: employees.filter((e) => !e.isApproved).length,
+    total: approvedEmployees.length,
+    approved: approvedEmployees.length,
+    pending: pendingRegistrations.length,
+    officersCount: officers.length,
     byDistrict,
     byStation,
     byRank,

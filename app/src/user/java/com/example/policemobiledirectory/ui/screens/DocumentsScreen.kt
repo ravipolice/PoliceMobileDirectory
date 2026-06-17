@@ -145,76 +145,87 @@ fun DocumentsScreen(
                     singleLine = true
                 )
 
-                val currentStatus = documentsStatus
-                when (currentStatus) {
-                    is OperationStatus.Loading -> Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) { CircularProgressIndicator() }
+                Box(modifier = Modifier.weight(1f)) {
+                    val currentStatus = documentsStatus
+                    when (currentStatus) {
+                        is OperationStatus.Loading -> Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) { CircularProgressIndicator() }
 
-                    is OperationStatus.Error -> ErrorSection(
-                        currentStatus.message,
-                        onRetry = { viewModel.fetchDocuments(forceRefresh = true) }
-                    )
+                        is OperationStatus.Error -> ErrorSection(
+                            currentStatus.message,
+                            onRetry = { viewModel.fetchDocuments(forceRefresh = true) }
+                        )
 
-                    is OperationStatus.Success -> {
-                        if (filteredDocs.isEmpty()) {
-                            EmptySection(message = "No documents found")
-                        } else {
+                        is OperationStatus.Success -> {
+                            if (filteredDocs.isEmpty()) {
+                                EmptySection(message = "No documents found")
+                            } else {
 
-                            LazyColumn(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                items(filteredDocs) { doc ->
-                                    DocumentItem(
-                                        doc = doc,
-                                        onViewClick = {
-                                            previewTitle = doc.resolvedTitle
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(filteredDocs) { doc ->
+                                        DocumentItem(
+                                            doc = doc,
+                                            onViewClick = {
                                             val url = doc.resolvedUrl
-                                            previewUrl = url
+                                            if (url != null) {
+                                                val mime = when {
+                                                    url.contains(".pdf", ignoreCase = true) ||
+                                                            url.contains("drive.google.com", ignoreCase = true) -> "application/pdf"
 
-                                            // Smarter MIME detection
-                                            previewMimeType = when {
-                                                url?.contains(".pdf", ignoreCase = true) == true ||
-                                                        url?.contains("drive.google.com", ignoreCase = true) == true -> "application/pdf"
+                                                    url.contains(".jpg", ignoreCase = true) ||
+                                                            url.contains(".jpeg", ignoreCase = true) -> "image/jpeg"
 
-                                                url?.contains(".jpg", ignoreCase = true) == true ||
-                                                        url?.contains(".jpeg", ignoreCase = true) == true -> "image/jpeg"
+                                                    url.contains(".png", ignoreCase = true) -> "image/png"
 
-                                                url?.contains(".png", ignoreCase = true) == true -> "image/png"
+                                                    url.contains(".doc", ignoreCase = true) ||
+                                                            url.contains(".docx", ignoreCase = true) -> "application/msword"
 
-                                                url?.contains(".doc", ignoreCase = true) == true ||
-                                                        url?.contains(".docx", ignoreCase = true) == true -> "application/msword"
+                                                    url.contains(".xls", ignoreCase = true) ||
+                                                            url.contains(".xlsx", ignoreCase = true) -> "application/vnd.ms-excel"
 
-                                                url?.contains(".xls", ignoreCase = true) == true ||
-                                                        url?.contains(".xlsx", ignoreCase = true) == true -> "application/vnd.ms-excel"
+                                                    url.contains(".ppt", ignoreCase = true) ||
+                                                            url.contains(".pptx", ignoreCase = true) -> "application/vnd.ms-powerpoint"
 
-                                                url?.contains(".ppt", ignoreCase = true) == true ||
-                                                        url?.contains(".pptx", ignoreCase = true) == true -> "application/vnd.ms-powerpoint"
+                                                    else -> "application/octet-stream"
+                                                }
 
-                                                else -> "application/octet-stream"
+                                                if (mime.startsWith("image/")) {
+                                                    previewTitle = doc.resolvedTitle
+                                                    previewUrl = url
+                                                    previewMimeType = mime
+                                                } else {
+                                                    openDocument(context, url)
+                                                }
                                             }
                                         },
 
-                                        onDownloadClick = { 
-                                            scope.launch { 
-                                                val url = doc.resolvedUrl
-                                                val title = doc.resolvedTitle
-                                                if (url != null) {
-                                                    downloadFile(context, url, title)
-                                                }
-                                            } 
-                                        }
-                                    )
+                                            onDownloadClick = { 
+                                                scope.launch { 
+                                                    val url = doc.resolvedUrl
+                                                    val title = doc.resolvedTitle
+                                                    if (url != null) {
+                                                        downloadFile(context, url, title)
+                                                    }
+                                                } 
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
+                        is OperationStatus.Idle -> EmptySection(message = "No documents loaded")
                     }
-                    is OperationStatus.Idle -> EmptySection(message = "No documents loaded")
                 }
+
+                // 💡 Google Drive Fetching Disclaimer
+                GoogleDriveDisclaimerBanner()
             }
 
 
@@ -235,14 +246,6 @@ fun DocumentsScreen(
                     }
 
                 )
-            }
-
-            // 💡 Google Drive Fetching Disclaimer
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.BottomCenter
-            ) {
-                GoogleDriveDisclaimerBanner()
             }
         }
     }

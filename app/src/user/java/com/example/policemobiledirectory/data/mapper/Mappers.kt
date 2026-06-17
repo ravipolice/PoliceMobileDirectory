@@ -26,7 +26,13 @@ fun EmployeeEntity.toEmployee(): Employee = Employee(
     unit = unit,
     searchBlob = searchBlob,
     gender = gender,
-    serviceStartDate = serviceStartDate
+    serviceStartDate = serviceStartDate,
+    height = height,
+    weight = weight,
+    caste = caste,
+    subCaste = subCaste,
+    familyDetails = familyDetails,
+    educationDetails = educationDetails
 )
 
 fun Employee.toEntity(): EmployeeEntity = EmployeeEntity(
@@ -52,5 +58,11 @@ fun Employee.toEntity(): EmployeeEntity = EmployeeEntity(
     unit = unit,
     searchBlob = searchBlob,
     gender = gender,
-    serviceStartDate = serviceStartDate
+    serviceStartDate = serviceStartDate,
+    height = height,
+    weight = weight,
+    caste = caste,
+    subCaste = subCaste,
+    familyDetails = familyDetails,
+    educationDetails = educationDetails
 )
