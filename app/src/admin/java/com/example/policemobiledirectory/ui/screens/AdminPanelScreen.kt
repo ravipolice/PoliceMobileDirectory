@@ -392,6 +392,15 @@ fun AdminUnifiedDashboard(
                 onClick = { navController.navigate(Routes.LEAVE_MANAGER_ADMIN) }
             )
         }
+        item(span = { GridItemSpan(2) }) {
+            DashboardActionCardLarge(
+                title = "Global Indian Missions",
+                icon = Icons.Default.Public,
+                colorStart = Color(0xFFE64A19),
+                colorEnd = Color(0xFFFF7043),
+                onClick = { navController.navigate(Routes.MISSIONS_DASHBOARD) }
+            )
+        }
 
         // --- 4. APP RESOURCES ---
         item(span = { GridItemSpan(2) }) {
