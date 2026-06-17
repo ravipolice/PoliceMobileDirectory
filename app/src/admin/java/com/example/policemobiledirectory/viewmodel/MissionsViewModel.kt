@@ -38,7 +38,7 @@ class MissionsViewModel @Inject constructor(
     val uiState: StateFlow<MissionsUiState> = _uiState.asStateFlow()
 
     init {
-        fetchMissions()
+        fetchMissions(forceRefresh = true)
     }
 
     fun fetchMissions(forceRefresh: Boolean = false) {

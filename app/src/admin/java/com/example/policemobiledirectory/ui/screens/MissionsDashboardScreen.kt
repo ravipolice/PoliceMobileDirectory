@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -134,13 +135,13 @@ fun MissionsDashboardScreen(
                         title = "Total Missions",
                         value = uiState.totalCount.toString(),
                         modifier = Modifier.weight(1f),
-                        containerColor = Color(0xFF2C5590)
+                        gradientColors = listOf(Color(0xFF2C5590), Color(0xFF1E3D6B))
                     )
                     StatCard(
                         title = "Resident Missions",
                         value = uiState.residentCount.toString(),
                         modifier = Modifier.weight(1f),
-                        containerColor = Color(0xFF4CAF50)
+                        gradientColors = listOf(Color(0xFF2E7D32), Color(0xFF1B5E20))
                     )
                 }
             }
@@ -150,8 +151,8 @@ fun MissionsDashboardScreen(
                 OutlinedTextField(
                     value = uiState.searchQuery,
                     onValueChange = { viewModel.onSearchQueryChange(it) },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Search by country, city or mission name…", style = MaterialTheme.typography.bodyMedium) },
+                    modifier = Modifier.fillMaxWidth().shadow(2.dp, RoundedCornerShape(12.dp)),
+                    placeholder = { Text("Search by country, city or mission name…", style = MaterialTheme.typography.bodyMedium, color = Color.Gray) },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
@@ -175,8 +176,8 @@ fun MissionsDashboardScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedContainerColor = Color.White,
                         focusedContainerColor = Color.White,
-                        unfocusedBorderColor = Color.LightGray,
-                        focusedBorderColor = Color(0xFF2C5590)
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor = Color(0xFF2C5590).copy(alpha = 0.5f)
                     )
                 )
             }
@@ -216,14 +217,16 @@ fun MissionsDashboardScreen(
 }
 
 @Composable
-fun StatCard(title: String, value: String, modifier: Modifier = Modifier, containerColor: Color) {
+fun StatCard(title: String, value: String, modifier: Modifier = Modifier, gradientColors: List<Color>) {
     Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = containerColor),
+        modifier = modifier.shadow(2.dp, RoundedCornerShape(12.dp)),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .background(Brush.verticalGradient(gradientColors))
+                .padding(16.dp)
+                .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -253,93 +256,118 @@ fun MissionDetailFormCard(mission: Mission, onEditClick: (Mission) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(12.dp))
             .clickable { isExpanded = !isExpanded },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
-            // Header: Country / City format
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF2C5590))
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "${mission.country.uppercase()} / ${mission.city.uppercase()}",
-                        color = Color.White,
+                        text = "${mission.country.uppercase()} - ${mission.city}",
+                        color = Color(0xFF263238),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 1.sp,
-                        modifier = Modifier.weight(1f)
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
                     )
-                    
-                    Badge(
-                        containerColor = if (mission.status == "Resident") Color(0xFF4CAF50) else Color(0xFFFF9800),
-                        contentColor = Color.White
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (mission.type.isNotBlank()) {
+                            Text(
+                                text = mission.type,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(text = "•", color = Color.LightGray)
+                        }
+                        if (mission.region.isNotBlank()) {
+                            Text(
+                                text = mission.region,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val badgeColor = if (mission.status == "Resident") Color(0xFF2E7D32) else Color(0xFFEF6C00)
+                    val badgeBgColor = if (mission.status == "Resident") Color(0xFFE8F5E9) else Color(0xFFFFF3E0)
+                    Surface(
+                        color = badgeBgColor,
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, badgeColor.copy(alpha = 0.3f))
                     ) {
                         Text(
                             text = mission.status,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = badgeColor,
+                                fontWeight = FontWeight.Bold
+                            )
                         )
                     }
                     
                     IconButton(onClick = { onEditClick(mission) }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit Mission", tint = Color.White)
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Mission",
+                            tint = Color(0xFF2C5590),
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
 
             if (isExpanded) {
+                HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
                 Column(modifier = Modifier.padding(16.dp)) {
-                    // Row 1: Mission Type and Region
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            FormField(label = "Mission Type", value = mission.type, icon = Icons.Default.Info)
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            FormField(label = "Region", value = mission.region)
-                        }
-                    }
-                    
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color.LightGray.copy(alpha = 0.5f))
-                    
-                    // Row 2: Mission Name and COLI Index
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(modifier = Modifier.weight(1.5f)) {
-                            FormField(label = "Mission Name", value = mission.name)
+                            FormField(label = "Official Name", value = mission.name)
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             ColiBadge(coli = mission.costOfLiving)
                         }
                     }
-
+                    
                     if (mission.notes.isNotBlank()) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color.LightGray.copy(alpha = 0.5f))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color.LightGray.copy(alpha = 0.3f))
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0xFFF5F5F5))
-                                .padding(8.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFFF8F9FA))
+                                .padding(12.dp)
                         ) {
                             Column {
                                 Text(
                                     text = "REMARKS / NOTES",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.Gray
+                                    color = Color.Gray,
+                                    letterSpacing = 0.5.sp
                                 )
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = mission.notes,
-                                    style = MaterialTheme.typography.bodySmall
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color(0xFF37474F)
                                 )
                             }
                         }
@@ -437,23 +465,33 @@ fun EditMissionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { 
-            Text(
-                "Edit Mission: ${mission.country} / ${mission.city}", 
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            ) 
-        },
+        title = { Text("Edit Mission: ${mission.country} / ${mission.city}", fontWeight = FontWeight.Bold) },
         text = {
             Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                OutlinedTextField(
-                    value = status,
-                    onValueChange = { status = it },
-                    label = { Text("Status") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(8.dp)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+                Text("STATUS", style = MaterialTheme.typography.labelSmall, color = Color.Gray, fontWeight = FontWeight.Bold)
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val statusOptions = listOf("Resident", "Non-Resident")
+                    statusOptions.forEach { option ->
+                        val isSelected = status == option
+                        val buttonColor = if (isSelected) Color(0xFF2C5590) else Color(0xFFF5F7F8)
+                        val textColor = if (isSelected) Color.White else Color.Black
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(buttonColor)
+                                .clickable { status = option }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = option, color = textColor, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = coli,
                     onValueChange = { coli = it },
@@ -461,7 +499,7 @@ fun EditMissionDialog(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = notes,
                     onValueChange = { notes = it },
@@ -474,14 +512,9 @@ fun EditMissionDialog(
         },
         confirmButton = {
             Button(
-                onClick = {
-                    onSave(mission.copy(status = status, notes = notes, costOfLiving = coli))
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C5590)),
-                shape = RoundedCornerShape(8.dp)
+                onClick = { onSave(mission.copy(status = status, notes = notes, costOfLiving = coli)) },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C5590))
             ) {
-                Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
                 Text("SAVE TO SHEET")
             }
         },
@@ -492,4 +525,6 @@ fun EditMissionDialog(
         }
     )
 }
+
+
 
