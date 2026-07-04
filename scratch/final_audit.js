@@ -1,0 +1,10 @@
+const xlsx = require('xlsx');
+const workbook = xlsx.readFile('KSP_Contacts_Final_Directory_V3.xlsx');
+const sheet = workbook.Sheets['MASTER_MERGED_FINAL'];
+const data = xlsx.utils.sheet_to_json(sheet);
+const retdCount = data.filter(r => r.UNIT === 'Retired').length;
+console.log('Total Retired Officers:', retdCount);
+const exampleRetd = data.filter(r => r.UNIT === 'Retired').slice(0, 3);
+console.log(JSON.stringify(exampleRetd, null, 2));
+const intRegional = data.filter(r => r.UNIT === 'Intelligence' && r.District !== 'Bengaluru City').slice(0, 3);
+console.log('Example Regional Intelligence:', JSON.stringify(intRegional, null, 2));

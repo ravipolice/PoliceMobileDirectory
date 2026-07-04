@@ -1,0 +1,1007 @@
+﻿diff --git a/DIRECTORY_ORGANIZATION_RULES.md b/DIRECTORY_ORGANIZATION_RULES.md
+index eda77e3..779af21 100644
+--- a/DIRECTORY_ORGANIZATION_RULES.md
++++ b/DIRECTORY_ORGANIZATION_RULES.md
+@@ -97,8 +97,40 @@ All ranks must be shortened to their official abbreviations to keep the director
+ - **Administrative Officer** ΓåÆ **AO**
+ - **Assistant Administrative Officer** ΓåÆ **AAO**
+ 
++### AAO and AO Formatting Rules
++For ministerial positions like AAO (Assistant Administrative Officer) and AO (Administrative Officer), the display name is conditionally formatted based on the unit type:
++1. **Special/Functional Units**: Format as `AAO <Special Unit>` (e.g., `"AAO KPA"`, `"AAO CLM"`).
++2. **Range Units**: Format as `AAO <District>` (e.g., `"AAO Ramanagara"`, `"AAO Mandya"`).
++This prevents redundant rank duplication (like `"AAO AAO"`) and provides clear context on which specific office the contact represents.
++
++### Range Abbreviations
++All range names must be shortened to their official abbreviations to keep unit labels and search queries concise:
++- **Central Range** ΓåÆ **CR**
++- **Western Range** ΓåÆ **WR**
++- **Northern Range** ΓåÆ **NR**
++- **Southern Range** ΓåÆ **SR**
++- **Eastern Range** ΓåÆ **ER**
++- **Ballari Range** ΓåÆ **BR**
++- **North-Eastern Range** ΓåÆ **NER**
++
++### Unit Short Codes
++To keep search results, cards, and display names concise, large functional unit names must be shortened to their official abbreviations:
++- **Communication, Logistics & Modernisation** ΓåÆ **CLM**
++- **Karnataka Police Academy (KPA)** ΓåÆ **KPA**
++- **Police Training Wing** ΓåÆ **Training**
++- **Police Recruitment Wing** ΓåÆ **Recruitment**
++- **Karnataka Railways Police** ΓåÆ **Railways**
++- **Police Computer Wing (PCW) / SCRB** ΓåÆ **PCW / SCRB**
++- **State Intelligence** ΓåÆ **Intelligence**
++- **Directorate of Civil Rights Enforcement (DCRE)** ΓåÆ **DCRE**
++- **Criminal Investigation Department (CID)** ΓåÆ **CID**
++- **Internal Security Division (ISD)** ΓåÆ **ISD**
++- **Karnataka State Reserve Police (KSRP)** ΓåÆ **KSRP**
++
++*Formatting Rule*: Range names in the directory (e.g., in the `UNIT` or `Range` column) must be formatted as `<ShortenedRange>, <Location>` (e.g., `"Northern Range ΓÇô Belagavi"` becomes `"NR, Belagavi"`; `"North-Eastern Range ΓÇô Kalaburagi"` becomes `"NER, Kalaburagi"`). The separator must strictly be a comma followed by a space (`, `).
++
+ *Other Rules:*
+-- **Name Column**: Rank abbreviations must also be strictly applied when the rank appears embedded within the text of the `Name` column itself (e.g., "Additional Director General of Police, Admin" becomes "ADGP, Admin").
++- **Name Column & Designation Rank Normalization**: Rank abbreviations must be strictly applied when the rank appears embedded within the text of the `Name`, `office`, or `station` column itself (e.g., `"Additional Director General of Police, Admin"` becomes `"ADGP, Admin"`; `"DSP ACB"` becomes `"DySP ACB"`; `"DSP Airport PS"` becomes `"DySP Airport PS"`).
+ - **Retired Officers**: The prefix **RETD.** must be preserved when cleaning the `Rank` column (e.g., "RETD. DG & IGP").
+ - Use **Training** instead of **PTS** or **Police Training School**.
+ - Use **CSP** instead of **Coastal Security Police**.
+diff --git a/app/src/admin/java/com/example/policemobiledirectory/ui/components/ContactCard.kt b/app/src/admin/java/com/example/policemobiledirectory/ui/components/ContactCard.kt
+index 2343621..d3b3cbb 100644
+--- a/app/src/admin/java/com/example/policemobiledirectory/ui/components/ContactCard.kt
++++ b/app/src/admin/java/com/example/policemobiledirectory/ui/components/ContactCard.kt
+@@ -24,6 +24,8 @@ import androidx.compose.ui.layout.ContentScale
+ import androidx.compose.ui.platform.LocalContext
+ import androidx.compose.ui.res.painterResource
+ import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.text.buildAnnotatedString
++import androidx.compose.ui.text.SpanStyle
+ import androidx.compose.ui.unit.dp
+ import androidx.compose.ui.unit.sp
+ import coil.compose.AsyncImage
+@@ -60,15 +62,46 @@ fun ContactCard(
+     val district = employee?.district ?: officer?.district
+     
+     val displayName = if (rawName.isNotBlank() && rawName.equals(rank, ignoreCase = true)) {
+-        val parts = mutableListOf(rawName)
+-        if (!station.isNullOrBlank()) {
+-            val cleanStation = station.replace("(?i)\\bPS\\b".toRegex(), "").replace("(?i)\\bPolice Station\\b".toRegex(), "").trim()
+-            if (cleanStation.isNotBlank()) parts.add(cleanStation)
+-        }
+-        if (!district.isNullOrBlank() && !district.equals(station, ignoreCase = true)) {
+-            parts.add(district)
++        if (rank.equals("AAO", ignoreCase = true) || rank.equals("AO", ignoreCase = true)) {
++            val unitVal = employee?.unit ?: officer?.unit
++            val rangeAbbrs = setOf("CR", "NR", "SR", "WR", "ER", "NER", "BR")
++            val isRange = if (!unitVal.isNullOrBlank()) {
++                val firstWord = unitVal.trim().split(Regex("[,\\s]+")).firstOrNull()?.uppercase() ?: ""
++                firstWord in rangeAbbrs || unitVal.contains("Range", ignoreCase = true)
++            } else {
++                false
++            }
++            
++            if (!isRange && !unitVal.isNullOrBlank()) {
++                var cleanUnit = unitVal.trim()
++                if (cleanUnit.startsWith(rawName, ignoreCase = true)) {
++                    cleanUnit = cleanUnit.substring(rawName.length).trim().removePrefix(",").trim()
++                }
++                if (cleanUnit.isNotBlank()) {
++                    "$rawName $cleanUnit"
++                } else if (!district.isNullOrBlank()) {
++                    "$rawName $district"
++                } else {
++                    rawName
++                }
++            } else if (!district.isNullOrBlank()) {
++                "$rawName $district"
++            } else {
++                rawName
++            }
++        } else {
++            val parts = mutableListOf(rawName)
++            if (!station.isNullOrBlank()) {
++                val cleanStation = station.replace("(?i)\\bPS\\b".toRegex(), "").replace("(?i)\\bPolice Station\\b".toRegex(), "").trim()
++                if (cleanStation.isNotBlank() && !cleanStation.equals(rawName, ignoreCase = true) && !cleanStation.equals(rank, ignoreCase = true)) {
++                    parts.add(cleanStation)
++                }
++            }
++            if (!district.isNullOrBlank() && !district.equals(station, ignoreCase = true) && !district.equals(rawName, ignoreCase = true) && !district.equals(rank, ignoreCase = true)) {
++                parts.add(district)
++            }
++            parts.joinToString(" ")
+         }
+-        parts.joinToString(" ")
+     } else {
+         rawName
+     }
+@@ -175,22 +208,68 @@ fun ContactCard(
+                 if (!unitVal.isNullOrBlank() && unitVal != district) {
+                     subtitleParts.add(unitVal)
+                 }
+-                
+-                // 3. Station
+-                if (!station.isNullOrBlank()) {
++                // 3. Station (Avoid showing if identical to designation name)
++                if (!station.isNullOrBlank() && !station.equals(rawName, ignoreCase = true)) {
+                     subtitleParts.add(station)
+                 }
+ 
+-                // 4. District
+-                if (!district.isNullOrBlank()) {
++                // 4. District (Avoid showing if already contained in the unit name)
++                if (!district.isNullOrBlank() && (unitVal == null || !unitVal.contains(district, ignoreCase = true))) {
+                     subtitleParts.add(district)
+                 }
+                 
+                 val finalSubtitleParts = subtitleParts.distinct()
+ 
+                 if (finalSubtitleParts.isNotEmpty()) {
++                    val annotatedSubtitle = remember(finalSubtitleParts, fontScale) {
++                        buildAnnotatedString {
++                            finalSubtitleParts.forEachIndexed { index, part ->
++                                if (index > 0) {
++                                    append(", ")
++                                }
++                                
++                                val trimmedPart = part.trim()
++                                val firstWord = trimmedPart.split(Regex("[,\\s]+")).firstOrNull()?.uppercase() ?: ""
++                                val rangeAbbrs = setOf("NR", "CR", "WR", "SR", "ER", "BR", "NER")
++                                
++                                if (firstWord in rangeAbbrs) {
++                                    val rangeColor = when (firstWord) {
++                                        "NR" -> Color(0xFF1976D2)  // Blue
++                                        "CR" -> Color(0xFFE64A19)  // Deep Orange
++                                        "WR" -> Color(0xFF388E3C)  // Green
++                                        "SR" -> Color(0xFFD32F2F)  // Red
++                                        "ER" -> Color(0xFF7B1FA2)  // Purple
++                                        "BR" -> Color(0xFF0097A7)  // Cyan
++                                        "NER" -> Color(0xFFF57C00) // Orange
++                                        else -> Color(0xFF00796B)  // Fallback Teal
++                                    }
++                                    
++                                    pushStyle(
++                                        SpanStyle(
++                                            fontWeight = FontWeight.Bold,
++                                            color = rangeColor
++                                        )
++                                    )
++                                    append(firstWord)
++                                    pop()
++                                    
++                                    val rest = trimmedPart.substring(firstWord.length)
++                                    pushStyle(
++                                        SpanStyle(
++                                            fontWeight = FontWeight.SemiBold
++                                        )
++                                    )
++                                    append(rest)
++                                    pop()
++                                } else {
++                                    append(trimmedPart)
++                                }
++                            }
++                        }
++                    }
++
+                     Text(
+-                        text = finalSubtitleParts.joinToString(", "),
++                        text = annotatedSubtitle,
+                         fontSize = (11 * fontScale).sp,
+                         lineHeight = (14 * fontScale).sp,
+                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+diff --git a/app/src/main/java/com/example/policemobiledirectory/utils/Constants.kt b/app/src/main/java/com/example/policemobiledirectory/utils/Constants.kt
+index e18b572..b3f8c6d 100644
+--- a/app/src/main/java/com/example/policemobiledirectory/utils/Constants.kt
++++ b/app/src/main/java/com/example/policemobiledirectory/utils/Constants.kt
+@@ -3,7 +3,7 @@ package com.example.policemobiledirectory.utils
+ object Constants {
+ 
+     // Version number for constants - increment when constants structure changes
+-    const val LOCAL_CONSTANTS_VERSION = 3
++    const val LOCAL_CONSTANTS_VERSION = 4
+ 
+     // Rank order for Registration Form: PC ΓåÆ HC ΓåÆ ASI ΓåÆ PSI ΓåÆ PI ΓåÆ Officers ΓåÆ Support
+     // This is the fallback; live order is controlled by seniority_order in Firestore rankMaster
+@@ -95,7 +95,7 @@ object Constants {
+ 
+     val stateIntSections = listOf(
+         "District HQ", "Current Affairs", "Social Affairs", "C/Room", "Computer",
+-        "Administration (Store, EST, ACCTS, Admin)", "SITA", "BDDS", "VVIP", "VIP Sec",
++        "Administration (Store, EST, ACCTS, Admin)", "SITA (State Intelligence Training Academy)", "BDDS", "VVIP", "VIP Sec",
+         "Airport Surveiilance", "IAD"
+     ).sorted()
+ 
+@@ -529,7 +529,9 @@ object Constants {
+         return when {
+             unitName.contains("KSRP", ignoreCase = true) -> ksrpBattalions
+             unitName.contains("IRB", ignoreCase = true) -> irbBattalions
+-            unitName.contains("State INT", ignoreCase = true) -> stateIntSections
++            unitName.contains("State INT", ignoreCase = true) ||
++            unitName.contains("SITA", ignoreCase = true) ||
++            unitName.contains("State Intelligence Training Academy", ignoreCase = true) -> stateIntSections
+             else -> districtStations
+         }
+     }
+diff --git a/app/src/user/java/com/example/policemobiledirectory/MainActivity.kt b/app/src/user/java/com/example/policemobiledirectory/MainActivity.kt
+index 219273a..11a669d 100644
+--- a/app/src/user/java/com/example/policemobiledirectory/MainActivity.kt
++++ b/app/src/user/java/com/example/policemobiledirectory/MainActivity.kt
+@@ -332,12 +332,17 @@ class MainActivity : ComponentActivity() {
+                         // We only auto-navigate if:
+                         // - We are on LOGIN screen (meaning a successful login just happened or was restored)
+                         // - AND we haven't JUST clicked logout (wasLoggedOut check)
+-                        // - AND the user is APPROVED
+-                        if (currentRoute == Routes.LOGIN && !wasLoggedOut && isApproved) {
+-                            Log.d("MainActivity", "≡ƒÅá Session detected and approved, auto-navigating to home")
+-                            
+-                            navController.navigate(Routes.EMPLOYEE_LIST) {
+-                                popUpTo(Routes.LOGIN) { inclusive = true }
++                        if (currentRoute == Routes.LOGIN && !wasLoggedOut) {
++                            if (isApproved) {
++                                Log.d("MainActivity", "≡ƒÅá Session detected and approved, auto-navigating to home")
++                                navController.navigate(Routes.EMPLOYEE_LIST) {
++                                    popUpTo(Routes.LOGIN) { inclusive = true }
++                                }
++                            } else {
++                                Log.d("MainActivity", "ΓÅ│ Session detected but not approved, auto-navigating to pending approval")
++                                navController.navigate(Routes.PENDING_APPROVAL) {
++                                    popUpTo(Routes.LOGIN) { inclusive = true }
++                                }
+                             }
+                         }
+                     } 
+diff --git a/app/src/user/java/com/example/policemobiledirectory/ui/components/ContactCard.kt b/app/src/user/java/com/example/policemobiledirectory/ui/components/ContactCard.kt
+index 27b14a0..71cfcaa 100644
+--- a/app/src/user/java/com/example/policemobiledirectory/ui/components/ContactCard.kt
++++ b/app/src/user/java/com/example/policemobiledirectory/ui/components/ContactCard.kt
+@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.Color
+ import androidx.compose.ui.platform.LocalContext
+ import androidx.compose.ui.res.painterResource
+ import androidx.compose.ui.text.font.FontWeight
++import androidx.compose.ui.text.buildAnnotatedString
++import androidx.compose.ui.text.SpanStyle
+ import androidx.compose.ui.unit.dp
+ import androidx.compose.ui.unit.sp
+ import coil.compose.AsyncImage
+@@ -58,15 +60,46 @@ fun ContactCard(
+     val district = employee?.district ?: officer?.district
+     
+     val displayName = if (rawName.isNotBlank() && rawName.equals(rank, ignoreCase = true)) {
+-        val parts = mutableListOf(rawName)
+-        if (!station.isNullOrBlank()) {
+-            val cleanStation = station.replace("(?i)\\bPS\\b".toRegex(), "").replace("(?i)\\bPolice Station\\b".toRegex(), "").trim()
+-            if (cleanStation.isNotBlank()) parts.add(cleanStation)
+-        }
+-        if (!district.isNullOrBlank() && !district.equals(station, ignoreCase = true)) {
+-            parts.add(district)
++        if (rank.equals("AAO", ignoreCase = true) || rank.equals("AO", ignoreCase = true)) {
++            val unitVal = employee?.unit ?: officer?.unit
++            val rangeAbbrs = setOf("CR", "NR", "SR", "WR", "ER", "NER", "BR")
++            val isRange = if (!unitVal.isNullOrBlank()) {
++                val firstWord = unitVal.trim().split(Regex("[,\\s]+")).firstOrNull()?.uppercase() ?: ""
++                firstWord in rangeAbbrs || unitVal.contains("Range", ignoreCase = true)
++            } else {
++                false
++            }
++            
++            if (!isRange && !unitVal.isNullOrBlank()) {
++                var cleanUnit = unitVal.trim()
++                if (cleanUnit.startsWith(rawName, ignoreCase = true)) {
++                    cleanUnit = cleanUnit.substring(rawName.length).trim().removePrefix(",").trim()
++                }
++                if (cleanUnit.isNotBlank()) {
++                    "$rawName $cleanUnit"
++                } else if (!district.isNullOrBlank()) {
++                    "$rawName $district"
++                } else {
++                    rawName
++                }
++            } else if (!district.isNullOrBlank()) {
++                "$rawName $district"
++            } else {
++                rawName
++            }
++        } else {
++            val parts = mutableListOf(rawName)
++            if (!station.isNullOrBlank()) {
++                val cleanStation = station.replace("(?i)\\bPS\\b".toRegex(), "").replace("(?i)\\bPolice Station\\b".toRegex(), "").trim()
++                if (cleanStation.isNotBlank() && !cleanStation.equals(rawName, ignoreCase = true) && !cleanStation.equals(rank, ignoreCase = true)) {
++                    parts.add(cleanStation)
++                }
++            }
++            if (!district.isNullOrBlank() && !district.equals(station, ignoreCase = true) && !district.equals(rawName, ignoreCase = true) && !district.equals(rank, ignoreCase = true)) {
++                parts.add(district)
++            }
++            parts.joinToString(" ")
+         }
+-        parts.joinToString(" ")
+     } else {
+         rawName
+     }
+@@ -177,21 +210,68 @@ fun ContactCard(
+                     subtitleParts.add(unitVal)
+                 }
+                 
+-                // 3. Station
+-                if (!station.isNullOrBlank()) {
++                // 3. Station (Avoid showing if identical to designation name)
++                if (!station.isNullOrBlank() && !station.equals(rawName, ignoreCase = true)) {
+                     subtitleParts.add(station)
+                 }
+ 
+-                // 4. District
+-                if (!district.isNullOrBlank()) {
++                // 4. District (Avoid showing if already contained in the unit name)
++                if (!district.isNullOrBlank() && (unitVal == null || !unitVal.contains(district, ignoreCase = true))) {
+                     subtitleParts.add(district)
+                 }
+                 
+                 val finalSubtitleParts = subtitleParts.distinct()
+ 
+                 if (finalSubtitleParts.isNotEmpty()) {
++                    val annotatedSubtitle = remember(finalSubtitleParts, fontScale) {
++                        buildAnnotatedString {
++                            finalSubtitleParts.forEachIndexed { index, part ->
++                                if (index > 0) {
++                                    append(", ")
++                                }
++                                
++                                val trimmedPart = part.trim()
++                                val firstWord = trimmedPart.split(Regex("[,\\s]+")).firstOrNull()?.uppercase() ?: ""
++                                val rangeAbbrs = setOf("NR", "CR", "WR", "SR", "ER", "BR", "NER")
++                                
++                                if (firstWord in rangeAbbrs) {
++                                    val rangeColor = when (firstWord) {
++                                        "NR" -> Color(0xFF1976D2)  // Blue
++                                        "CR" -> Color(0xFFE64A19)  // Deep Orange
++                                        "WR" -> Color(0xFF388E3C)  // Green
++                                        "SR" -> Color(0xFFD32F2F)  // Red
++                                        "ER" -> Color(0xFF7B1FA2)  // Purple
++                                        "BR" -> Color(0xFF0097A7)  // Cyan
++                                        "NER" -> Color(0xFFF57C00) // Orange
++                                        else -> Color(0xFF00796B)  // Fallback Teal
++                                    }
++                                    
++                                    pushStyle(
++                                        SpanStyle(
++                                            fontWeight = FontWeight.Bold,
++                                            color = rangeColor
++                                        )
++                                    )
++                                    append(firstWord)
++                                    pop()
++                                    
++                                    val rest = trimmedPart.substring(firstWord.length)
++                                    pushStyle(
++                                        SpanStyle(
++                                            fontWeight = FontWeight.SemiBold
++                                        )
++                                    )
++                                    append(rest)
++                                    pop()
++                                } else {
++                                    append(trimmedPart)
++                                }
++                            }
++                        }
++                    }
++
+                     Text(
+-                        text = finalSubtitleParts.joinToString(", "),
++                        text = annotatedSubtitle,
+                         fontSize = (11 * fontScale).sp,
+                         lineHeight = (14 * fontScale).sp,
+                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+diff --git a/app/src/user/java/com/example/policemobiledirectory/ui/screens/EmployeeDetailScreen.kt b/app/src/user/java/com/example/policemobiledirectory/ui/screens/EmployeeDetailScreen.kt
+index 5eceb83..e4462c9 100644
+--- a/app/src/user/java/com/example/policemobiledirectory/ui/screens/EmployeeDetailScreen.kt
++++ b/app/src/user/java/com/example/policemobiledirectory/ui/screens/EmployeeDetailScreen.kt
+@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
+ import androidx.compose.ui.res.painterResource
+ import androidx.compose.ui.text.font.FontWeight
+ import androidx.compose.ui.text.style.TextAlign
++import androidx.compose.ui.text.style.TextOverflow
+ import androidx.compose.ui.unit.dp
+ import androidx.compose.ui.unit.sp
+ import androidx.navigation.NavController
+@@ -75,7 +76,15 @@ fun EmployeeDetailScreen(
+         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+         topBar = {
+             TopAppBar(
+-                title = { Text("Contact Details", fontWeight = FontWeight.SemiBold, fontSize = 20.sp) },
++                title = { 
++                    Text(
++                        text = "Contact Details", 
++                        fontWeight = FontWeight.SemiBold, 
++                        fontSize = (18 * fontScale).sp,
++                        maxLines = 1,
++                        overflow = TextOverflow.Ellipsis
++                    ) 
++                },
+                 navigationIcon = {
+                     IconButton(onClick = { navController.popBackStack() }) {
+                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+@@ -116,14 +125,14 @@ fun EmployeeDetailScreen(
+                 )
+             )
+         },
+-        containerColor = Color(0xFFFBFBFB)
++        containerColor = MaterialTheme.colorScheme.background
+     ) { innerPadding ->
+         if (contact == null) {
+             Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+                 if (isLoading) {
+                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                 } else {
+-                    Text("Contact not found")
++                    Text("Contact not found", color = MaterialTheme.colorScheme.onBackground)
+                 }
+             }
+         } else {
+@@ -149,7 +158,7 @@ fun EmployeeDetailScreen(
+                         .height(200.dp)
+                         .background(
+                             Brush.verticalGradient(
+-                                colors = listOf(MaterialTheme.colorScheme.primary, Color(0xFFFBFBFB))
++                                colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.background)
+                             )
+                         )
+                 )
+@@ -189,66 +198,71 @@ fun EmployeeDetailScreen(
+                             val metalNumber = if (contact is Employee) contact.metalNumber else null
+                             val gender = if (contact is Employee) contact.gender else "N/A"
+ 
+-                            DetailSection(title = "Contact info", fontScale = fontScale) {
+-                                if (!metalNumber.isNullOrBlank()) {
+-                                    InfoRow(
+-                                        label = "Metal Number",
+-                                        value = metalNumber,
+-                                        icon = Icons.Default.Badge,
+-                                        fontScale = fontScale,
+-                                        onAction = { IntentUtils.copyToClipboard(context, "Metal Number", metalNumber) }
+-                                    )
+-                                    CustomDivider()
+-                                }
++                            // Filter valid details to only render rows containing actual data
++                            val hasMetal = !metalNumber.isNullOrBlank()
++                            val hasGender = gender != "N/A"
++                            val hasMobile = isValidContactInfo(mobile)
++                            val hasLandline = isValidContactInfo(landline)
++                            val hasEmail = isValidContactInfo(email)
++
++                            if (hasMetal || hasGender || hasMobile || hasLandline || hasEmail) {
++                                DetailSection(title = "Contact info", fontScale = fontScale) {
++                                    if (hasMetal) {
++                                        InfoRow(
++                                            label = "Metal Number",
++                                            value = metalNumber!!,
++                                            icon = Icons.Default.Badge,
++                                            fontScale = fontScale,
++                                            onAction = { IntentUtils.copyToClipboard(context, "Metal Number", metalNumber) }
++                                        )
++                                        if (hasGender || hasMobile || hasLandline || hasEmail) CustomDivider()
++                                    }
+ 
+-                                if (gender != "N/A") {
+-                                    val genderIcon = if (gender.contains("Female", ignoreCase = true)) Icons.Default.Woman else Icons.Default.Man
+-                                    InfoRow(
+-                                        label = "Gender",
+-                                        value = gender,
+-                                        icon = genderIcon,
+-                                        fontScale = fontScale
+-                                    )
+-                                    CustomDivider()
+-                                }
++                                    if (hasGender) {
++                                        val genderIcon = if (gender.contains("Female", ignoreCase = true)) Icons.Default.Woman else Icons.Default.Man
++                                        InfoRow(
++                                            label = "Gender",
++                                            value = gender,
++                                            icon = genderIcon,
++                                            fontScale = fontScale
++                                        )
++                                        if (hasMobile || hasLandline || hasEmail) CustomDivider()
++                                    }
+ 
+-                                if (!mobile.isNullOrBlank()) {
+-                                    InfoRow(
+-                                        label = "Mobile",
+-                                        value = mobile,
+-                                        icon = Icons.Default.Call,
+-                                        fontScale = fontScale,
+-                                        onAction = { IntentUtils.dial(context, mobile) },
+-                                        secondaryActionIcon = painterResource(R.drawable.ic_whatsapp),
+-                                        onSecondaryAction = { IntentUtils.openWhatsApp(context, mobile) },
+-                                        onSmsAction = { IntentUtils.sendSms(context, mobile) }
+-                                    )
+-                                    if (!landline.isNullOrBlank() || !email.isNullOrBlank()) {
+-                                        CustomDivider()
++                                    if (hasMobile) {
++                                        InfoRow(
++                                            label = "Mobile",
++                                            value = mobile!!,
++                                            icon = Icons.Default.Call,
++                                            fontScale = fontScale,
++                                            onAction = { IntentUtils.dial(context, mobile) },
++                                            secondaryActionIcon = painterResource(R.drawable.ic_whatsapp),
++                                            onSecondaryAction = { IntentUtils.openWhatsApp(context, mobile) },
++                                            onSmsAction = { IntentUtils.sendSms(context, mobile) }
++                                        )
++                                        if (hasLandline || hasEmail) CustomDivider()
+                                     }
+-                                }
+ 
+-                                if (!landline.isNullOrBlank()) {
+-                                    InfoRow(
+-                                        label = "Landline",
+-                                        value = landline,
+-                                        icon = Icons.Default.Phone,
+-                                        fontScale = fontScale,
+-                                        onAction = { IntentUtils.dial(context, landline) }
+-                                    )
+-                                    if (!email.isNullOrBlank()) {
+-                                        CustomDivider()
++                                    if (hasLandline) {
++                                        InfoRow(
++                                            label = "Landline",
++                                            value = landline!!,
++                                            icon = Icons.Default.Phone,
++                                            fontScale = fontScale,
++                                            onAction = { IntentUtils.dial(context, landline) }
++                                        )
++                                        if (hasEmail) CustomDivider()
+                                     }
+-                                }
+ 
+-                                if (!email.isNullOrBlank()) {
+-                                    InfoRow(
+-                                        label = "Email",
+-                                        value = email,
+-                                        icon = Icons.Default.Email,
+-                                        fontScale = fontScale,
+-                                        onAction = { IntentUtils.sendEmail(context, email) }
+-                                    )
++                                    if (hasEmail) {
++                                        InfoRow(
++                                            label = "Email",
++                                            value = email!!,
++                                            icon = Icons.Default.Email,
++                                            fontScale = fontScale,
++                                            onAction = { IntentUtils.sendEmail(context, email) }
++                                        )
++                                    }
+                                 }
+                             }
+                         }
+@@ -259,6 +273,15 @@ fun EmployeeDetailScreen(
+     }
+ }
+ 
++/**
++ * Validates raw contact details to filter out empty/placeholder fields
++ */
++private fun isValidContactInfo(value: String?): Boolean {
++    if (value.isNullOrBlank()) return false
++    val trimmed = value.trim()
++    return trimmed != "-" && trimmed != "ΓÇö" && trimmed != "ΓÇö / ΓÇö" && trimmed != "N/A" && trimmed != "null"
++}
++
+ @Composable
+ private fun ProfileHeader(
+     name: String,
+@@ -292,18 +315,60 @@ private fun ProfileHeader(
+                 modifier = Modifier
+                     .size(150.dp)
+                     .shadow(12.dp, CircleShape)
+-                    .border(4.dp, Color.White, CircleShape)
++                    .border(4.dp, MaterialTheme.colorScheme.surface, CircleShape)
+                     .clip(CircleShape)
+-                    .background(Color.White)
++                    .background(MaterialTheme.colorScheme.surface),
++                contentAlignment = Alignment.Center
+             ) {
+-                AsyncImage(
+-                    model = photoUrl,
+-                    contentDescription = null,
+-                    modifier = Modifier.fillMaxSize(),
+-                    contentScale = ContentScale.Crop,
+-                    placeholder = painterResource(placeholderRes),
+-                    error = painterResource(placeholderRes)
+-                )
++                if (!photoUrl.isNullOrBlank()) {
++                    AsyncImage(
++                        model = photoUrl,
++                        contentDescription = null,
++                        modifier = Modifier.fillMaxSize(),
++                        contentScale = ContentScale.Crop,
++                        placeholder = painterResource(placeholderRes),
++                        error = painterResource(placeholderRes)
++                    )
++                } else {
++                    // Premium custom placeholder with dynamic gradients
++                    val avatarColors = listOf(
++                        listOf(Color(0xFF1E3C72), Color(0xFF2A5298)), // Navy Gradient
++                        listOf(Color(0xFF0F9D58), Color(0xFF11998E)), // Green Gradient
++                        listOf(Color(0xFF8E2DE2), Color(0xFF4A00E0)), // Purple Gradient
++                        listOf(Color(0xFFD32F2F), Color(0xFF9A0007)), // Red Gradient
++                        listOf(Color(0xFF00838F), Color(0xFF006064)), // Cyan Gradient
++                        listOf(Color(0xFFE65100), Color(0xFFF57C00)), // Orange Gradient
++                        listOf(Color(0xFF00796B), Color(0xFF004D40))  // Teal Gradient
++                    )
++                    val gradient = remember(name) {
++                        val index = Math.abs(name.hashCode() % avatarColors.size)
++                        avatarColors[index]
++                    }
++                    
++                    Box(
++                        modifier = Modifier
++                            .fillMaxSize()
++                            .background(Brush.linearGradient(gradient)),
++                        contentAlignment = Alignment.Center
++                    ) {
++                        if (placeholderRes == R.drawable.ic_officer_building) {
++                            Icon(
++                                imageVector = Icons.Default.Business,
++                                contentDescription = null,
++                                tint = Color.White,
++                                modifier = Modifier.size(72.dp)
++                            )
++                        } else {
++                            val initial = name.takeIf { it.isNotBlank() }?.first()?.uppercase() ?: "?"
++                            Text(
++                                text = initial.toString(),
++                                fontSize = 64.sp,
++                                fontWeight = FontWeight.Bold,
++                                color = Color.White
++                            )
++                        }
++                    }
++                }
+             }
+ 
+             if (!bloodGroup.isNullOrBlank() && bloodGroup != "??") {
+@@ -333,17 +398,18 @@ private fun ProfileHeader(
+ 
+         Text(
+             text = name,
+-            fontSize = (28 * fontScale).sp,
++            fontSize = (26 * fontScale).sp,
+             fontWeight = FontWeight.ExtraBold,
+-            color = Color(0xFF8B1A1A),
++            color = MaterialTheme.colorScheme.primary,
+             textAlign = TextAlign.Center,
+-            lineHeight = (34 * fontScale).sp
++            lineHeight = (32 * fontScale).sp,
++            modifier = Modifier.padding(horizontal = 16.dp)
+         )
+         Text(
+             text = rank,
+-            fontSize = (20 * fontScale).sp,
++            fontSize = (18 * fontScale).sp,
+             fontWeight = FontWeight.SemiBold,
+-            color = Color(0xFF455A64),
++            color = MaterialTheme.colorScheme.onSurfaceVariant,
+             textAlign = TextAlign.Center
+         )
+ 
+@@ -361,8 +427,8 @@ private fun ProfileHeader(
+         if (line1.isNotBlank()) {
+             Text(
+                 text = line1,
+-                fontSize = (17 * fontScale).sp,
+-                color = Color(0xFF607D8B),
++                fontSize = (16 * fontScale).sp,
++                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                 textAlign = TextAlign.Center,
+                 fontWeight = FontWeight.Medium
+             )
+@@ -373,7 +439,6 @@ private fun ProfileHeader(
+             val d = district?.trim() ?: ""
+             val u = unit?.trim() ?: ""
+             
+-            // For state units, we usually don't need to show "Bengaluru City" if they are HQ
+             val showDistrict = if (isStateHq && d.contains("Bengaluru", ignoreCase = true)) {
+                 false
+             } else if (d.isNotBlank() && !u.contains(d, ignoreCase = true) && !d.contains(u, ignoreCase = true)) {
+@@ -395,8 +460,8 @@ private fun ProfileHeader(
+         if (line2.isNotBlank()) {
+             Text(
+                 text = line2,
+-                fontSize = (16 * fontScale).sp,
+-                color = Color(0xFF78909C),
++                fontSize = (14 * fontScale).sp,
++                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                 textAlign = TextAlign.Center
+             )
+         }
+@@ -409,19 +474,22 @@ private fun DetailSection(
+     fontScale: Float,
+     content: @Composable ColumnScope.() -> Unit
+ ) {
+-    Surface(
+-        modifier = Modifier
+-            .fillMaxWidth()
+-            .shadow(2.dp, RoundedCornerShape(24.dp)),
+-        color = Color.White,
+-        shape = RoundedCornerShape(24.dp)
++    Card(
++        modifier = Modifier.fillMaxWidth(),
++        shape = RoundedCornerShape(24.dp),
++        colors = CardDefaults.cardColors(
++            containerColor = MaterialTheme.colorScheme.surface
++        ),
++        elevation = CardDefaults.cardElevation(
++            defaultElevation = 2.dp
++        )
+     ) {
+         Column(modifier = Modifier.padding(20.dp)) {
+             Text(
+                 text = title,
+                 fontSize = (18 * fontScale).sp,
+                 fontWeight = FontWeight.Bold,
+-                color = Color.Black,
++                color = MaterialTheme.colorScheme.onSurface,
+                 modifier = Modifier.padding(bottom = 16.dp)
+             )
+             content()
+@@ -453,14 +521,14 @@ private fun InfoRow(
+     ) {
+         Surface(
+             modifier = Modifier.size(40.dp),
+-            color = Color(0xFFF5F7F8),
++            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+             shape = CircleShape
+         ) {
+             Box(contentAlignment = Alignment.Center) {
+                 Icon(
+                     imageVector = icon,
+                     contentDescription = null,
+-                    tint = Color(0xFF37474F),
++                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                     modifier = Modifier.size(20.dp)
+                 )
+             }
+@@ -469,12 +537,16 @@ private fun InfoRow(
+         Spacer(Modifier.width(16.dp))
+ 
+         Column(modifier = Modifier.weight(1f)) {
+-            Text(text = label, fontSize = (12 * fontScale).sp, color = Color.Gray)
++            Text(
++                text = label, 
++                fontSize = (12 * fontScale).sp, 
++                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
++            )
+             Text(
+                 text = value,
+-                fontSize = (16 * fontScale).sp,
++                fontSize = if (label.equals("Email", ignoreCase = true)) (14 * fontScale).sp else (16 * fontScale).sp,
+                 fontWeight = FontWeight.Bold,
+-                color = Color(0xFF263238)
++                color = MaterialTheme.colorScheme.onSurface
+             )
+         }
+         
+@@ -495,22 +567,13 @@ private fun InfoRow(
+                     Icon(
+                         imageVector = Icons.Default.Sms,
+                         contentDescription = "SMS",
+-                        tint = Color(0xFF546E7A),
++                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                         modifier = Modifier.size(22.dp)
+                     )
+                 }
+             }
+             
+-            if (onAction != null && icon != Icons.Default.Call) {
+-                 IconButton(onClick = onAction) {
+-                    Icon(
+-                        imageVector = icon,
+-                        contentDescription = "Action",
+-                        tint = Color(0xFF546E7A),
+-                        modifier = Modifier.size(22.dp)
+-                    )
+-                }
+-            } else if (onAction != null && icon == Icons.Default.Call) {
++            if (onAction != null && (icon == Icons.Default.Call || icon == Icons.Default.Phone)) {
+                 IconButton(onClick = onAction) {
+                     Icon(
+                         imageVector = Icons.Default.Call,
+@@ -519,6 +582,15 @@ private fun InfoRow(
+                         modifier = Modifier.size(24.dp)
+                     )
+                 }
++            } else if (onAction != null && !label.equals("Email", ignoreCase = true)) {
++                 IconButton(onClick = onAction) {
++                    Icon(
++                        imageVector = icon,
++                        contentDescription = "Action",
++                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
++                        modifier = Modifier.size(22.dp)
++                    )
++                }
+             }
+         }
+     }
+@@ -529,6 +601,6 @@ private fun CustomDivider() {
+     HorizontalDivider(
+         modifier = Modifier.padding(start = 56.dp, top = 12.dp, bottom = 12.dp),
+         thickness = 0.5.dp,
+-        color = Color.LightGray.copy(alpha = 0.3f)
++        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+     )
+ }
+diff --git a/app/src/user/java/com/example/policemobiledirectory/ui/screens/SplashVideoScreen.kt b/app/src/user/java/com/example/policemobiledirectory/ui/screens/SplashVideoScreen.kt
+index 2d4e03c..5e02f6c 100644
+--- a/app/src/user/java/com/example/policemobiledirectory/ui/screens/SplashVideoScreen.kt
++++ b/app/src/user/java/com/example/policemobiledirectory/ui/screens/SplashVideoScreen.kt
+@@ -28,12 +28,16 @@ fun SplashVideoScreen(
+     LaunchedEffect(Unit) {
+         // Wait for 2 seconds then navigate
+         delay(2000)
+-        // Determine target destination
+         val isLoggedIn = viewModel.isLoggedIn.value
+-        val isApproved = viewModel.currentUser.value?.isApproved == true || viewModel.currentUser.value?.isAdmin == true
++        val currentUser = viewModel.currentUser.value
++        val isApproved = currentUser?.isApproved == true || currentUser?.isAdmin == true
+         
+-        val target = if (isLoggedIn && isApproved) {
+-            Routes.EMPLOYEE_LIST
++        val target = if (isLoggedIn) {
++            if (isApproved) {
++                Routes.EMPLOYEE_LIST
++            } else {
++                Routes.PENDING_APPROVAL
++            }
+         } else {
+             Routes.LOGIN
+         }
+diff --git a/app/src/user/java/com/example/policemobiledirectory/viewmodel/AuthViewModel.kt b/app/src/user/java/com/example/policemobiledirectory/viewmodel/AuthViewModel.kt
+index c250345..ff0e08c 100644
+--- a/app/src/user/java/com/example/policemobiledirectory/viewmodel/AuthViewModel.kt
++++ b/app/src/user/java/com/example/policemobiledirectory/viewmodel/AuthViewModel.kt
+@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
+ import com.example.policemobiledirectory.data.local.PendingRegistrationEntity
+ import com.example.policemobiledirectory.data.local.SessionManager
+ import com.example.policemobiledirectory.data.mapper.toEmployee
++import com.example.policemobiledirectory.data.mapper.toEntity
+ import com.example.policemobiledirectory.model.Employee
+ import com.example.policemobiledirectory.repository.EmployeeRepository
+ import com.example.policemobiledirectory.repository.ImageRepository
+@@ -636,33 +637,69 @@ class AuthViewModel @Inject constructor(
+                         val user = userEntity?.toEmployee()
+ 
+                         if (user != null) {
+-                            if (!user.isApproved) {
+-                                Log.w("Session", "ΓÜá∩╕Å User access disabled during load. Forcing logout.")
+-                                logout()
+-                                return@launch
+-                            }
+                             _currentUser.value = user
+                             Log.d("Session", "Γ£à Session restored for user: ${user.name}, admin=$isAdmin")
+ 
+-                            // ≡ƒö┤ Background live Firestore check on startup
++                            // ≡ƒö┤ Background live Firestore check on startup to sync approval status
+                             viewModelScope.launch {
+                                 val liveApproved = employeeRepo.checkIsApprovedFromFirestore(email)
+-                                if (liveApproved == false) {
+-                                    Log.w("Session", "≡ƒö┤ Firestore says user is DISABLED. Forcing logout.")
+-                                    logout()
++                                if (liveApproved != null) {
++                                    val localUser = employeeRepo.getEmployeeDirect(email)
++                                    if (localUser != null) {
++                                        val updated = localUser.copy(isApproved = liveApproved)
++                                        employeeRepo.insertEmployeeDirect(updated.toEntity())
++                                        if (_currentUser.value?.email == email) {
++                                            _currentUser.value = updated
++                                        }
++                                        Log.d("Session", "≡ƒöä Live approval check complete: approved=$liveApproved")
++                                    }
+                                 }
+                             }
+                         } else {
+-                            Log.e("Session", "Γ¥î Session exists for $email but user not found in DB. Forcing logout.")
+-                            logout()
++                            // User not found in local DB. Try Firestore.
++                            Log.d("Session", "User not found in local DB during restore. Checking Firestore...")
++                            when (val remoteResult = employeeRepo.getUserByEmail(email)) {
++                                is RepoResult.Success -> {
++                                    val remoteUser = remoteResult.data
++                                    if (remoteUser != null) {
++                                        _currentUser.value = remoteUser
++                                        _isLoggedIn.value = true
++                                        employeeRepo.insertEmployeeDirect(remoteUser.toEntity())
++                                        Log.d("Session", "Γ£à Restored session from Firestore: ${remoteUser.name}")
++                                    } else {
++                                        // Not found in employees collection. Check if pending.
++                                        Log.d("Session", "User not found in Firestore. Checking pending...")
++                                        val pendingUser = pendingRepo.getPendingByEmail(email)
++                                        if (pendingUser != null) {
++                                            Log.d("Session", "ΓÅ│ Restoring pending registration session.")
++                                            _currentUser.value = Employee(
++                                                email = email,
++                                                name = pendingUser.name,
++                                                kgid = pendingUser.kgid,
++                                                isApproved = false,
++                                                isAdmin = false
++                                            )
++                                            _isLoggedIn.value = true
++                                        } else {
++                                            Log.w("Session", "ΓÜá∩╕Å Session email not found anywhere. Setting isLoggedIn=false in memory.")
++                                            _isLoggedIn.value = false
++                                            _currentUser.value = null
++                                        }
++                                    }
++                                }
++                                is RepoResult.Error -> {
++                                    Log.e("Session", "Γ¥î Firestore error during restore: ${remoteResult.message}")
++                                }
++                                else -> Unit
++                            }
+                         }
+                     } catch (e: Exception) {
+-                        Log.e("Session", "Γ¥î DB error during session restore: ${e.message}. Forcing logout.")
+-                        logout()
++                        Log.e("Session", "Γ¥î DB error during session restore: ${e.message}")
+                     }
+                 } else {
+-                    Log.e("Session", "Γ¥î Invalid session state. Forcing logout.")
+-                    logout()
++                    Log.w("Session", "Γ¥î Invalid session state: email is blank. Setting isLoggedIn=false in memory.")
++                    _isLoggedIn.value = false
++                    _currentUser.value = null
+                 }
+             } else {
+                 _isAdmin.value = false
+diff --git a/ksp_page.html b/ksp_page.html
+index d165b40..2c68a84 100644
+--- a/ksp_page.html
++++ b/ksp_page.html
+@@ -1,4 +1,4 @@
+-∩╗┐<!DOCTYPE html>
++<!DOCTYPE html>
+ <html lang="en">
+ <head>
+ <meta charset="UTF-8">
+@@ -614,7 +614,7 @@ display:none !important;
+ 
+ 
+ <meta http-equiv="X-UA-Compatible" content="ie=edge">
+-<meta name="csrf-token" content="0iidXDWDoQ0eiNMQiOAfUbot2GRcXBmowP1EA5mH" />
++<meta name="csrf-token" content="zL8jT8Rkbjw03IeiDTck9xJb2x6ndohAnYo3dTEV" />
+ <meta name="theme-color" content="#a72700">
+ <meta name="google-site-verification" content="vWdt7UswMES5izzzXmgreUtwf-uQLUA0OmHij2PXOys" />
+ <title> 
+@@ -1188,7 +1188,7 @@ navbar-part start
+ <div class="nav-logo hidden-lg hidden-md">
+ 	
+             
+-<img src="https://planning.karnataka.gov.in/frontend/opt1/images/cm_logo/chief_minister_of_karrnataka_en.png?1778045777"  class="img-responsive cml">
++<img src="https://planning.karnataka.gov.in/frontend/opt1/images/cm_logo/chief_minister_of_karrnataka_en.png?1779696263"  class="img-responsive cml">
+ 
+ </div>
+ <!---<div data-toggle="modal" data-target="#myModal81" class="sicon hidden-lg hidden-md"><i class="fa fa-search" aria-hidden="true"></i></div>-->
+@@ -20059,7 +20059,7 @@ function toggleDiv(id) {
+  <h3>Visitors </h3>
+  
+     <ul>
+-                <li class="fvc"><i class="fa fa-chevron-circle-right"></i>Last UpdatedΓÇï : <label id='visitcount'><i class="fa fa-chevron-circle-right"></i>24-04-2026 01:26 PM</label><span></span> </li>
++                <li class="fvc"><i class="fa fa-chevron-circle-right"></i>Last UpdatedΓÇï : <label id='visitcount'><i class="fa fa-chevron-circle-right"></i>25-05-2026 10:38 AM</label><span></span> </li>
+         <li class="fvc"><i class="fa fa-chevron-circle-right"></i>Visitors Counter  : <label id='visitcount'>663274</label><span></span> </li>
+ 		<li class="fvc"><i class="fa fa-chevron-circle-right"></i>Version  : <label id='visitcount'>CeG/KRN 1.3</label><span></span> </li>
+          
+@@ -21028,8 +21028,8 @@ function toggleDiv(id) {
+       
+     </div>
+   </div>  
+-<link rel="stylesheet" type="text/css" href="https://ceg.karnataka.gov.in/frontend/opt1/global_ci/global_ci.css?1778045777">
+-<script src="https://ceg.karnataka.gov.in/frontend/opt1/global_ci/global_ci.js?1778045777"></script>
++<link rel="stylesheet" type="text/css" href="https://ceg.karnataka.gov.in/frontend/opt1/global_ci/global_ci.css?1779696263">
++<script src="https://ceg.karnataka.gov.in/frontend/opt1/global_ci/global_ci.js?1779696263"></script>
+ 
+ <script >
+ 
+@@ -21119,4 +21119,4 @@ this.start();
+ 
+   
+ </body>
+-</html>
++</html>
+\ No newline at end of file

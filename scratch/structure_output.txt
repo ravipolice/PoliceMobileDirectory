@@ -1,0 +1,541 @@
+1: <!DOCTYPE html>
+2: <html lang="en">
+3: <head>
+4: <meta charset="UTF-8">
+5: <meta name="viewport" content="width=device-width, initial-scale=1.0">
+6: <title>Police Mobile Directory - Registration Guide</title>
+7: <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+8: <style>
+9: :root {
+10: --primary: #0F4C81;
+11: --primary-light: #EBF3F9;
+12: --accent: #008080;
+13: --dark: #1E293B;
+14: --light-gray: #F8FAFC;
+15: --border: #E2E8F0;
+16: --gold: #D4AF37;
+17: }
+19: * {
+20: box-sizing: border-box;
+21: margin: 0;
+22: padding: 0;
+23: }
+25: body {
+26: font-family: 'Inter', sans-serif;
+27: color: var(--dark);
+28: background-color: #64748B;
+29: line-height: 1.5;
+30: -webkit-print-color-adjust: exact;
+31: print-color-adjust: exact;
+32: }
+34: /* A4 Page Formatting */
+35: .page {
+36: width: 210mm;
+37: min-height: 297mm;
+38: height: 297mm;
+39: padding: 10mm 12mm;
+40: margin: 20px auto;
+41: background: white;
+42: box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+43: position: relative;
+44: overflow: hidden;
+45: display: flex;
+46: flex-direction: column;
+47: justify-content: flex-start;
+48: }
+50: @page {
+51: size: A4;
+52: margin: 0;
+53: }
+54: @media print {
+55: body {
+56: background: none;
+57: }
+58: .page {
+59: margin: 0;
+60: box-shadow: none;
+61: page-break-after: always;
+62: width: 210mm;
+63: height: 280mm;
+64: }
+65: }
+66: }
+67: }
+68: }
+69: }
+71: /* Header Styling */
+72: .header {
+73: display: flex;
+74: align-items: center;
+75: border-bottom: 3px solid var(--primary);
+76: padding-bottom: 8px;
+77: margin-bottom: 15px;
+78: }
+80: .logo-placeholder {
+81: width: 55px;
+82: height: 55px;
+83: background: linear-gradient(135deg, #0F4C81, #008080);
+84: border-radius: 50%;
+85: display: flex;
+86: align-items: center;
+87: justify-content: center;
+88: color: white;
+89: font-family: 'Outfit', sans-serif;
+90: font-size: 20px;
+91: font-weight: 800;
+92: border: 2px solid var(--gold);
+93: margin-right: 15px;
+94: box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+95: }
+97: .logo-img {
+98: width: 55px;
+99: height: 55px;
+100: border-radius: 50%;
+101: border: 2px solid var(--gold);
+102: margin-right: 15px;
+103: box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+104: object-fit: cover;
+105: }
+107: .title-area h1 {
+108: font-family: 'Outfit', sans-serif;
+109: font-size: 24px;
+110: color: var(--primary);
+111: text-transform: uppercase;
+112: letter-spacing: 0.5px;
+113: }
+115: .title-area p {
+116: font-size: 13.5px;
+117: color: #64748B;
+118: font-weight: 500;
+119: }
+121: /* Page Layouts */
+122: .content-grid {
+123: display: grid;
+124: grid-template-columns: 1.1fr 0.9fr;
+125: gap: 12px;
+126: flex: 1;
+127: align-content: start;
+128: }
+130: .column-left {
+131: display: flex;
+132: flex-direction: column;
+133: gap: 10px;
+134: }
+136: .column-right {
+137: display: flex;
+138: flex-direction: column;
+139: align-items: center;
+140: justify-content: center;
+141: background: var(--light-gray);
+142: border-radius: 12px;
+143: border: 1px dashed var(--border);
+144: padding: 10px;
+145: }
+147: .mockup-img {
+148: max-width: 100%;
+149: max-height: 230mm;
+150: border-radius: 8px;
+151: box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+152: border: 1px solid var(--border);
+153: object-fit: contain;
+154: }
+156: /* Section Cards */
+157: .section-card {
+158: background: white;
+159: border: 1px solid var(--border);
+160: border-radius: 10px;
+161: padding: 8px 10px;
+162: box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+163: }
+165: .section-title {
+166: font-family: 'Outfit', sans-serif;
+167: font-size: 15.5px;
+168: color: var(--primary);
+169: border-left: 4px solid var(--accent);
+170: padding-left: 8px;
+171: margin-bottom: 8px;
+172: text-transform: uppercase;
+173: font-weight: 700;
+174: }
+176: /* Step Lists */
+177: .step-list {
+178: list-style: none;
+179: }
+181: .step-item {
+182: position: relative;
+183: padding-left: 28px;
+184: margin-bottom: 10px;
+185: font-size: 13.5px;
+186: }
+188: .step-number {
+189: position: absolute;
+190: left: 0;
+191: top: 1px;
+192: width: 18px;
+193: height: 18px;
+194: background: var(--primary-light);
+195: color: var(--primary);
+196: border-radius: 50%;
+197: font-size: 11.5px;
+198: font-weight: 700;
+199: display: flex;
+200: align-items: center;
+201: justify-content: center;
+202: }
+204: .step-item strong {
+205: color: var(--primary);
+206: }
+208: /* Tables */
+209: .field-table {
+210: width: 100%;
+211: border-collapse: collapse;
+212: font-size: 12px;
+213: margin-top: 5px;
+214: }
+216: .field-table th, .field-table td {
+217: border: 1px solid var(--border);
+218: padding: 6px 8px;
+219: text-align: left;
+220: }
+222: .field-table th {
+223: background-color: var(--primary-light);
+224: color: var(--primary);
+225: font-weight: 600;
+226: text-transform: uppercase;
+227: font-size: 11px;
+228: }
+230: .field-table tr:nth-child(even) {
+231: background-color: var(--light-gray);
+232: }
+234: .req-badge {
+235: background-color: #FEE2E2;
+236: color: #EF4444;
+237: padding: 1px 4px;
+238: border-radius: 4px;
+239: font-size: 10px;
+240: font-weight: 700;
+241: }
+243: .opt-badge {
+244: background-color: #F1F5F9;
+245: color: #64748B;
+246: padding: 1px 4px;
+247: border-radius: 4px;
+248: font-size: 10px;
+249: font-weight: 500;
+250: }
+252: /* Flowchart styling */
+253: .flow-container {
+254: display: flex;
+255: align-items: center;
+256: justify-content: space-between;
+257: background: var(--light-gray);
+258: border-radius: 8px;
+259: padding: 8px 12px;
+260: border: 1px solid var(--border);
+261: margin-top: 5px;
+262: }
+264: .flow-node {
+265: background: white;
+266: border: 1.5px solid var(--primary);
+267: border-radius: 6px;
+268: padding: 5px 8px;
+269: font-size: 11.5px;
+270: font-weight: 600;
+271: text-align: center;
+272: box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+273: }
+275: .flow-node.highlight {
+276: border-color: var(--accent);
+277: background: var(--primary-light);
+278: }
+280: .flow-arrow {
+281: color: var(--primary);
+282: font-weight: 700;
+283: font-size: 15px;
+284: }
+286: /* Footer styling */
+287: .footer {
+288: border-top: 1px solid var(--border);
+289: padding-top: 8px;
+290: margin-top: auto;
+291: padding-top: 8px;
+292: display: flex;
+293: justify-content: space-between;
+294: font-size: 10px;
+295: color: #94A3B8;
+296: }
+298: .footer-logo {
+299: font-family: 'Outfit', sans-serif;
+300: font-weight: 700;
+301: color: var(--primary);
+302: }
+304: /* Callouts */
+305: .callout {
+306: background-color: var(--primary-light);
+307: border-left: 4px solid var(--primary);
+308: padding: 10px;
+309: border-radius: 0 8px 8px 0;
+310: font-size: 12.5px;
+311: color: #0F4C81;
+312: margin-top: 5px;
+313: }
+315: .callout-warning {
+316: background-color: #FEF2F2;
+317: border-left-color: #EF4444;
+318: color: #991B1B;
+319: }
+322: </style>
+323: </head>
+324: <body>
+326: <div class="page" style="padding: 8mm 12mm 8mm 12mm;">
+327: <div style="flex: 1; display: flex; flex-direction: column;">
+328: <div class="header" style="margin-bottom: 10px;">
+329: <img class="logo-img" src="data:image/...[BASE64]..." alt="PMD Logo">
+330: <div class="title-area">
+331: <h1>Police Mobile Directory</h1>
+332: <p>Officer & Employee Mobile App Registration Guide (Page 1 of 2)</p>
+333: </div>
+334: </div>
+336: <div class="section-card" id="p1-overview" style="margin-bottom: 8px; padding: 8px 10px;">
+337: <div class="section-title">Overview</div>
+338: <p style="font-size: 13.5px; color: #475569; margin-bottom: 5px;">
+339: The <strong>Police Mobile Directory (PMD)</strong> app is a secure platform restricted to verified Karnataka State Police Department personnel.
+340: Use this guide to authorize your account and register successfully.
+341: </p>
+342: </div>
+344: <div class="section-card" id="p1-dashboard-features" style="border-color: var(--accent); padding: 8px 10px; margin-bottom: 8px;">
+345: <div class="section-title" style="color: var(--accent); border-left-color: var(--primary); margin-bottom: 5px;">PMD Dashboard Features</div>
+346: <p style="font-size: 13px; color: #475569; margin-bottom: 8px; line-height: 1.35;">
+347: Once registered and authorized, users gain access to the following tools directly from the PMD Dashboard:
+348: </p>
+350: <!-- 3-column feature grid inside the card -->
+351: <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
+353: <!-- Telephone Directory (Primary Full-Width Feature) -->
+354: <div style="grid-column: span 3; background: var(--primary-light); border-radius: 7px; padding: 6px 8px; border-left: 4px solid var(--accent); margin-bottom: 2px;">
+355: <div style="font-size: 11.5px; font-weight: 700; color: var(--primary); margin-bottom: 4px;">📞 Telephone Directory</div>
+356: <p style="font-size: 10.5px; color: #475569; margin-bottom: 4px; line-height: 1.35;">
+357: Access a comprehensive directory of registered department personnel and official departmental contacts.
+358: </p>
+359: <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 10px; color: #475569; line-height: 1.3;">
+360: <div>➜ <strong>Smart Search:</strong> Search by Name, KGID, Mobile, Rank, Designation, or Posting.</div>
+361: <div>➜ <strong>Registered Users:</strong> View profile and contact details of registered PMD users.</div>
+362: <div>➜ <strong>Quick Communication:</strong> Quick Call, SMS, WhatsApp, and Email options (where available).</div>
+363: <div>➜ <strong>Coordinated Contacts:</strong> Access official numbers, regularly updated for seamless communication.</div>
+364: </div>
+365: </div>
+367: <!-- Leave Manager -->
+368: <div style="background: var(--primary-light); border-radius: 7px; padding: 5px 7px; border-left: 3px solid var(--primary);">
+369: <div style="font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 3px;">📅 Leave Manager</div>
+370: <p style="font-size: 10.5px; color: #475569; margin: 0; line-height: 1.35;">Maintain leave records and view balances for EL, HPL, and CL.</p>
+371: </div>
+373: <!-- AI Pay Slip Parser -->
+374: <div style="background: var(--primary-light); border-radius: 7px; padding: 5px 7px; border-left: 3px solid var(--primary);">
+375: <div style="font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 3px;">🤖 AI Pay Slip Parser</div>
+376: <p style="font-size: 10.5px; color: #475569; margin: 0; line-height: 1.35;">AI-powered payslip parsing with Google Drive backup and Excel export.</p>
+377: </div>
+379: <!-- Nudi Converter -->
+380: <div style="background: var(--primary-light); border-radius: 7px; padding: 5px 7px; border-left: 3px solid var(--primary);">
+381: <div style="font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 3px;">🔤 Nudi Converter</div>
+382: <p style="font-size: 10.5px; color: #475569; margin: 0; line-height: 1.35;">Convert Kannada Unicode ↔ Nudi (ASCII). Supports TXT, PDF, DOCX.</p>
+383: </div>
+385: <!-- Gallery -->
+386: <div style="background: var(--primary-light); border-radius: 7px; padding: 5px 7px; border-left: 3px solid var(--primary);">
+387: <div style="font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 3px;">🖼️ Gallery</div>
+388: <p style="font-size: 10.5px; color: #475569; margin: 0; line-height: 1.35;">Browse departmental event photographs and official media galleries.</p>
+389: </div>
+391: <!-- Documents & Circulars -->
+392: <div style="background: var(--primary-light); border-radius: 7px; padding: 5px 7px; border-left: 3px solid var(--primary);">
+393: <div style="font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 3px;">📄 Documents &amp; Circulars</div>
+394: <p style="font-size: 10.5px; color: #475569; margin: 0; line-height: 1.35;">Download and search GOs, circulars, rules, and official forms.</p>
+395: </div>
+397: <!-- Useful Links -->
+398: <div style="background: var(--primary-light); border-radius: 7px; padding: 5px 7px; border-left: 3px solid var(--primary);">
+399: <div style="font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 3px;">🔗 Useful Links</div>
+400: <p style="font-size: 10.5px; color: #475569; margin: 0; line-height: 1.35;">Quick access to KSP Apps, Karnataka State Portals, and Central Govt Services.</p>
+401: </div>
+403: </div>
+404: </div>
+407: <div class="section-card" id="p1-prerequisites" style="padding: 10px 12px; margin-bottom: 12px;">
+408: <div class="section-title">Registration Pre-requisites &amp; Support</div>
+409: <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 15px; margin-top: 6px;">
+410: <div style="font-size: 12.5px; color: #475569; line-height: 1.4; position: relative; padding-left: 22px;">
+411: <span style="position: absolute; left: 0; top: 0;">🔑</span><strong>KGID Number:</strong> Ensure to give proper KGID number this is the key in database to maintain data.
+412: </div>
+413: <div style="font-size: 12.5px; color: #475569; line-height: 1.4; position: relative; padding-left: 22px;">
+414: <span style="position: absolute; left: 0; top: 0;">📱</span><strong>Mobile Number:</strong> The mobile number used during registration will publish in app and will be used for communication.[CUG mobile number Disabled for Registration]
+415: </div>
+416: <div style="font-size: 12.5px; color: #475569; line-height: 1.4; position: relative; padding-left: 22px;">
+417: <span style="position: absolute; left: 0; top: 0;">⏳</span><strong>Verification:</strong> Account verification is performed by App Admin, typically completed within 24 to 48 hours.
+418: </div>
+419: <div style="font-size: 12.5px; color: #475569; line-height: 1.4; position: relative; padding-left: 22px;">
+420: <span style="position: absolute; left: 0; top: 0;">✉️</span><strong>Support Helpline:</strong> For any registration issues, email us at <a href="mailto:noreply.pmdapp@gmail.com" style="color: var(--primary); font-weight: 600; text-decoration: none;">noreply.pmdapp@gmail.com</a>.
+421: </div>
+422: </div>
+423: </div>
+426: <div class="section-card" id="p1-step1" style="padding: 10px 12px; margin-bottom: 12px;">
+427: <div class="section-title">Step 1: Link Google Account</div>
+428: <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 6px; align-items: stretch;">
+429: <div style="font-size: 12px; color: #475569; line-height: 1.45; background: var(--light-gray); padding: 8px 8px 8px 30px; border-radius: 6px; position: relative;">
+430: <span class="step-number" style="position: absolute; left: 8px; top: 9px; width: 16px; height: 16px; font-size: 10.5px; text-align: center; line-height: 16px;">1</span>
+431: Install App from <a href="https://play.google.com/store/apps/details?id=com.pmd.userapp" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: underline;">playstore</a> using below provided link or QR code.
+432: </div>
+433: <div style="font-size: 12px; color: #475569; line-height: 1.45; background: var(--light-gray); padding: 8px 8px 8px 30px; border-radius: 6px; position: relative;">
+434: <span class="step-number" style="position: absolute; left: 8px; top: 9px; width: 16px; height: 16px; font-size: 10.5px; text-align: center; line-height: 16px;">2</span>
+435: Launch the PMD mobile application on your device.
+436: </div>
+437: <div style="font-size: 12px; color: #475569; line-height: 1.45; background: var(--light-gray); padding: 8px 8px 8px 30px; border-radius: 6px; position: relative;">
+438: <span class="step-number" style="position: absolute; left: 8px; top: 9px; width: 16px; height: 16px; font-size: 10.5px; text-align: center; line-height: 16px;">3</span>
+439: Choose your desired Google account in the Google chooser popup.
+440: </div>
+441: </div>
+442: </div>
+444: <div class="content-grid" style="gap: 12px;">
+445: <div class="column-left" style="gap: 10px;">
+448: <div class="section-card" id="p1-step2" style="padding: 8px 12px;">
+449: <div class="section-title">Step 2: Submit Registration Dialog</div>
+450: <ul class="step-list">
+451: <li class="step-item">
+452: <span class="step-number">4</span>
+453: If your Google account is unrecognized, a dialog prompt will ask:
+454: <em>'Do you wish to submit a registration request?'</em>
+455: </li>
+456: <li class="step-item">
+457: <span class="step-number">5</span>
+458: Verify the email matches, then tap <strong>Register</strong> to open the registration form.
+459: </li>
+460: </ul>
+461: </div>
+466: </div>
+469: <div class="column-left" id="p1-column-right" style="gap: 10px;">
+470: <div class="section-card" id="p1-alternative-login" style="padding: 8px 12px;">
+471: <div class="section-title">Alternative Login Option</div>
+472: <p style="font-size: 12.5px; color: #475569; margin-bottom: 5px;">
+473: For offline access, you can use the <strong>Email and PIN login card</strong>. Note the <strong>"For Offline Use"</strong> label positioned directly above the card.
+474: </p>
+475: <div class="callout">
+476: <strong>Note:</strong> PIN sign-in is only available after your initial Google registration has been approved by the administrators.
+477: </div>
+478: </div>
+479: </div>
+480: </div>
+481: </div>
+483: <div class="footer">
+484: <span>Official KSP Directory User Guide</span>
+485: <span class="footer-logo">PMD CONNECTING CLOSER</span>
+486: <span>Page 1</span>
+487: </div>
+488: </div>
+490: <!-- PAGE 2: REGISTRATION FORM & APPROVAL -->
+491: <div class="page">
+492: <div style="flex: 1; display: flex; flex-direction: column;">
+493: <div class="header">
+494: <img class="logo-img" src="data:image/...[BASE64]..." alt="PMD Logo">
+495: <div class="title-area">
+496: <h1>Police Mobile Directory</h1>
+497: <p>Officer & Employee Mobile App Registration Guide (Page 2 of 2)</p>
+498: </div>
+499: </div>
+501: <div class="content-grid">
+502: <div class="column-left">
+503: <div class="section-card" id="p2-step3">
+504: <div class="section-title">Step 3: Fill Registration Form</div>
+505: <p style="font-size: 12.5px; color: #475569; margin-bottom: 8px;">
+506: Fill out the required information with absolute accuracy to ensure quick administrative approval:
+507: </p>
+509: <table class="field-table">
+510: <thead>
+511: <tr>
+512: <th style="width: 25%;">Field</th>
+513: <th style="width: 20%;">Requirement</th>
+514: <th>Description & Validation Rules</th>
+515: </tr>
+516: </thead>
+517: <tbody>
+518: <tr>
+519: <td><strong>Profile Photo</strong></td>
+520: <td><span class="req-badge">REQUIRED</span></td>
+521: <td>Tap "Add Photo" to snap a camera shot or upload from gallery.</td>
+522: </tr>
+523: <tr>
+524: <td><strong>Name</strong></td>
+525: <td><span class="req-badge">REQUIRED</span></td>
+526: <td>Must match your official service record name.</td>
+527: </tr>
+528: <tr>
+529: <td><strong>Email</strong></td>
+530: <td><span class="req-badge">LOCKED</span></td>
+531: <td>Automatically filled from Google sign-in and edit disabled.</td>
+532: </tr>
+533: <tr>
+534: <td><strong>Mobile 1</strong></td>
+535: <td><span class="req-badge">REQUIRED</span></td>
+536: <td>Enter active 10 digit phone number.</td>
+537: </tr>
+539: <tr>
+540: <td><strong>Unit & District</strong></td>
+541: <td><span class="req-badge">REQUIRED</span></td>
+542: <td>Dropdown selection. Options filter automatically based on unit.</td>
+543: </tr>
+544: <tr>
+545: <td><strong>KGID & Rank</strong></td>
+546: <td><span class="req-badge">REQUIRED</span></td>
+547: <td>Unique govt insurance number & service rank dropdown.</td>
+548: </tr>
+549: <tr>
+550: <td><strong>Station / Branch</strong></td>
+551: <td><span class="req-badge">REQUIRED</span></td>
+552: <td>Lists stations inside your District. Use "Others" if not listed.</td>
+553: </tr>
+554: <tr>
+555: <td><strong>Blood Group</strong></td>
+556: <td><span class="req-badge">REQUIRED</span></td>
+557: <td>Select your blood group. Visible on your profile card.</td>
+558: </tr>
+559: <tr>
+560: <td><strong>6-Digit PIN</strong></td>
+561: <td><span class="req-badge">REQUIRED</span></td>
+562: <td>Create and confirm your numeric PIN for Offline Login.</td>
+563: </tr>
+564: </tbody>
+565: </table>
+566: </div>
+568: <div class="section-card" id="p2-step4">
+569: <div class="section-title">Step 4: Submission & Admin Approval</div>
+570: <p style="font-size: 11.5px; color: #475569;">
+571: Check the <strong>Terms and Conditions</strong> checkbox and tap <strong>Submit for approval</strong>.
+572: </p>
+574: <div class="flow-container">
+575: <div class="flow-node">Submit Form</div>
+576: <div class="flow-arrow">&#10142;</div>
+577: <div class="flow-node highlight">Admin Audit</div>
+578: <div class="flow-arrow">&#10142;</div>
+579: <div class="flow-node">Approved Login</div>
+580: </div>
+582: <ul style="margin-top: 8px; font-size: 12.5px; padding-left: 15px; color: #475569;">
+583: <li><strong>Pending:</strong> Displays a <em>'Pending approval'</em> notification upon login.</li>
+584: <li><strong>Rejected:</strong> Displays reasons in red text. Tap <em>'Register Again'</em> to fix.</li>
+585: </ul>
+586: </div>
+588: </div>
+590: <div class="column-right" id="p2-column-right" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; width: 100%; padding: 12px 10px;">
+591: <p style="font-size: 11px; font-weight:600; color:var(--primary); margin-bottom:8px; text-align: center; width: 100%;">App Login Interface</p>
+592: <img class="mockup-img" style="width: 85%; max-height: 135mm; margin-bottom: 8px; object-fit: contain;" src="data:image/...[BASE64]..." alt="PMD Login Interface">
+593: <!-- QR Code & Download Info -->
+594: <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 20px 15px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center;">
+595: <img src="data:image/...[BASE64]..." style="width: 110px; height: 110px; border: 1px solid var(--border); border-radius: 8px;" alt="Download QR Code">
+596: <div style="width: 100%;">
+597: <p style="font-size: 13.5px; font-weight: 700; color: var(--primary); margin-bottom: 6px;">Download PMD Mobile App</p>
+598: <p style="font-size: 10.5px; color: #475569; line-height: 1.4; margin: 0;">Scan the QR code above or <a href="https://play.google.com/store/apps/details?id=com.pmd.userapp" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: underline;">click here</a> to download the official Android App from Google Play Store directly onto your mobile device.</p>
+599: </div>
+600: </div>
+601: </div>
+603: </div>
+604: </div>
+606: <div class="footer">
+607: <span>Official KSP Directory User Guide</span>
+608: <span class="footer-logo">PMD CONNECTING CLOSER</span>
+609: <span>Page 2</span>
+610: </div>
+611: </div>
+613: </body>
+614: </html>
